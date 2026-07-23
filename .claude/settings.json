@@ -1,5 +1,18 @@
 {
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'CMD=$(jq -r \".tool_input.command\" <<< \"$(cat)\"); for p in \"rm -rf /\" \"rm -rf ~\" \"drop table\" \"DROP TABLE\" \"truncate\" \"TRUNCATE\" \"--force\" \"push.*--force\"; do if echo \"$CMD\" | grep -qiE \"$p\"; then echo \"Blocked: pattern \\\"$p\\\" detected\" >&2; exit 2; fi; done; exit 0'"
+          }
+        ]
+      }
+    ]
   }
 }
