@@ -1,0 +1,18 @@
+{
+  "name": "tiny-threads",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev:api": "pnpm --filter @tiny-threads/api start:dev",
+    "dev:web": "pnpm --filter @tiny-threads/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write \"apps/**/*.{ts,tsx}\" \"packages/**/*.ts\""
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
