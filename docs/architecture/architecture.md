@@ -67,3 +67,17 @@ A provider-agnostic `PaymentPort` covering onboarding, split-settlement money mo
 → full rationale and `PaymentPort` interface: [references/d7-payment-port.md](references/d7-payment-port.md)
 
 ---
+
+## Database Schema
+
+The concrete tables produced by D1/D2's tenancy model — tenant-scoped vs.
+global tables, composite PK/FK conventions, and the full ERD — are documented
+in [`database-schema.md`](database-schema.md).
+
+**Keep in sync:** any change to the database schema (new table, column,
+relationship, or tenancy-scope reclassification) must be reflected in
+`database-schema.md` in the same change.
+
+→ [database-schema.md](database-schema.md)
+
+---
