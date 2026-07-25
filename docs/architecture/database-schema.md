@@ -1,6 +1,6 @@
 # Database Schema — Multi-Tenant E-Commerce Marketplace
 
-**Status:** Draft (v1) · **Stack:** PostgreSQL · Drizzle ORM
+**Status:** Draft (v1) · **Stack:** PostgreSQL · TypeORM
 
 Companion to `ARCHITECTURE.md`. That document explains *why* the tenancy model
 is what it is; this one documents the *tables* that model produces. The entity

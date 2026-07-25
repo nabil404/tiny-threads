@@ -5,7 +5,7 @@ description: Backend engineering conventions for this multi-tenant e-commerce pl
 
 # Backend Engineer
 
-Backend conventions for a **multi-tenant e-commerce marketplace**: dozens of tenants (merchants), each selling to their own customers, on a **shared PostgreSQL database with a `tenant_id` discriminator (pooled model)**. Stack is **NestJS · PostgreSQL · TypeScript · Drizzle ORM**, structured as a **modular monolith**.
+Backend conventions for a **multi-tenant e-commerce marketplace**: dozens of tenants (merchants), each selling to their own customers, on a **shared PostgreSQL database with a `tenant_id` discriminator (pooled model)**. Stack is **NestJS · PostgreSQL · TypeScript · TypeORM**, structured as a **modular monolith**.
 
 Two areas are load-bearing — a mistake becomes a **breach or lock-in**, not a bug — and are marked ⚠️ below.
 
@@ -23,7 +23,7 @@ Two areas are load-bearing — a mistake becomes a **breach or lock-in**, not a 
 Before writing or reviewing backend code, confirm all of these hold:
 
 1. **Every tenant-scoped table has RLS enabled with `FORCE`, and the app connects as a non-owner role.** ⚠️
-2. **Tenant context is set transaction-locally via `set_config(..., true)` inside `db.transaction`, through the one central `withTenant` gate — never a bare `SET`, never string-interpolated.** ⚠️
+2. **Tenant context is set transaction-locally via `set_config(..., true)` inside `dataSource.transaction`, through the one central `withTenant` gate — never a bare `SET`, never string-interpolated.** ⚠️
 3. **`tenant_id` exists on every tenant-scoped table and is the leading column of composite indexes.**
 4. **Every uniqueness rule is composite with `tenant_id` — never a global unique constraint on a merchant-owned value.**
 5. **No external-vendor SDK, type, or concept appears outside its adapter.** Domain code depends only on our ports.
@@ -37,20 +37,22 @@ Isolation is **enforced by PostgreSQL**, not by application `WHERE` clauses. App
 
 ### RLS on every tenant-scoped table
 
-Every tenant-scoped table gets `ENABLE` + `FORCE ROW LEVEL SECURITY` and a policy with both `USING` (guards read/update/delete) and `WITH CHECK` (prevents writing a row into another tenant). The policy is declared in the Drizzle schema via `pgPolicy` so it lives with the table — see the worked `orders` example in `docs/architecture/references/d3-orm-drizzle.md` (D3).
+Every tenant-scoped table gets `ENABLE` + `FORCE ROW LEVEL SECURITY` and a policy with both `USING` (guards read/update/delete) and `WITH CHECK` (prevents writing a row into another tenant). The policy **cannot** live in the entity — TypeORM has no policy API. It is declared in a raw-SQL migration alongside (or appended to) that table's `CREATE TABLE` migration — see the worked `orders` example in `docs/architecture/references/d3-orm-typeorm.md` (D3) and the migration skeleton in `docs/architecture/references/d2-rls-enforcement.md` (D2). This is a real process change from a schema-first ORM: the policy is no longer adjacent to the column definitions, so there's no compiler-enforced link between an entity's table name and the migration's `CREATE POLICY ... ON "..."` string — catch drift here in review.
+
+  Use the shared `enableRls(queryRunner, table)` / `disableRls(queryRunner, table)` helpers in `src/db/migrations/helpers/rls.helper.ts` from every tenant-table migration's `up()`/`down()` instead of re-typing the SQL — it's still one explicit call per migration (no magic), just without copy-paste drift. `pnpm db:migrate` runs `pnpm db:verify-rls` afterward as a backstop: it queries `pg_class`/`pg_policies` for every table with a `tenant_id` column and fails the pipeline if any is missing `ENABLE`, `FORCE`, or a policy — it catches a forgotten call, it doesn't replace writing one.
 
 - Prefer a `BEFORE INSERT` trigger that forces `tenant_id = current_setting('app.current_tenant')` so the app can't set it wrong.
 - **Roles:** migrations run as the table **owner**; the application runtime uses a **separate, non-owner, non-superuser role**. Without this, `FORCE` aside, RLS silently does nothing. This is the #1 RLS mistake — verify it explicitly.
-- **`FORCE` caveat:** attaching a `pgPolicy` makes drizzle-kit emit `ENABLE ROW LEVEL SECURITY`, but **not** `FORCE`. Add `ALTER TABLE <table> FORCE ROW LEVEL SECURITY;` as a raw line in the migration, or RLS is bypassed by the owner. Do not rely on Drizzle for this.
+- **`FORCE` caveat:** TypeORM's `migration:generate` has **no concept of RLS at all** — it will emit `CREATE TABLE` only, never `ENABLE`, `FORCE`, or a policy. All three are manual raw-SQL additions to that migration, every time a tenant-scoped table is created — a strictly bigger manual step than plain "FORCE is the only missing piece." Do not rely on TypeORM to emit any of it.
 
 ### The context gate (`withTenant`)
 
-There is **exactly one place** that sets tenant context, and **all tenant-scoped DB access goes through it**. In Drizzle that is a single `withTenant` helper wrapping `db.transaction`, which sets `app.current_tenant` via `set_config(..., true)` before handing the transaction to the caller. The reference implementation lives in `docs/architecture/references/d2-rls-enforcement.md` (D2).
+There is **exactly one place** that sets tenant context, and **all tenant-scoped DB access goes through it**. That is a single `withTenant` helper wrapping `dataSource.transaction` from TypeORM, which sets `app.current_tenant` via `set_config(..., true)` before handing the transactional `EntityManager` to the caller. The reference implementation lives in `docs/architecture/references/d2-rls-enforcement.md` (D2).
 
 Why exactly this shape:
 
 - **`set_config(..., true)`, not `SET LOCAL '<id>'`.** `SET` cannot be parameterized, so a `SET LOCAL` gate forces string interpolation of the tenant id — an injection footgun. `set_config`'s third argument `true` makes it transaction-local (equivalent to `SET LOCAL`) *and* accepts a bind parameter. Always use it.
-- **Always inside `db.transaction`.** The transaction pins a single connection, so the setting and the queries share it and it clears on commit/rollback. This is the only form safe under PgBouncer transaction pooling.
+- **Always inside `dataSource.transaction`.** The transaction pins a single connection, so the setting and the queries share it and it clears on commit/rollback. This is the only form safe under PgBouncer transaction pooling.
 - **Never a bare `SET` / `set_config(..., false)`.** Pooled connections are reused; a session-scoped value bleeds from one tenant's request into another's, and every following query then passes RLS *for the wrong tenant*. This is the most dangerous bug in the system.
 - **Fail closed.** No tenant in context → throw, never run the query. A context-less query is a bug, not a "query all tenants" shortcut.
 
@@ -58,7 +60,7 @@ Why exactly this shape:
 
 - Resolve the tenant early in a middleware/guard from **subdomain, custom domain, or JWT claim**; validate it exists and is active.
 - Carry it via **`nestjs-cls` (AsyncLocalStorage)**, not request-scoped DI providers (request scope rebuilds the provider tree per request and hurts throughput). `withTenant` reads `tenantId` straight from CLS, so feature code never threads it through method signatures.
-- Repositories/services accept the `tx` handed to them by `withTenant` and use it for every query. If a service can import the raw `db` and query tenant tables without `withTenant`, that is the leak to catch in review.
+- Repositories/services accept the `manager` handed to them by `withTenant` and use it for every query. If a service can inject the raw `DataSource` and query tenant tables without `withTenant`, that is the leak to catch in review.
 
 **Required test:** fire concurrent `withTenant` calls for different tenants through a small pool and assert each only ever sees its own rows — proves zero context bleed.
 
@@ -72,7 +74,7 @@ Why exactly this shape:
   - Audit every unique constraint (SKU, order number, customer email, slug) through this lens.
 - **Primary keys are UUIDs (v7 preferred** for index locality) — not per-tenant sequential integers, which leak volume and contend on sequences.
 
-Express all of this in the table's config callback (see the `orders` schema example in `docs/architecture/references/d3-orm-drizzle.md`, D3): `index(...).on(t.tenantId, ...)` for tenant-leading composites, `unique(...).on(t.tenantId, ...)` for composite uniqueness. Never write a bare `.unique()` on a merchant-owned column.
+Express all of this via class-level entity decorators (see the `orders` entity example in `docs/architecture/references/d3-orm-typeorm.md`, D3): `@Index(name, ['tenantId', ...])` for tenant-leading composites, `@Unique(name, ['tenantId', ...])` for composite uniqueness. Never write a bare `@Column({ unique: true })` on a merchant-owned column.
 
 ## Module / bounded-context conventions
 
@@ -217,9 +219,10 @@ The accepted cost of pooling is noisy neighbors. Make every shared resource tena
 
 Run through this on any backend change touching tenant data or providers:
 
-- [ ] New tables: `tenant_id` present, `pgPolicy` (`using` + `withCheck`) defined, and a raw `FORCE ROW LEVEL SECURITY` line in the migration (Drizzle won't emit it).
-- [ ] Runtime DB role is non-owner / non-superuser; policy `to:` targets that role.
-- [ ] All tenant-scoped DB access goes through `withTenant`; no service imports raw `db` for tenant tables; context set via `set_config(..., true)`, never bare `SET` or interpolation.
+- [ ] New tables: `tenant_id` present; `ENABLE` + `FORCE ROW LEVEL SECURITY` + `CREATE POLICY` (`USING` + `WITH CHECK`) all present as raw SQL in the migration — TypeORM emits none of this automatically.
+- [ ] Runtime DB role is non-owner / non-superuser; policy `TO` targets that role.
+- [ ] Every `TypeOrmModule` DataSource config has `synchronize: false` — never rely on auto-sync in an RLS-governed schema; it has zero RLS awareness and would fight migrations.
+- [ ] All tenant-scoped DB access goes through `withTenant`; no service injects the raw `DataSource` for tenant tables; context set via `set_config(..., true)`, never bare `SET` or interpolation.
 - [ ] Composite indexes lead with `tenant_id`; no bare non-tenant indexes on hot paths.
 - [ ] Every unique constraint includes `tenant_id` (no bare `.unique()` on merchant-owned columns).
 - [ ] No vendor SDK/type imported outside its adapter; new providers implement an existing port; every mutation passes an `idempotencyKey`.

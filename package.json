@@ -5,6 +5,9 @@
   "scripts": {
     "dev:api": "pnpm --filter @tiny-threads/api start:dev",
     "dev:web": "pnpm --filter @tiny-threads/web dev",
+    "db:generate": "pnpm --filter @tiny-threads/api db:generate",
+    "db:migrate": "pnpm --filter @tiny-threads/api db:migrate",
+    "db:revert": "pnpm --filter @tiny-threads/api db:revert",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "format": "prettier --write \"apps/**/*.{ts,tsx}\" \"packages/**/*.ts\""

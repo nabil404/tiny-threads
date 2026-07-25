@@ -26,13 +26,13 @@ RLS (`FORCE` + `USING`/`WITH CHECK`) on every tenant-scoped table; app connects 
 
 → full rationale, RLS SQL, and `withTenant` reference implementation: [references/d2-rls-enforcement.md](references/d2-rls-enforcement.md)
 
-## D3 — ORM: Drizzle
+## D3 — ORM: TypeORM
 
-SQL-first design keeps the tenancy boundary explicit and auditable; RLS policies declared in-schema via `pgPolicy`.
+Entity/repository model with migrations as the source of truth for schema. Chosen for NestJS-ecosystem fit — `@nestjs/typeorm` is the first-party integration, with broader community tooling and examples in the NestJS world. RLS (`ENABLE`/`FORCE`/policy) is not declarable on an entity — TypeORM has no policy API — so it is declared exclusively in raw-SQL migrations.
 
-*Rejected:* TypeORM, Prisma.
+*Rejected:* Drizzle (SQL-first, auditable, but a lighter NestJS-ecosystem footprint), Prisma (ergonomic, but the query engine hides the SQL, working against auditing the isolation boundary).
 
-→ full rationale and reference `orders` schema: [references/d3-orm-drizzle.md](references/d3-orm-drizzle.md)
+→ full rationale and reference `Order` entity + RLS migration: [references/d3-orm-typeorm.md](references/d3-orm-typeorm.md)
 
 ## D4 — Application architecture: modular monolith
 

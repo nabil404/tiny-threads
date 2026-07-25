@@ -19,26 +19,25 @@ CREATE POLICY tenant_isolation ON orders
 **Reference implementation** (`withTenant`, the one central context gate):
 
 ```ts
-// tenant-db.ts — the ONLY gate. Feature code never touches `db` directly for tenant data.
-import { sql } from 'drizzle-orm';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import type { PgTransaction } from 'drizzle-orm/pg-core';
+// tenant-db.ts — the ONLY gate. Feature code never touches the DataSource
+// directly for tenant data.
+import type { DataSource, EntityManager } from 'typeorm';
 import type { ClsService } from 'nestjs-cls';
 
 export async function withTenant<T>(
-  db: NodePgDatabase<typeof schema>,
+  dataSource: DataSource,
   cls: ClsService,
-  work: (tx: PgTransaction<any, any, any>) => Promise<T>,
+  work: (manager: EntityManager) => Promise<T>,
 ): Promise<T> {
-  const tenantId = cls.get('tenantId');
+  const tenantId = cls.get<string>('tenantId');
   if (!tenantId) throw new Error('withTenant called with no tenant in context'); // fail closed
 
-  return db.transaction(async (tx) => {
+  return dataSource.transaction(async (manager) => {
     // set_config(name, value, is_local=true) == SET LOCAL, but PARAMETERIZED.
     // Transaction pins one connection, so this applies to every query below and
     // is discarded on COMMIT/ROLLBACK — no bleed across pooled connections.
-    await tx.execute(sql`select set_config('app.current_tenant', ${tenantId}, true)`);
-    return work(tx);
+    await manager.query(`select set_config('app.current_tenant', $1, true)`, [tenantId]);
+    return work(manager);
   });
 }
 ```
