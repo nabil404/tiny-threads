@@ -13,6 +13,8 @@ export * from './categories.entity';
 export * from './product-categories.entity';
 export * from './customers.entity';
 export * from './customer-addresses.entity';
+export * from './customer-identities.entity';
+export * from './customer-refresh-tokens.entity';
 export * from './carts.entity';
 export * from './cart-items.entity';
 export * from './orders.entity';

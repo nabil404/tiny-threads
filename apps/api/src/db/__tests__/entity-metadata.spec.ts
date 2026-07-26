@@ -11,6 +11,8 @@ const TENANT_SCOPED_TABLES = [
   'product_categories',
   'customers',
   'customer_addresses',
+  'customer_identities',
+  'customer_refresh_tokens',
   'carts',
   'cart_items',
   'orders',
