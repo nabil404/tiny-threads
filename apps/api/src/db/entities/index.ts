@@ -7,6 +7,8 @@ export * from './payment-providers.entity';
 
 // Tenant-scoped tables
 export * from './merchant-users.entity';
+export * from './merchant-user-identities.entity';
+export * from './merchant-user-refresh-tokens.entity';
 export * from './products.entity';
 export * from './product-variants.entity';
 export * from './categories.entity';

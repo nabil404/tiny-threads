@@ -5,6 +5,8 @@ type EntityClass = abstract new (...args: never[]) => unknown;
 
 const TENANT_SCOPED_TABLES = [
   'merchant_users',
+  'merchant_user_identities',
+  'merchant_user_refresh_tokens',
   'products',
   'product_variants',
   'categories',
