@@ -29,6 +29,13 @@ import { VerifyCustomerEmailDto } from './dto/verify-customer-email.dto';
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
+interface GoogleProfile {
+  tenantId: string;
+  googleSub: string;
+  email: string;
+  emailVerified: boolean;
+}
+
 // TokenService isn't used by register()/verifyEmail() yet — it's accepted
 // here (rather than added later) because Task 10 adds login/refresh/logout
 // to this same class and needs it, and TokenService already exists from
@@ -233,6 +240,122 @@ export class CustomersAuthService {
           { revokedAt: new Date() },
         );
       }
+    });
+  }
+
+  async findOrCreateFromGoogle(
+    profile: GoogleProfile,
+  ): Promise<
+    { accessToken: string; refreshToken: string } | { linkRequired: true }
+  > {
+    return this.tenantDb.run(async (manager) => {
+      const existingGoogleIdentity = await manager.findOne(CustomerIdentity, {
+        where: { provider: 'google', providerSubject: profile.googleSub },
+      });
+      if (existingGoogleIdentity) {
+        return this.issueTokenPair(
+          manager,
+          profile.tenantId,
+          existingGoogleIdentity.customerId,
+          randomUUID(),
+        );
+      }
+
+      const existingCustomer = await manager.findOne(Customer, {
+        where: { email: profile.email },
+      });
+      if (existingCustomer) {
+        const existingPasswordIdentity = await manager.findOne(
+          CustomerIdentity,
+          {
+            where: { customerId: existingCustomer.id, provider: 'password' },
+          },
+        );
+        if (existingPasswordIdentity) {
+          // MUST NOT auto-link an unverified OAuth email onto an existing
+          // account — require an authenticated, deliberate link instead (see
+          // linkGoogleIdentity).
+          if (!profile.emailVerified) {
+            return { linkRequired: true };
+          }
+          await manager.save(
+            manager.create(CustomerIdentity, {
+              tenantId: profile.tenantId,
+              customerId: existingCustomer.id,
+              provider: 'google',
+              providerSubject: profile.googleSub,
+              emailVerified: true,
+            }),
+          );
+          return this.issueTokenPair(
+            manager,
+            profile.tenantId,
+            existingCustomer.id,
+            randomUUID(),
+          );
+        }
+      }
+
+      // tenant_id is a NOT NULL composite-PK column on both Customer and
+      // CustomerIdentity, enforced by an RLS WITH CHECK policy — must be
+      // stamped explicitly, same as in register() above.
+      const customer =
+        existingCustomer ??
+        (await manager.save(
+          manager.create(Customer, {
+            tenantId: profile.tenantId,
+            email: profile.email,
+            name: profile.email,
+          }),
+        ));
+      await manager.save(
+        manager.create(CustomerIdentity, {
+          tenantId: profile.tenantId,
+          customerId: customer.id,
+          provider: 'google',
+          providerSubject: profile.googleSub,
+          emailVerified: profile.emailVerified,
+        }),
+      );
+      return this.issueTokenPair(
+        manager,
+        profile.tenantId,
+        customer.id,
+        randomUUID(),
+      );
+    });
+  }
+
+  async linkGoogleIdentity(params: {
+    tenantId: string;
+    customerId: string;
+    googleSub: string;
+    email: string;
+  }): Promise<void> {
+    await this.tenantDb.run(async (manager) => {
+      const conflictingIdentity = await manager.findOne(CustomerIdentity, {
+        where: { provider: 'google', providerSubject: params.googleSub },
+      });
+      if (
+        conflictingIdentity &&
+        conflictingIdentity.customerId !== params.customerId
+      ) {
+        throw new ConflictException(
+          'This Google account is already linked to a different customer',
+        );
+      }
+      await manager.save(
+        manager.create(CustomerIdentity, {
+          tenantId: params.tenantId,
+          customerId: params.customerId,
+          provider: 'google',
+          providerSubject: params.googleSub,
+          // The customer is already authenticated and deliberately requested
+          // the link, so Google's own email_verified claim doesn't gate this
+          // path.
+          emailVerified: true,
+        }),
+      );
     });
   }
 

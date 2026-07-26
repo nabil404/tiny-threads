@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   HttpCode,
@@ -11,9 +12,14 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
+import { OAuthStateService } from '../auth-core/oauth-state.service';
+import { OneTimeCodeService } from '../oauth/one-time-code.service';
 import { CustomersAuthService } from './customers-auth.service';
+import { CustomerJwtAuthGuard } from './customer-jwt-auth.guard';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
 import { VerifyCustomerEmailDto } from './dto/verify-customer-email.dto';
+import { CustomerOAuthInitiateDto } from './dto/customer-oauth-initiate.dto';
+import { CustomerOAuthExchangeDto } from './dto/customer-oauth-exchange.dto';
 
 const REFRESH_COOKIE_NAME = 'customer_refresh_token';
 const REFRESH_COOKIE_OPTIONS = {
@@ -28,6 +34,8 @@ export class CustomersAuthController {
   constructor(
     private readonly customersAuthService: CustomersAuthService,
     private readonly cls: ClsService,
+    private readonly oauthState: OAuthStateService,
+    private readonly oneTimeCodeService: OneTimeCodeService,
   ) {}
 
   @Post('register')
@@ -93,5 +101,71 @@ export class CustomersAuthController {
     }
     res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_OPTIONS.path });
     return { success: true };
+  }
+
+  @Post('google/initiate')
+  initiateGoogle(@Body() dto: CustomerOAuthInitiateDto) {
+    const tenantId = this.cls.get<string>('tenantId');
+    const state = this.oauthState.encode({
+      population: 'customer',
+      tenantId,
+      returnUrl: dto.returnUrl,
+      intent: 'login',
+    });
+    return { redirectUrl: this.googleAuthorizeUrl(state) };
+  }
+
+  @UseGuards(CustomerJwtAuthGuard)
+  @Post('google/link/initiate')
+  initiateGoogleLink(
+    @Req() req: Request,
+    @Body() dto: CustomerOAuthInitiateDto,
+  ) {
+    const { sub: customerId, tenantId } = req.user as {
+      sub: string;
+      tenantId: string;
+    };
+    const state = this.oauthState.encode({
+      population: 'customer',
+      tenantId,
+      returnUrl: dto.returnUrl,
+      intent: 'link',
+      linkCustomerId: customerId,
+    });
+    return { redirectUrl: this.googleAuthorizeUrl(state) };
+  }
+
+  // Exchanges the short-lived, single-use one-time code minted by
+  // GoogleOAuthController's callback for the real token pair — the code
+  // itself is safe to pass through a redirect URL (query param) since it's
+  // opaque, expires in 60s, and is deleted on first read; the tokens it
+  // unlocks never travel through a URL.
+  @Post('google/exchange')
+  @HttpCode(200)
+  exchangeGoogleCode(
+    @Body() dto: CustomerOAuthExchangeDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const payload = this.oneTimeCodeService.redeem(dto.code);
+    if (!payload || payload.population !== 'customer') {
+      throw new BadRequestException('Invalid or expired code');
+    }
+    res.cookie(
+      REFRESH_COOKIE_NAME,
+      payload.refreshToken,
+      REFRESH_COOKIE_OPTIONS,
+    );
+    return { accessToken: payload.accessToken };
+  }
+
+  private googleAuthorizeUrl(state: string): string {
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_OAUTH_CLIENT_ID!,
+      redirect_uri: `${process.env.PLATFORM_BASE_URL}/auth/google/callback`,
+      response_type: 'code',
+      scope: 'openid email profile',
+      state,
+    });
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   }
 }
