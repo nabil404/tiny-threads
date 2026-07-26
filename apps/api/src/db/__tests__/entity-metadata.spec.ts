@@ -7,6 +7,7 @@ const TENANT_SCOPED_TABLES = [
   'merchant_users',
   'merchant_user_identities',
   'merchant_user_refresh_tokens',
+  'merchant_user_invites',
   'products',
   'product_variants',
   'categories',
