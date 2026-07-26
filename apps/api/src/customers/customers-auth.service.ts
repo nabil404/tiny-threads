@@ -3,19 +3,30 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { ClsService } from 'nestjs-cls';
-import { Customer, CustomerIdentity } from '../db/entities';
+import type { EntityManager } from 'typeorm';
+import {
+  Customer,
+  CustomerIdentity,
+  CustomerRefreshToken,
+} from '../db/entities';
 import { TenantDbService } from '../db/tenant-db.service';
 import { HashingService } from '../auth-core/hashing.service';
 import { NOTIFICATIONS_PORT } from '../auth-core/notifications/notifications-port';
 import type { NotificationsPort } from '../auth-core/notifications/notifications-port';
 import { TokenService } from '../auth-core/token.service';
+import {
+  generateOpaqueRefreshToken,
+  hashRefreshToken,
+} from '../auth-core/refresh-token-crypto';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
 import { VerifyCustomerEmailDto } from './dto/verify-customer-email.dto';
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 // TokenService isn't used by register()/verifyEmail() yet — it's accepted
 // here (rather than added later) because Task 10 adds login/refresh/logout
@@ -116,5 +127,125 @@ export class CustomersAuthService {
       identity.verificationTokenExpiresAt = null;
       await manager.save(CustomerIdentity, identity);
     });
+  }
+
+  async login(
+    tenantId: string,
+    email: string,
+    password: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    return this.tenantDb.run(async (manager) => {
+      // A single query joined on the customer relation rather than a
+      // separate Customer lookup + CustomerIdentity lookup — RLS already
+      // scopes this to the current tenant (see register()/verifyEmail()
+      // above), and the password identity carries customerId directly, so
+      // there's no need to round-trip through Customer first.
+      const identity = await manager.findOne(CustomerIdentity, {
+        where: { provider: 'password', customer: { email } },
+      });
+
+      if (
+        !identity ||
+        !identity.passwordHash ||
+        !(await this.hashing.verify(identity.passwordHash, password))
+      ) {
+        throw new UnauthorizedException('Invalid email or password');
+      }
+
+      return this.issueTokenPair(
+        manager,
+        tenantId,
+        identity.customerId,
+        randomUUID(),
+      );
+    });
+  }
+
+  async refresh(
+    tenantId: string,
+    rawRefreshToken: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const tokenHash = hashRefreshToken(rawRefreshToken);
+
+    return this.tenantDb.run(async (manager) => {
+      const existing = await manager.findOne(CustomerRefreshToken, {
+        where: { tokenHash },
+      });
+      if (!existing) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+      if (existing.revokedAt) {
+        // Reuse of a revoked token in this family is a theft signal: revoke
+        // the whole family.
+        await manager.update(
+          CustomerRefreshToken,
+          { familyId: existing.familyId },
+          { revokedAt: new Date() },
+        );
+        throw new UnauthorizedException('Refresh token reuse detected');
+      }
+      if (existing.expiresAt < new Date()) {
+        throw new UnauthorizedException('Refresh token expired');
+      }
+
+      await manager.update(
+        CustomerRefreshToken,
+        { id: existing.id },
+        { revokedAt: new Date() },
+      );
+      return this.issueTokenPair(
+        manager,
+        tenantId,
+        existing.customerId,
+        existing.familyId,
+      );
+    });
+  }
+
+  async logout(tenantId: string, rawRefreshToken: string): Promise<void> {
+    const tokenHash = hashRefreshToken(rawRefreshToken);
+    await this.tenantDb.run(async (manager) => {
+      const existing = await manager.findOne(CustomerRefreshToken, {
+        where: { tokenHash },
+      });
+      if (existing && !existing.revokedAt) {
+        await manager.update(
+          CustomerRefreshToken,
+          { familyId: existing.familyId },
+          { revokedAt: new Date() },
+        );
+      }
+    });
+  }
+
+  private async issueTokenPair(
+    manager: EntityManager,
+    tenantId: string,
+    customerId: string,
+    familyId: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const rawRefreshToken = generateOpaqueRefreshToken();
+
+    // tenant_id is a NOT NULL composite-PK column on CustomerRefreshToken
+    // (ImmutableTenantEntityBase), enforced by an RLS WITH CHECK policy —
+    // must be stamped explicitly, same as Customer/CustomerIdentity in
+    // register() above.
+    await manager.save(
+      manager.create(CustomerRefreshToken, {
+        tenantId,
+        customerId,
+        tokenHash: hashRefreshToken(rawRefreshToken),
+        familyId,
+        expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+        revokedAt: null,
+      }),
+    );
+
+    const accessToken = this.tokenService.signAccessToken({
+      sub: customerId,
+      aud: 'customer',
+      tenantId,
+    });
+    return { accessToken, refreshToken: rawRefreshToken };
   }
 }
