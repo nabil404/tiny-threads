@@ -4,10 +4,7 @@ import { MerchantUser } from './merchant-users.entity';
 
 @Entity({ name: 'merchant_user_invites' })
 @Index('merchant_user_invites_tenant_email_idx', ['tenantId', 'email'])
-@Unique('merchant_user_invites_tenant_token_hash_uq', [
-  'tenantId',
-  'tokenHash',
-])
+@Unique('merchant_user_invites_tenant_token_hash_uq', ['tenantId', 'tokenHash'])
 export class MerchantUserInvite extends ImmutableTenantEntityBase {
   @Column({ type: 'text' })
   email!: string;

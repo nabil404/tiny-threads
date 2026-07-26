@@ -1,9 +1,14 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { MerchantAdminsAuthService } from '../merchant-admins-auth.service';
 import { TokenService } from '../../auth-core/token.service';
 import {
   MerchantUser,
   MerchantUserIdentity,
+  MerchantUserInvite,
   MerchantUserRefreshToken,
 } from '../../db/entities';
 
@@ -13,13 +18,46 @@ import {
 // TenantResolutionMiddleware) to stamp it onto the MerchantUser /
 // MerchantUserIdentity rows it creates — both are NOT NULL composite-PK
 // columns enforced by an RLS WITH CHECK policy.
-function buildService() {
+//
+// register() no longer takes email/role from the caller (fix round 1: a
+// public, unauthenticated register endpoint must never let the caller
+// self-select their own role) — it resolves both from a MerchantUserInvite
+// row looked up by tokenHash, so this helper's manager.findOne routes by
+// entity like buildFullService below, rather than by where-shape.
+function buildService(options?: {
+  invite?: Partial<MerchantUserInvite> | null;
+  existingMerchantUser?: Partial<MerchantUser> | null;
+}) {
+  const invite =
+    options && 'invite' in options
+      ? options.invite
+      : {
+          id: 'invite-1',
+          email: 'owner@shop.com',
+          role: 'owner',
+          tokenHash: 'invite-token-hash',
+          expiresAt: new Date(Date.now() + 60_000),
+          usedAt: null,
+          invitedByMerchantUserId: 'mu-inviter',
+        };
+  const existingMerchantUser = options?.existingMerchantUser ?? null;
+
   const manager = {
-    findOne: jest.fn(),
+    findOne: jest.fn().mockImplementation((entity: unknown) => {
+      if (entity === MerchantUserInvite) return Promise.resolve(invite);
+      if (entity === MerchantUser)
+        return Promise.resolve(existingMerchantUser);
+      return Promise.resolve(null);
+    }),
     create: jest.fn((_entity: any, data: any) => data),
     save: jest.fn((entity: any) =>
       Promise.resolve({ id: 'generated-id', ...entity }),
     ),
+    // Defaults to "the row was affected" so the conditional single-row
+    // claim of the invite (WHERE id = $1 AND used_at IS NULL) reads as a
+    // win-the-race outcome unless a test overrides it — mirrors the
+    // refresh-token rotation race fix.
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
   const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
   const hashing = {
@@ -44,18 +82,24 @@ function buildService() {
 }
 
 describe('MerchantAdminsAuthService.register', () => {
-  it('creates a merchant user and a password identity, then sends a verification email', async () => {
+  it('redeems a valid invite: creates a merchant user (with the invite email/role) and a password identity, then sends a verification email', async () => {
     const { service, manager, hashing, notifications } = buildService();
-    manager.findOne.mockResolvedValue(null);
 
     const result = await service.register({
-      email: 'owner@shop.com',
+      token: 'raw-invite-token',
       password: 'correct horse battery staple',
-      role: 'owner',
     });
 
     expect(hashing.hash).toHaveBeenCalledWith('correct horse battery staple');
     expect(manager.save).toHaveBeenCalledTimes(2); // MerchantUser, then MerchantUserIdentity
+    expect(manager.create).toHaveBeenCalledWith(
+      MerchantUser,
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        email: 'owner@shop.com',
+        role: 'owner',
+      }),
+    );
     expect(notifications.sendEmail).toHaveBeenCalledWith(
       'owner@shop.com',
       'verification-email',
@@ -64,14 +108,27 @@ describe('MerchantAdminsAuthService.register', () => {
     expect(result).toEqual({ merchantUserId: 'generated-id' });
   });
 
-  it('stamps tenantId (read from CLS) onto both the merchant user and the identity it creates', async () => {
-    const { service, manager, cls } = buildService();
-    manager.findOne.mockResolvedValue(null);
+  it('atomically claims the invite (single-row conditional update) before creating anything', async () => {
+    const { service, manager } = buildService();
 
     await service.register({
-      email: 'owner@shop.com',
+      token: 'raw-invite-token',
       password: 'correct horse battery staple',
-      role: 'owner',
+    });
+
+    expect(manager.update).toHaveBeenCalledWith(
+      MerchantUserInvite,
+      expect.objectContaining({ id: 'invite-1', usedAt: expect.anything() }),
+      expect.objectContaining({ usedAt: expect.any(Date) }),
+    );
+  });
+
+  it('stamps tenantId (read from CLS) onto both the merchant user and the identity it creates', async () => {
+    const { service, manager, cls } = buildService();
+
+    await service.register({
+      token: 'raw-invite-token',
+      password: 'correct horse battery staple',
     });
 
     expect(cls.get).toHaveBeenCalledWith('tenantId');
@@ -81,32 +138,174 @@ describe('MerchantAdminsAuthService.register', () => {
     }
   });
 
-  it('rejects registration when the email already exists for this tenant', async () => {
-    const { service, manager } = buildService();
-    manager.findOne.mockResolvedValue({ id: 'existing-merchant-user' });
+  it('rejects an unknown invite token', async () => {
+    const { service } = buildService({ invite: null });
 
     await expect(
       service.register({
-        email: 'owner@shop.com',
+        token: 'bogus-token',
         password: 'correct horse battery staple',
+      }),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('rejects an already-used invite token', async () => {
+    const { service } = buildService({
+      invite: {
+        id: 'invite-1',
+        email: 'owner@shop.com',
         role: 'owner',
+        tokenHash: 'invite-token-hash',
+        expiresAt: new Date(Date.now() + 60_000),
+        usedAt: new Date(),
+        invitedByMerchantUserId: 'mu-inviter',
+      },
+    });
+
+    await expect(
+      service.register({
+        token: 'raw-invite-token',
+        password: 'correct horse battery staple',
+      }),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('rejects an expired invite token', async () => {
+    const { service } = buildService({
+      invite: {
+        id: 'invite-1',
+        email: 'owner@shop.com',
+        role: 'owner',
+        tokenHash: 'invite-token-hash',
+        expiresAt: new Date(Date.now() - 1000),
+        usedAt: null,
+        invitedByMerchantUserId: 'mu-inviter',
+      },
+    });
+
+    await expect(
+      service.register({
+        token: 'raw-invite-token',
+        password: 'correct horse battery staple',
+      }),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('treats a lost invite-claim race (affected: 0) as an invalid token and does not create a merchant user', async () => {
+    // Same TOCTOU shape as refresh()'s rotation race: two concurrent
+    // register() calls could both read the same still-unused invite and
+    // both pass the usedAt/expiresAt checks, but only one UPDATE ... WHERE
+    // used_at IS NULL can ever match. The loser must not create a second
+    // MerchantUser for the same invite.
+    const { service, manager } = buildService();
+    manager.update.mockResolvedValue({ affected: 0 });
+
+    await expect(
+      service.register({
+        token: 'raw-invite-token',
+        password: 'correct horse battery staple',
+      }),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects registration when the email already exists for this tenant', async () => {
+    const { service, manager } = buildService({
+      existingMerchantUser: { id: 'existing-merchant-user' },
+    });
+
+    await expect(
+      service.register({
+        token: 'raw-invite-token',
+        password: 'correct horse battery staple',
       }),
     ).rejects.toThrow(ConflictException);
+
+    expect(manager.save).not.toHaveBeenCalled();
   });
 
   it('does not send the verification email when the DB transaction fails', async () => {
-    const { service, manager, notifications } = buildService();
-    manager.findOne.mockResolvedValue({ id: 'existing-merchant-user' });
+    const { service, notifications } = buildService({
+      existingMerchantUser: { id: 'existing-merchant-user' },
+    });
 
     await expect(
       service.register({
-        email: 'owner@shop.com',
+        token: 'raw-invite-token',
         password: 'correct horse battery staple',
-        role: 'owner',
       }),
     ).rejects.toThrow(ConflictException);
 
     expect(notifications.sendEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe('MerchantAdminsAuthService.inviteMember', () => {
+  function buildInviteService() {
+    const manager = {
+      findOne: jest.fn(),
+      create: jest.fn((_entity: any, data: any) => data),
+      save: jest.fn((entity: any) =>
+        Promise.resolve({ id: 'invite-generated-id', ...entity }),
+      ),
+    };
+    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
+    const hashing = { hash: jest.fn(), verify: jest.fn() } as any;
+    const notifications = {
+      sendEmail: jest.fn().mockResolvedValue(undefined),
+    } as any;
+    const tokenService = new TokenService({
+      sign: jest.fn().mockReturnValue('signed-jwt'),
+    } as any);
+    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
+    const service = new MerchantAdminsAuthService(
+      tenantDb,
+      hashing,
+      notifications,
+      tokenService,
+      cls,
+    );
+    return { service, manager, notifications };
+  }
+
+  it('creates an invite stamped with tenantId and the inviting merchant user, then sends the invite email', async () => {
+    const { service, manager, notifications } = buildInviteService();
+
+    await service.inviteMember({
+      tenantId: 'tenant-1',
+      invitedByMerchantUserId: 'mu-inviter',
+      email: 'new-hire@shop.com',
+      role: 'staff',
+    });
+
+    expect(manager.create).toHaveBeenCalledWith(
+      MerchantUserInvite,
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        email: 'new-hire@shop.com',
+        role: 'staff',
+        invitedByMerchantUserId: 'mu-inviter',
+        usedAt: null,
+      }),
+    );
+    expect(manager.save).toHaveBeenCalledTimes(1);
+    expect(notifications.sendEmail).toHaveBeenCalledWith(
+      'new-hire@shop.com',
+      'merchant-invite',
+      expect.objectContaining({ token: expect.any(String) }),
+    );
+
+    // The raw invite token must never be returned to the caller — it can
+    // only leave the system via the notification, same discipline as
+    // verification/reset tokens elsewhere in this service.
+    const [, , data] = notifications.sendEmail.mock.calls[0] as [
+      string,
+      string,
+      { token: string },
+    ];
+    expect(typeof data.token).toBe('string');
+    expect(data.token.length).toBeGreaterThan(0);
   });
 });
 

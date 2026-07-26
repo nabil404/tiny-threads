@@ -14,6 +14,11 @@ import type { Request, Response } from 'express';
 import { MerchantAdminsAuthService } from './merchant-admins-auth.service';
 import { RegisterMerchantUserDto } from './dto/register-merchant-user.dto';
 import { VerifyMerchantUserEmailDto } from './dto/verify-merchant-user-email.dto';
+import { InviteMemberDto } from './dto/invite-member.dto';
+import { MerchantAdminJwtAuthGuard } from './merchant-admin-jwt-auth.guard';
+import { RolesGuard } from './roles.guard';
+import { Roles } from './roles.decorator';
+import type { MerchantAdminAccessTokenPayload } from '../auth-core/token.service';
 
 const REFRESH_COOKIE_NAME = 'merchant_admin_refresh_token';
 const REFRESH_COOKIE_OPTIONS = {
@@ -39,6 +44,27 @@ export class MerchantAdminsAuthController {
   @HttpCode(200)
   verifyEmail(@Body() dto: VerifyMerchantUserEmailDto) {
     return this.merchantAdminsAuthService.verifyEmail(dto);
+  }
+
+  // Only existing owners/admins can invite new members — this is now the
+  // ONLY path by which a role gets granted (register() derives email/role
+  // from the invite it redeems, never from client input). MerchantAdminJwtAuthGuard
+  // authenticates the caller; RolesGuard + @Roles enforces the caller
+  // already holds one of these roles for this tenant.
+  @UseGuards(MerchantAdminJwtAuthGuard, RolesGuard)
+  @Roles('owner', 'admin')
+  @Post('invite')
+  @HttpCode(200)
+  async invite(@Req() req: Request, @Body() dto: InviteMemberDto) {
+    const { sub: invitedByMerchantUserId, tenantId } =
+      req.user as MerchantAdminAccessTokenPayload;
+    await this.merchantAdminsAuthService.inviteMember({
+      tenantId,
+      invitedByMerchantUserId,
+      email: dto.email,
+      role: dto.role,
+    });
+    return { success: true };
   }
 
   @UseGuards(AuthGuard('merchant-admin-local'))

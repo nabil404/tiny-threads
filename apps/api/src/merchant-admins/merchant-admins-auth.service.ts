@@ -12,6 +12,7 @@ import type { EntityManager } from 'typeorm';
 import {
   MerchantUser,
   MerchantUserIdentity,
+  MerchantUserInvite,
   MerchantUserRefreshToken,
 } from '../db/entities';
 import { TenantDbService } from '../db/tenant-db.service';
@@ -28,6 +29,7 @@ import { VerifyMerchantUserEmailDto } from './dto/verify-merchant-user-email.dto
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const INVITE_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class MerchantAdminsAuthService {
@@ -40,6 +42,14 @@ export class MerchantAdminsAuthService {
     private readonly cls: ClsService,
   ) {}
 
+  // Fix round 1 (security): register() is a public, unauthenticated
+  // endpoint. It used to take email/role straight from the caller, which let
+  // anyone who knew a tenant's subdomain register themselves as that
+  // tenant's `owner` — role was entirely self-selected at signup, with zero
+  // prior authorization, fully defeating RolesGuard. Registration now
+  // requires a valid, unexpired, unused MerchantUserInvite (issued by an
+  // existing owner/admin via inviteMember() below); email and role are
+  // derived from that invite record, never from client input.
   async register(
     dto: RegisterMerchantUserDto,
   ): Promise<{ merchantUserId: string }> {
@@ -49,11 +59,36 @@ export class MerchantAdminsAuthService {
     // (set by TenantResolutionMiddleware) and stamped explicitly, same as
     // CustomersAuthService.register().
     const tenantId = this.cls.get<string>('tenantId');
+    const tokenHash = createHash('sha256').update(dto.token).digest('hex');
 
-    const { merchantUserId, verificationToken } = await this.tenantDb.run(
-      async (manager) => {
+    const { merchantUserId, verificationToken, email } =
+      await this.tenantDb.run(async (manager) => {
+        const invite = await manager.findOne(MerchantUserInvite, {
+          where: { tokenHash },
+        });
+        if (!invite || invite.usedAt || invite.expiresAt < new Date()) {
+          throw new NotFoundException('Invalid or expired invite token');
+        }
+
+        // Atomically claim the invite BEFORE creating anything else —
+        // `WHERE id = $1 AND used_at IS NULL` mirrors the refresh-token
+        // rotation race fix in refresh() below. Two concurrent register()
+        // calls presenting the same still-valid invite token could both
+        // pass the usedAt/expiresAt checks above before either commits;
+        // only one UPDATE can match `used_at IS NULL`. The loser sees
+        // affected === 0 and must bail out here, before creating a second
+        // MerchantUser for the same invite.
+        const claimResult = await manager.update(
+          MerchantUserInvite,
+          { id: invite.id, usedAt: IsNull() },
+          { usedAt: new Date() },
+        );
+        if (!claimResult.affected) {
+          throw new NotFoundException('Invalid or expired invite token');
+        }
+
         const existing = await manager.findOne(MerchantUser, {
-          where: { email: dto.email },
+          where: { email: invite.email },
         });
         if (existing) {
           throw new ConflictException('Email already registered');
@@ -62,8 +97,8 @@ export class MerchantAdminsAuthService {
         const merchantUser = await manager.save(
           manager.create(MerchantUser, {
             tenantId,
-            email: dto.email,
-            role: dto.role,
+            email: invite.email,
+            role: invite.role,
           }),
         );
 
@@ -88,18 +123,64 @@ export class MerchantAdminsAuthService {
           }),
         );
 
-        return { merchantUserId: merchantUser.id, verificationToken };
-      },
-    );
+        return {
+          merchantUserId: merchantUser.id,
+          verificationToken,
+          email: invite.email,
+        };
+      });
 
     // Sent after the transaction commits, not from inside tenantDb.run() —
     // a slow/failing notification provider must not roll back a successful
     // registration.
-    await this.notifications.sendEmail(dto.email, 'verification-email', {
+    await this.notifications.sendEmail(email, 'verification-email', {
       token: verificationToken,
     });
 
     return { merchantUserId };
+  }
+
+  // Issues a single-use, 7-day invite that lets one specific email register
+  // under one specific role — the only path by which a role gets granted,
+  // now that register() no longer accepts a caller-supplied role. Guarded at
+  // the controller with @UseGuards(MerchantAdminJwtAuthGuard, RolesGuard) +
+  // @Roles('owner', 'admin') so only existing owners/admins can invite new
+  // members.
+  //
+  // NOTE (known, accepted gap): this only covers inviting *additional*
+  // members to a tenant that already has at least one merchant admin. It
+  // does not address how a brand-new tenant gets its very first owner —
+  // that's a tenant-onboarding/bootstrapping concern with no tenant-creation
+  // flow yet in this codebase, and is out of scope for this auth plan.
+  async inviteMember(params: {
+    tenantId: string;
+    invitedByMerchantUserId: string;
+    email: string;
+    role: string;
+  }): Promise<void> {
+    const rawToken = randomBytes(32).toString('base64url');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+
+    await this.tenantDb.run(async (manager) => {
+      await manager.save(
+        manager.create(MerchantUserInvite, {
+          tenantId: params.tenantId,
+          email: params.email,
+          role: params.role,
+          tokenHash,
+          expiresAt: new Date(Date.now() + INVITE_TOKEN_TTL_MS),
+          usedAt: null,
+          invitedByMerchantUserId: params.invitedByMerchantUserId,
+        }),
+      );
+    });
+
+    // The raw invite token is never returned to any caller — same
+    // discipline as verification/password-reset tokens elsewhere in this
+    // service. It only ever leaves the system via this notification.
+    await this.notifications.sendEmail(params.email, 'merchant-invite', {
+      token: rawToken,
+    });
   }
 
   async verifyEmail(dto: VerifyMerchantUserEmailDto): Promise<void> {

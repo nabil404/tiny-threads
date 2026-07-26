@@ -1,9 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { enableRls, disableRls } from './helpers/rls.helper';
 
-export class AddMerchantUserInviteTable1785092018971
-  implements MigrationInterface
-{
+export class AddMerchantUserInviteTable1785092018971 implements MigrationInterface {
   name = 'AddMerchantUserInviteTable1785092018971';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
