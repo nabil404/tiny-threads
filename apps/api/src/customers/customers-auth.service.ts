@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { ClsService } from 'nestjs-cls';
+import { IsNull } from 'typeorm';
 import type { EntityManager } from 'typeorm';
 import {
   Customer,
@@ -188,11 +189,28 @@ export class CustomersAuthService {
         throw new UnauthorizedException('Refresh token expired');
       }
 
-      await manager.update(
+      // Conditional, atomic revoke: `WHERE id = $1 AND revoked_at IS NULL`
+      // in one round-trip via TypeORM's IsNull() operator. Under READ
+      // COMMITTED, two concurrent refresh() calls presenting the same raw
+      // token can both pass the revokedAt/expiresAt checks above before
+      // either commits — without this guard, both would revoke the row and
+      // mint a successor token, producing two valid children from one
+      // single-use rotation. Only one UPDATE can match `revoked_at IS
+      // NULL`; the other sees affected === 0 and must be treated as reuse.
+      const revokeResult = await manager.update(
         CustomerRefreshToken,
-        { id: existing.id },
+        { id: existing.id, revokedAt: IsNull() },
         { revokedAt: new Date() },
       );
+      if (!revokeResult.affected) {
+        await manager.update(
+          CustomerRefreshToken,
+          { familyId: existing.familyId },
+          { revokedAt: new Date() },
+        );
+        throw new UnauthorizedException('Refresh token reuse detected');
+      }
+
       return this.issueTokenPair(
         manager,
         tenantId,

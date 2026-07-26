@@ -167,7 +167,11 @@ describe('CustomersAuthService.login/refresh/logout', () => {
       }),
       create: jest.fn((_entity: unknown, data: any) => data),
       save: jest.fn((data: any) => Promise.resolve({ id: 'rt-1', ...data })),
-      update: jest.fn().mockResolvedValue(undefined),
+      // Defaults to "the row was affected" so the conditional single-row
+      // revoke in refresh() (WHERE id = $1 AND revoked_at IS NULL) reads as
+      // a win-the-race outcome unless a test overrides it to simulate a
+      // concurrent refresh() winning the race first.
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
     const hashing = {
@@ -258,9 +262,12 @@ describe('CustomersAuthService.login/refresh/logout', () => {
       expect(result.accessToken).toEqual('signed-jwt');
       expect(typeof result.refreshToken).toBe('string');
 
+      // The revoke must be conditional on revoked_at IS NULL (via TypeORM's
+      // IsNull()), not a plain { id } update — see the race-loss test below
+      // for why an unconditional revoke is unsafe.
       expect(manager.update).toHaveBeenCalledWith(
         CustomerRefreshToken,
-        { id: 'rt-old' },
+        expect.objectContaining({ id: 'rt-old', revokedAt: expect.anything() }),
         expect.objectContaining({ revokedAt: expect.any(Date) }),
       );
       expect(manager.create).toHaveBeenCalledWith(
@@ -271,6 +278,42 @@ describe('CustomersAuthService.login/refresh/logout', () => {
           familyId: 'family-1',
         }),
       );
+    });
+
+    it('treats a lost revoke race (affected: 0) as reuse: revokes the family and does not issue a new token pair', async () => {
+      // Simulates the TOCTOU window: two concurrent refresh() calls read
+      // the same still-valid row, both pass the revokedAt/expiresAt
+      // checks, but only one UPDATE ... WHERE revoked_at IS NULL can ever
+      // match. This test is the loser's perspective — affected: 0 on the
+      // conditional single-row revoke.
+      const { service, manager } = buildFullService({
+        refreshToken: activeToken(),
+      });
+      manager.update.mockImplementation((_entity: unknown, where: any) => {
+        if ('id' in where) {
+          return Promise.resolve({ affected: 0 });
+        }
+        return Promise.resolve({ affected: 1 });
+      });
+
+      await expect(
+        service.refresh('tenant-1', 'raw-refresh-token'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      // Lost the race on the single-row conditional revoke...
+      expect(manager.update).toHaveBeenCalledWith(
+        CustomerRefreshToken,
+        expect.objectContaining({ id: 'rt-old', revokedAt: expect.anything() }),
+        expect.objectContaining({ revokedAt: expect.any(Date) }),
+      );
+      // ...so the whole family gets revoked, same as any other reuse case.
+      expect(manager.update).toHaveBeenCalledWith(
+        CustomerRefreshToken,
+        { familyId: 'family-1' },
+        expect.objectContaining({ revokedAt: expect.any(Date) }),
+      );
+      // Must not proceed to mint a successor token.
+      expect(manager.create).not.toHaveBeenCalled();
     });
 
     it('rejects an unknown refresh token', async () => {
