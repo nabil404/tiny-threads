@@ -10,7 +10,7 @@ import * as entities from './entities';
 @Global()
 @Module({
   imports: [
-    ClsModule.forRoot({ global: true }),
+    ClsModule.forRoot({ global: true, middleware: { mount: true } }),
     TypeOrmModule.forRootAsync({
       useFactory: () => {
         const url = process.env.DATABASE_URL;
