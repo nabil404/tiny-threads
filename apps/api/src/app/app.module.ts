@@ -8,9 +8,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from '../db/database.module';
 import { TenantResolutionMiddleware } from '../tenancy/tenant-resolution.middleware';
+import { CustomersAuthModule } from '../customers/customers-auth.module';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, CustomersAuthModule],
   controllers: [AppController],
   providers: [AppService],
 })
