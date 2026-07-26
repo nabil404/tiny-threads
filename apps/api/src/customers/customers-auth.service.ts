@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
+import { ClsService } from 'nestjs-cls';
 import { Customer, CustomerIdentity } from '../db/entities';
 import { TenantDbService } from '../db/tenant-db.service';
 import { HashingService } from '../auth-core/hashing.service';
@@ -29,50 +30,69 @@ export class CustomersAuthService {
     @Inject(NOTIFICATIONS_PORT)
     private readonly notifications: NotificationsPort,
     private readonly tokenService: TokenService,
+    private readonly cls: ClsService,
   ) {}
 
   async register(dto: RegisterCustomerDto): Promise<{ customerId: string }> {
-    return this.tenantDb.run(async (manager) => {
-      const existing = await manager.findOne(Customer, {
-        where: { email: dto.email },
-      });
-      if (existing) {
-        throw new ConflictException('Email already registered');
-      }
+    // tenant_id is a NOT NULL composite-PK column on both Customer and
+    // CustomerIdentity, enforced by an RLS WITH CHECK policy — nothing
+    // populates it automatically on insert, so it must be read from CLS
+    // (set by TenantResolutionMiddleware) and stamped explicitly.
+    const tenantId = this.cls.get<string>('tenantId');
 
-      // Must go through manager.create() + save(), not save(Entity, plainLiteral) —
-      // @BeforeInsert() id generation is a prototype method and is skipped
-      // for plain objects (see base/immutable-tenant-entity-base.ts).
-      const customer = await manager.save(
-        manager.create(Customer, { email: dto.email, name: dto.name }),
-      );
+    const { customerId, verificationToken } = await this.tenantDb.run(
+      async (manager) => {
+        const existing = await manager.findOne(Customer, {
+          where: { email: dto.email },
+        });
+        if (existing) {
+          throw new ConflictException('Email already registered');
+        }
 
-      const passwordHash = await this.hashing.hash(dto.password);
-      const verificationToken = randomBytes(32).toString('base64url');
-      const verificationTokenHash = createHash('sha256')
-        .update(verificationToken)
-        .digest('hex');
+        // Must go through manager.create() + save(), not save(Entity, plainLiteral) —
+        // @BeforeInsert() id generation is a prototype method and is skipped
+        // for plain objects (see base/immutable-tenant-entity-base.ts).
+        const customer = await manager.save(
+          manager.create(Customer, {
+            tenantId,
+            email: dto.email,
+            name: dto.name,
+          }),
+        );
 
-      await manager.save(
-        manager.create(CustomerIdentity, {
-          customerId: customer.id,
-          provider: 'password',
-          providerSubject: null,
-          passwordHash,
-          emailVerified: false,
-          verificationTokenHash,
-          verificationTokenExpiresAt: new Date(
-            Date.now() + VERIFICATION_TOKEN_TTL_MS,
-          ),
-        }),
-      );
+        const passwordHash = await this.hashing.hash(dto.password);
+        const verificationToken = randomBytes(32).toString('base64url');
+        const verificationTokenHash = createHash('sha256')
+          .update(verificationToken)
+          .digest('hex');
 
-      await this.notifications.sendEmail(dto.email, 'verification-email', {
-        token: verificationToken,
-      });
+        await manager.save(
+          manager.create(CustomerIdentity, {
+            tenantId,
+            customerId: customer.id,
+            provider: 'password',
+            providerSubject: null,
+            passwordHash,
+            emailVerified: false,
+            verificationTokenHash,
+            verificationTokenExpiresAt: new Date(
+              Date.now() + VERIFICATION_TOKEN_TTL_MS,
+            ),
+          }),
+        );
 
-      return { customerId: customer.id };
+        return { customerId: customer.id, verificationToken };
+      },
+    );
+
+    // Sent after the transaction commits, not from inside tenantDb.run() —
+    // a slow/failing notification provider must not roll back a successful
+    // registration.
+    await this.notifications.sendEmail(dto.email, 'verification-email', {
+      token: verificationToken,
     });
+
+    return { customerId };
   }
 
   async verifyEmail(dto: VerifyCustomerEmailDto): Promise<void> {
