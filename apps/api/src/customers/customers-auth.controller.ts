@@ -147,7 +147,18 @@ export class CustomersAuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const payload = this.oneTimeCodeService.redeem(dto.code);
-    if (!payload || payload.population !== 'customer') {
+    // This route IS behind TenantResolutionMiddleware (unlike the Google
+    // callback), so the redeeming request's own tenant is available in CLS.
+    // A code is only honored if it was minted for THIS tenant — otherwise,
+    // within its 60s TTL, a code obtained on one tenant's domain (e.g. from
+    // a shared browser, a leaked Referer, or a race between tabs) could be
+    // redeemed against a different tenant's exchange endpoint.
+    const tenantId = this.cls.get<string>('tenantId');
+    if (
+      !payload ||
+      payload.population !== 'customer' ||
+      payload.tenantId !== tenantId
+    ) {
       throw new BadRequestException('Invalid or expired code');
     }
     res.cookie(

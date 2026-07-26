@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
+import { ClsService } from 'nestjs-cls';
 import { OAuthStateService } from '../auth-core/oauth-state.service';
 import { CustomersAuthService } from '../customers/customers-auth.service';
 import { OneTimeCodeService } from './one-time-code.service';
@@ -27,6 +28,7 @@ export class GoogleOAuthController {
     private readonly oauthState: OAuthStateService,
     private readonly customersAuthService: CustomersAuthService,
     private readonly oneTimeCodeService: OneTimeCodeService,
+    private readonly cls: ClsService,
   ) {}
 
   @Get('callback')
@@ -36,6 +38,14 @@ export class GoogleOAuthController {
     @Res() res: Response,
   ) {
     const state = this.oauthState.decode(stateToken);
+    // This route is deliberately excluded from TenantResolutionMiddleware
+    // (it's a platform-domain route, not a per-tenant subdomain — Google
+    // can't be registered with one callback per tenant), so nothing else
+    // populates CLS here. TenantDbService.run()/withTenant() read the
+    // tenant EXCLUSIVELY from CLS and throw if it's unset, so this must be
+    // set from the verified state before any call that touches the
+    // database (findOrCreateFromGoogle/linkGoogleIdentity below).
+    this.cls.set('tenantId', state.tenantId);
     const { tokens } = await this.client.getToken(code);
     if (!tokens.id_token) {
       throw new BadRequestException('Google did not return an id_token');
@@ -77,6 +87,7 @@ export class GoogleOAuthController {
       // CustomersAuthController#exchangeGoogleCode).
       const oneTimeCode = this.oneTimeCodeService.issue({
         population: 'customer',
+        tenantId: state.tenantId,
         accessToken: result.accessToken,
         refreshToken: result.refreshToken,
       });

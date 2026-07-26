@@ -111,6 +111,53 @@ describe('CustomersAuthService.findOrCreateFromGoogle', () => {
       expect.objectContaining({ tenantId: 'tenant-1', provider: 'google' }),
     );
   });
+
+  // Regression coverage for a review finding: the email_verified gate must
+  // be structural ("don't attach a new Google identity to ANY pre-existing
+  // customer unless Google vouches for the email"), not conditioned on a
+  // password identity specifically existing on that customer. These two
+  // tests use a customer row with NO password identity — previously that
+  // combination fell through to the unconditional-create branch and bypassed
+  // the gate entirely.
+  it('does NOT auto-link when Google reports an unverified email for a matching account that has no password identity', async () => {
+    const { service } = buildService(
+      { id: 'cust-1', email: 'jane@example.com' },
+      null,
+    );
+
+    const result = await service.findOrCreateFromGoogle({
+      tenantId: 'tenant-1',
+      googleSub: 'google-sub-1',
+      email: 'jane@example.com',
+      emailVerified: false,
+    });
+
+    expect(result).toEqual({ linkRequired: true });
+  });
+
+  it('auto-links when Google reports a verified email for a matching account that has no password identity', async () => {
+    const { service, manager } = buildService(
+      { id: 'cust-1', email: 'jane@example.com' },
+      null,
+    );
+
+    const result = await service.findOrCreateFromGoogle({
+      tenantId: 'tenant-1',
+      googleSub: 'google-sub-1',
+      email: 'jane@example.com',
+      emailVerified: true,
+    });
+
+    expect('accessToken' in result).toBe(true);
+    expect(manager.create).toHaveBeenCalledWith(
+      CustomerIdentity,
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        customerId: 'cust-1',
+        provider: 'google',
+      }),
+    );
+  });
 });
 
 describe('CustomersAuthService.linkGoogleIdentity', () => {

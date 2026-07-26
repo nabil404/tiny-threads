@@ -265,49 +265,46 @@ export class CustomersAuthService {
         where: { email: profile.email },
       });
       if (existingCustomer) {
-        const existingPasswordIdentity = await manager.findOne(
-          CustomerIdentity,
-          {
-            where: { customerId: existingCustomer.id, provider: 'password' },
-          },
-        );
-        if (existingPasswordIdentity) {
-          // MUST NOT auto-link an unverified OAuth email onto an existing
-          // account — require an authenticated, deliberate link instead (see
-          // linkGoogleIdentity).
-          if (!profile.emailVerified) {
-            return { linkRequired: true };
-          }
-          await manager.save(
-            manager.create(CustomerIdentity, {
-              tenantId: profile.tenantId,
-              customerId: existingCustomer.id,
-              provider: 'google',
-              providerSubject: profile.googleSub,
-              emailVerified: true,
-            }),
-          );
-          return this.issueTokenPair(
-            manager,
-            profile.tenantId,
-            existingCustomer.id,
-            randomUUID(),
-          );
+        // Attaching a brand-new Google identity to a PRE-EXISTING customer
+        // account is gated on Google's email_verified claim — structurally,
+        // regardless of which identity types that account already has (not
+        // just when a password identity happens to be present). Otherwise
+        // require an authenticated, deliberate link instead (see
+        // linkGoogleIdentity).
+        if (!profile.emailVerified) {
+          return { linkRequired: true };
         }
+        await manager.save(
+          manager.create(CustomerIdentity, {
+            tenantId: profile.tenantId,
+            customerId: existingCustomer.id,
+            provider: 'google',
+            providerSubject: profile.googleSub,
+            emailVerified: true,
+          }),
+        );
+        return this.issueTokenPair(
+          manager,
+          profile.tenantId,
+          existingCustomer.id,
+          randomUUID(),
+        );
       }
 
+      // No pre-existing account for this email — safe to create a brand-new
+      // customer outright; there's no existing identity to protect, so no
+      // verification gate applies here.
+      //
       // tenant_id is a NOT NULL composite-PK column on both Customer and
       // CustomerIdentity, enforced by an RLS WITH CHECK policy — must be
       // stamped explicitly, same as in register() above.
-      const customer =
-        existingCustomer ??
-        (await manager.save(
-          manager.create(Customer, {
-            tenantId: profile.tenantId,
-            email: profile.email,
-            name: profile.email,
-          }),
-        ));
+      const customer = await manager.save(
+        manager.create(Customer, {
+          tenantId: profile.tenantId,
+          email: profile.email,
+          name: profile.email,
+        }),
+      );
       await manager.save(
         manager.create(CustomerIdentity, {
           tenantId: profile.tenantId,

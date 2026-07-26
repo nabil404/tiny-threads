@@ -5,6 +5,12 @@ export type OAuthPopulation = 'customer' | 'merchant_admin';
 
 export interface OneTimeCodePayload {
   population: OAuthPopulation;
+  // Bound to the tenant the tokens were minted for — the exchange endpoint
+  // must check this against the redeeming request's own resolved tenant
+  // (from CLS) before honoring the code, otherwise a code intercepted or
+  // guessed within its TTL would be redeemable from any tenant's exchange
+  // endpoint, not just the one the login/link actually happened on.
+  tenantId: string;
   accessToken: string;
   refreshToken: string;
 }
@@ -31,9 +37,11 @@ const CODE_TTL_MS = 60_000;
 export class OneTimeCodeService {
   private readonly codes = new Map<string, StoredEntry>();
 
-  issue(payload: OneTimeCodePayload): string {
+  // ttlMs is overridable (defaults to the real 60s TTL) purely so tests can
+  // exercise expiry deterministically without faking global timers.
+  issue(payload: OneTimeCodePayload, ttlMs: number = CODE_TTL_MS): string {
     const code = randomBytes(32).toString('base64url');
-    this.codes.set(code, { ...payload, expiresAt: Date.now() + CODE_TTL_MS });
+    this.codes.set(code, { ...payload, expiresAt: Date.now() + ttlMs });
     return code;
   }
 
@@ -47,6 +55,7 @@ export class OneTimeCodeService {
     }
     return {
       population: entry.population,
+      tenantId: entry.tenantId,
       accessToken: entry.accessToken,
       refreshToken: entry.refreshToken,
     };
