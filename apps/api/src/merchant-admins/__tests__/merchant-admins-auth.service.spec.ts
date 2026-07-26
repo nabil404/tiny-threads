@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -275,6 +276,7 @@ describe('MerchantAdminsAuthService.inviteMember', () => {
     await service.inviteMember({
       tenantId: 'tenant-1',
       invitedByMerchantUserId: 'mu-inviter',
+      invitedByRole: 'owner',
       email: 'new-hire@shop.com',
       role: 'staff',
     });
@@ -306,6 +308,82 @@ describe('MerchantAdminsAuthService.inviteMember', () => {
     ];
     expect(typeof data.token).toBe('string');
     expect(data.token.length).toBeGreaterThan(0);
+  });
+
+  // Fix round 2 (security): RolesGuard/@Roles('owner', 'admin') on the
+  // controller only checks the caller holds ONE of those roles — nothing
+  // stopped an authenticated 'admin' from inviting someone in as 'owner',
+  // which makes an admin credential equivalent to an owner credential and
+  // defeats the entire point of having separate roles. inviteMember() must
+  // reject granting a role that outranks the inviting caller's own role
+  // (owner > admin > staff > viewer).
+  describe('role-hierarchy enforcement', () => {
+    it('rejects an admin inviting someone in as owner', async () => {
+      const { service } = buildInviteService();
+
+      await expect(
+        service.inviteMember({
+          tenantId: 'tenant-1',
+          invitedByMerchantUserId: 'mu-admin',
+          invitedByRole: 'admin',
+          email: 'new-hire@shop.com',
+          role: 'owner',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('does not create an invite or send an email when the hierarchy check rejects', async () => {
+      const { service, manager, notifications } = buildInviteService();
+
+      await expect(
+        service.inviteMember({
+          tenantId: 'tenant-1',
+          invitedByMerchantUserId: 'mu-admin',
+          invitedByRole: 'admin',
+          email: 'new-hire@shop.com',
+          role: 'owner',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(manager.save).not.toHaveBeenCalled();
+      expect(notifications.sendEmail).not.toHaveBeenCalled();
+    });
+
+    it.each(['staff', 'viewer', 'admin'])(
+      'allows an admin to invite someone in as %s',
+      async (role) => {
+        const { service, notifications } = buildInviteService();
+
+        await expect(
+          service.inviteMember({
+            tenantId: 'tenant-1',
+            invitedByMerchantUserId: 'mu-admin',
+            invitedByRole: 'admin',
+            email: 'new-hire@shop.com',
+            role,
+          }),
+        ).resolves.toBeUndefined();
+        expect(notifications.sendEmail).toHaveBeenCalled();
+      },
+    );
+
+    it.each(['owner', 'admin', 'staff', 'viewer'])(
+      'allows an owner to invite someone in as %s',
+      async (role) => {
+        const { service, notifications } = buildInviteService();
+
+        await expect(
+          service.inviteMember({
+            tenantId: 'tenant-1',
+            invitedByMerchantUserId: 'mu-owner',
+            invitedByRole: 'owner',
+            email: 'new-hire@shop.com',
+            role,
+          }),
+        ).resolves.toBeUndefined();
+        expect(notifications.sendEmail).toHaveBeenCalled();
+      },
+    );
   });
 });
 

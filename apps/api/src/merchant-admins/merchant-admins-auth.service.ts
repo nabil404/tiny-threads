@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -26,6 +27,7 @@ import {
 } from '../auth-core/refresh-token-crypto';
 import { RegisterMerchantUserDto } from './dto/register-merchant-user.dto';
 import { VerifyMerchantUserEmailDto } from './dto/verify-merchant-user-email.dto';
+import { roleOutranks } from './role-hierarchy';
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -147,6 +149,14 @@ export class MerchantAdminsAuthService {
   // @Roles('owner', 'admin') so only existing owners/admins can invite new
   // members.
   //
+  // Fix round 2 (security): RolesGuard only checks the caller holds ONE of
+  // ('owner', 'admin') — it says nothing about whether the role being
+  // GRANTED outranks the caller's own. Without the roleOutranks() check
+  // below, any 'admin' could invite someone in as 'owner', making an admin
+  // credential equivalent to an owner credential and defeating the entire
+  // point of RolesGuard/separate roles. Checked first, before any DB access,
+  // so a rejected request never creates a partial invite.
+  //
   // NOTE (known, accepted gap): this only covers inviting *additional*
   // members to a tenant that already has at least one merchant admin. It
   // does not address how a brand-new tenant gets its very first owner —
@@ -155,9 +165,16 @@ export class MerchantAdminsAuthService {
   async inviteMember(params: {
     tenantId: string;
     invitedByMerchantUserId: string;
+    invitedByRole: string;
     email: string;
     role: string;
   }): Promise<void> {
+    if (roleOutranks(params.role, params.invitedByRole)) {
+      throw new ForbiddenException(
+        `Cannot invite a member with a role higher than your own (${params.invitedByRole})`,
+      );
+    }
+
     const rawToken = randomBytes(32).toString('base64url');
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
 

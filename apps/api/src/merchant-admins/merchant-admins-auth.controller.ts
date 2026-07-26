@@ -50,17 +50,24 @@ export class MerchantAdminsAuthController {
   // ONLY path by which a role gets granted (register() derives email/role
   // from the invite it redeems, never from client input). MerchantAdminJwtAuthGuard
   // authenticates the caller; RolesGuard + @Roles enforces the caller
-  // already holds one of these roles for this tenant.
+  // already holds one of these roles for this tenant. RolesGuard alone
+  // doesn't stop an 'admin' from inviting someone in as 'owner' though —
+  // that's enforced by inviteMember() itself via the caller's own role
+  // (invitedByRole), passed through here from the verified JWT.
   @UseGuards(MerchantAdminJwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
   @Post('invite')
   @HttpCode(200)
   async invite(@Req() req: Request, @Body() dto: InviteMemberDto) {
-    const { sub: invitedByMerchantUserId, tenantId } =
-      req.user as MerchantAdminAccessTokenPayload;
+    const {
+      sub: invitedByMerchantUserId,
+      tenantId,
+      role: invitedByRole,
+    } = req.user as MerchantAdminAccessTokenPayload;
     await this.merchantAdminsAuthService.inviteMember({
       tenantId,
       invitedByMerchantUserId,
+      invitedByRole,
       email: dto.email,
       role: dto.role,
     });
