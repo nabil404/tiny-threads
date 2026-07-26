@@ -76,6 +76,20 @@ Why exactly this shape:
 
 Express all of this via class-level entity decorators (see the `orders` entity example in `docs/architecture/references/d3-orm-typeorm.md`, D3): `@Index(name, ['tenantId', ...])` for tenant-leading composites, `@Unique(name, ['tenantId', ...])` for composite uniqueness. Never write a bare `@Column({ unique: true })` on a merchant-owned column.
 
+### Base entity classes
+
+New entities must extend one of the five abstract base classes in `apps/api/src/db/entities/base/` rather than hand-rolling PK/timestamp columns:
+
+| Class | Use for |
+| --- | --- |
+| `TenantEntityBase` | tenant-scoped table with a surrogate `id` and `updated_at` |
+| `ImmutableTenantEntityBase` | tenant-scoped, append-only (no `updated_at`) |
+| `EntityBase` | global table with a surrogate `id` and `updated_at` |
+| `ImmutableEntityBase` | global, no `updated_at` |
+| `CreatedAtEntityBase` | natural-key table (no surrogate `id`) — declare your own `@PrimaryColumn`(s) |
+
+These are not exported from `entities/index.ts` (that barrel feeds the TypeORM entities array) — import from `./base` directly. Extending the wrong base, or hand-rolling the PK again, is the same tenancy-hole risk the base classes exist to close.
+
 ## Module / bounded-context conventions
 
 - **Modular monolith.** Do not reach for microservices. NestJS modules map to bounded contexts; keep transactional consistency and low ops overhead. Extract a service later only if one context needs independent scaling.

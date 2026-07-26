@@ -1,46 +1,81 @@
 import {
   Entity,
-  PrimaryColumn,
   Column,
-  CreateDateColumn,
   Index,
   Unique,
-  BeforeInsert,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
 } from 'typeorm';
-import { uuidv7 } from 'uuidv7';
+import { TenantEntityBase } from './base';
+import { Customer } from './customers.entity';
+import { Currency } from './currencies.entity';
+import { OrderItem } from './order-items.entity';
+import { OrderEvent } from './order-events.entity';
+import { Payment } from './payments.entity';
 
-// Worked example of a tenant-scoped table. Composite (tenant_id, id) PK per
-// docs/architecture/database-schema.md, so every FK into orders is composite
-// and a cross-tenant reference is physically impossible.
-//
-// RLS (ENABLE + FORCE + the tenant_isolation policy) is NOT declarable here —
-// TypeORM has no policy API. It is created in a raw-SQL migration; see
-// apps/api/src/db/migrations. This entity purely describes columns/
-// constraints — the security boundary lives in that migration.
+// Dimension 1 (lifecycle) of the Orders state machine (backend-engineer skill).
+export type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+
+// Dimension 2 (payment) of the Orders state machine — supports both
+// authorize_then_capture and immediate_capture store configs.
+export type OrderPaymentStatus =
+  | 'pending'
+  | 'authorized'
+  | 'paid'
+  | 'partially_captured'
+  | 'partially_refunded'
+  | 'refunded'
+  | 'disputed'
+  | 'charged_back'
+  | 'voided'
+  | 'expired'
+  | 'failed';
+
+// RLS policy is declared in a raw-SQL migration, not here — TypeORM has no
+// policy API. fulfillment_status is not a column: it will be derived from a
+// future shipments sub-entity, never set directly.
 @Entity({ name: 'orders' })
 @Index('orders_tenant_created_idx', ['tenantId', 'createdAt'])
 @Unique('orders_tenant_number_uq', ['tenantId', 'number'])
-export class Order {
-  @PrimaryColumn({ name: 'tenant_id', type: 'uuid' })
-  tenantId!: string;
-
-  @PrimaryColumn('uuid')
-  id!: string;
-
+export class Order extends TenantEntityBase {
   @Column({ type: 'text' })
   number!: string;
 
+  @Column({ name: 'customer_id', type: 'uuid' })
+  customerId!: string;
+
+  // read-only; set customerId to write the FK
+  @ManyToOne(() => Customer)
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'customer_id', referencedColumnName: 'id' },
+  ])
+  customer?: Customer;
+
+  @Column({ name: 'currency_code', type: 'text' })
+  currencyCode!: string;
+
+  // Currency is global reference data, not tenant-scoped — simple FK.
+  @ManyToOne(() => Currency)
+  @JoinColumn({ name: 'currency_code', referencedColumnName: 'code' })
+  currency?: Currency;
+
   @Column({ type: 'text' })
-  status!: string;
+  status!: OrderStatus;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
+  @Column({ name: 'payment_status', type: 'text' })
+  paymentStatus!: OrderPaymentStatus;
 
-  // Runs only on a real entity instance — always go through
-  // `repository.create(data)` before `.save()`, never `.save(plainLiteral)`,
-  // or this hook (and any other entity lifecycle logic) is silently skipped.
-  @BeforeInsert()
-  generateId() {
-    this.id ??= uuidv7();
-  }
+  @Column({ name: 'total_cents', type: 'int' })
+  totalCents!: number;
+
+  @OneToMany(() => OrderItem, (item) => item.order)
+  items?: OrderItem[];
+
+  @OneToMany(() => OrderEvent, (event) => event.order)
+  events?: OrderEvent[];
+
+  @OneToMany(() => Payment, (payment) => payment.order)
+  payments?: Payment[];
 }

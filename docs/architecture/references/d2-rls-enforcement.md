@@ -12,8 +12,11 @@ Two caveats are load-bearing: RLS silently does nothing without `FORCE` **and** 
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders FORCE  ROW LEVEL SECURITY;   -- owner bypasses RLS without FORCE
 CREATE POLICY tenant_isolation ON orders
-  USING      (tenant_id = current_setting('app.current_tenant')::uuid)
-  WITH CHECK (tenant_id = current_setting('app.current_tenant')::uuid);
+  USING      (tenant_id = current_setting('app.current_tenant', true)::uuid)
+  WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid);
+-- missing_ok=true avoids "unrecognized configuration parameter" when the GUC
+-- was never set in the session (e.g. migrations); NULL still fails the
+-- equality check, so unset context stays fail-closed.
 ```
 
 **Reference implementation** (`withTenant`, the one central context gate):

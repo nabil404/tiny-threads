@@ -14,10 +14,16 @@ export async function enableRls(
 ): Promise<void> {
   await queryRunner.query(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
   await queryRunner.query(`ALTER TABLE "${table}" FORCE ROW LEVEL SECURITY`); // owner bypasses RLS without FORCE
+  // missing_ok=true: without it, current_setting throws "unrecognized
+  // configuration parameter" whenever app.current_tenant hasn't been set in
+  // the session yet (e.g. migrations, which run as owner and never call
+  // withTenant) — even against an empty table, since the planner evaluates
+  // this stable expression up front. NULL still fails the tenant_id equality
+  // check, so unset context stays fail-closed.
   await queryRunner.query(`
     CREATE POLICY "${policyName}" ON "${table}"
-      USING      ("${tenantColumn}" = current_setting('app.current_tenant')::uuid)
-      WITH CHECK ("${tenantColumn}" = current_setting('app.current_tenant')::uuid)
+      USING      ("${tenantColumn}" = current_setting('app.current_tenant', true)::uuid)
+      WITH CHECK ("${tenantColumn}" = current_setting('app.current_tenant', true)::uuid)
   `);
   await assertRlsEnforced(queryRunner, table);
 }
