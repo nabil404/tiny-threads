@@ -28,6 +28,7 @@ import { VerifyCustomerEmailDto } from './dto/verify-customer-email.dto';
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 interface GoogleProfile {
   tenantId: string;
@@ -352,6 +353,63 @@ export class CustomersAuthService {
           // path.
           emailVerified: true,
         }),
+      );
+    });
+  }
+
+  async requestPasswordReset(email: string): Promise<void> {
+    await this.tenantDb.run(async (manager) => {
+      const customer = await manager.findOne(Customer, { where: { email } });
+      if (!customer) {
+        return; // do not reveal whether the email is registered
+      }
+      const identity = await manager.findOne(CustomerIdentity, {
+        where: { customerId: customer.id, provider: 'password' },
+      });
+      if (!identity) {
+        return;
+      }
+
+      const resetToken = randomBytes(32).toString('base64url');
+      identity.passwordResetTokenHash = createHash('sha256')
+        .update(resetToken)
+        .digest('hex');
+      identity.passwordResetTokenExpiresAt = new Date(
+        Date.now() + PASSWORD_RESET_TOKEN_TTL_MS,
+      );
+      await manager.save(CustomerIdentity, identity);
+
+      await this.notifications.sendEmail(email, 'password-reset', {
+        token: resetToken,
+      });
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+
+    await this.tenantDb.run(async (manager) => {
+      const identity = await manager.findOne(CustomerIdentity, {
+        where: { provider: 'password', passwordResetTokenHash: tokenHash },
+      });
+      if (
+        !identity ||
+        !identity.passwordResetTokenExpiresAt ||
+        identity.passwordResetTokenExpiresAt < new Date()
+      ) {
+        throw new NotFoundException('Invalid or expired password reset token');
+      }
+
+      identity.passwordHash = await this.hashing.hash(newPassword);
+      identity.passwordResetTokenHash = null;
+      identity.passwordResetTokenExpiresAt = null;
+      await manager.save(CustomerIdentity, identity);
+
+      // MUST invalidate all refresh tokens on reset (§3).
+      await manager.update(
+        CustomerRefreshToken,
+        { customerId: identity.customerId },
+        { revokedAt: new Date() },
       );
     });
   }

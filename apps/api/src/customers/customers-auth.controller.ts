@@ -20,6 +20,8 @@ import { RegisterCustomerDto } from './dto/register-customer.dto';
 import { VerifyCustomerEmailDto } from './dto/verify-customer-email.dto';
 import { CustomerOAuthInitiateDto } from './dto/customer-oauth-initiate.dto';
 import { CustomerOAuthExchangeDto } from './dto/customer-oauth-exchange.dto';
+import { RequestCustomerPasswordResetDto } from './dto/request-customer-password-reset.dto';
+import { ResetCustomerPasswordDto } from './dto/reset-customer-password.dto';
 
 const REFRESH_COOKIE_NAME = 'customer_refresh_token';
 const REFRESH_COOKIE_OPTIONS = {
@@ -101,6 +103,18 @@ export class CustomersAuthController {
     }
     res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_OPTIONS.path });
     return { success: true };
+  }
+
+  @Post('request-password-reset')
+  @HttpCode(200)
+  requestPasswordReset(@Body() dto: RequestCustomerPasswordResetDto) {
+    return this.customersAuthService.requestPasswordReset(dto.email);
+  }
+
+  @Post('reset-password')
+  @HttpCode(200)
+  resetPassword(@Body() dto: ResetCustomerPasswordDto) {
+    return this.customersAuthService.resetPassword(dto.token, dto.password);
   }
 
   @Post('google/initiate')

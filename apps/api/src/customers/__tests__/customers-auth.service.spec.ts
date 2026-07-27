@@ -1,7 +1,15 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { CustomersAuthService } from '../customers-auth.service';
 import { TokenService } from '../../auth-core/token.service';
-import { CustomerIdentity, CustomerRefreshToken } from '../../db/entities';
+import {
+  Customer,
+  CustomerIdentity,
+  CustomerRefreshToken,
+} from '../../db/entities';
 
 // NOTE: CustomersAuthService's constructor gains a fourth TokenService
 // parameter in Task 10 (login/refresh/logout need it to sign access
@@ -398,5 +406,196 @@ describe('CustomersAuthService.login/refresh/logout', () => {
 
       expect(manager.update).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('CustomersAuthService.requestPasswordReset', () => {
+  it('sends a password-reset email with a token when the email is registered with a password identity', async () => {
+    const customer = { id: 'cust-1', email: 'jane@example.com' };
+    const identity = {
+      customerId: 'cust-1',
+      provider: 'password',
+    };
+    const manager = {
+      findOne: jest.fn().mockImplementation((entity: unknown) => {
+        if (entity === Customer) return Promise.resolve(customer);
+        if (entity === CustomerIdentity) return Promise.resolve(identity);
+        return Promise.resolve(null);
+      }),
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
+    const hashing = { hash: jest.fn() } as any;
+    const notifications = { sendEmail: jest.fn() } as any;
+    const tokenService = new TokenService({ sign: jest.fn() } as any);
+    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
+    const service = new CustomersAuthService(
+      tenantDb,
+      hashing,
+      notifications,
+      tokenService,
+      cls,
+    );
+
+    await service.requestPasswordReset('jane@example.com');
+
+    expect(manager.save).toHaveBeenCalledWith(
+      CustomerIdentity,
+      expect.objectContaining({
+        passwordResetTokenHash: expect.any(String),
+        passwordResetTokenExpiresAt: expect.any(Date),
+      }),
+    );
+    expect(notifications.sendEmail).toHaveBeenCalledWith(
+      'jane@example.com',
+      'password-reset',
+      expect.objectContaining({ token: expect.any(String) }),
+    );
+  });
+
+  it('does not reveal whether the email is registered: no-ops silently when the customer does not exist', async () => {
+    const manager = {
+      findOne: jest.fn().mockResolvedValue(null),
+      save: jest.fn(),
+    };
+    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
+    const hashing = { hash: jest.fn() } as any;
+    const notifications = { sendEmail: jest.fn() } as any;
+    const tokenService = new TokenService({ sign: jest.fn() } as any);
+    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
+    const service = new CustomersAuthService(
+      tenantDb,
+      hashing,
+      notifications,
+      tokenService,
+      cls,
+    );
+
+    await expect(
+      service.requestPasswordReset('unknown@example.com'),
+    ).resolves.toBeUndefined();
+
+    expect(manager.save).not.toHaveBeenCalled();
+    expect(notifications.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it('no-ops silently when the customer exists but has no password identity (e.g. Google-only account)', async () => {
+    const customer = { id: 'cust-1', email: 'jane@example.com' };
+    const manager = {
+      findOne: jest.fn().mockImplementation((entity: unknown) => {
+        if (entity === Customer) return Promise.resolve(customer);
+        return Promise.resolve(null);
+      }),
+      save: jest.fn(),
+    };
+    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
+    const hashing = { hash: jest.fn() } as any;
+    const notifications = { sendEmail: jest.fn() } as any;
+    const tokenService = new TokenService({ sign: jest.fn() } as any);
+    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
+    const service = new CustomersAuthService(
+      tenantDb,
+      hashing,
+      notifications,
+      tokenService,
+      cls,
+    );
+
+    await expect(
+      service.requestPasswordReset('jane@example.com'),
+    ).resolves.toBeUndefined();
+
+    expect(manager.save).not.toHaveBeenCalled();
+    expect(notifications.sendEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe('CustomersAuthService.resetPassword', () => {
+  it('rejects an invalid or expired reset token', async () => {
+    const manager = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
+    const hashing = { hash: jest.fn() } as any;
+    const notifications = { sendEmail: jest.fn() } as any;
+    const tokenService = new TokenService({ sign: jest.fn() } as any);
+    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
+    const service = new CustomersAuthService(
+      tenantDb,
+      hashing,
+      notifications,
+      tokenService,
+      cls,
+    );
+
+    await expect(
+      service.resetPassword('bad-token', 'new password value'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('hashes the new password and revokes all refresh tokens for that customer', async () => {
+    const identity = {
+      customerId: 'cust-1',
+      passwordResetTokenHash: 'expected-hash',
+      passwordResetTokenExpiresAt: new Date(Date.now() + 60_000),
+    };
+    const manager = {
+      findOne: jest.fn().mockResolvedValue(identity),
+      save: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue(undefined),
+    };
+    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
+    const hashing = {
+      hash: jest.fn().mockResolvedValue('new-hashed-password'),
+    } as any;
+    const notifications = { sendEmail: jest.fn() } as any;
+    const tokenService = new TokenService({ sign: jest.fn() } as any);
+    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
+    const service = new CustomersAuthService(
+      tenantDb,
+      hashing,
+      notifications,
+      tokenService,
+      cls,
+    );
+
+    await service.resetPassword('valid-token', 'new password value');
+
+    expect(hashing.hash).toHaveBeenCalledWith('new password value');
+    expect(manager.update).toHaveBeenCalledWith(
+      CustomerRefreshToken,
+      { customerId: 'cust-1' },
+      { revokedAt: expect.any(Date) },
+    );
+  });
+
+  it('rejects a reset token whose expiry has passed', async () => {
+    const identity = {
+      customerId: 'cust-1',
+      passwordResetTokenHash: 'expected-hash',
+      passwordResetTokenExpiresAt: new Date(Date.now() - 1000),
+    };
+    const manager = {
+      findOne: jest.fn().mockResolvedValue(identity),
+      save: jest.fn(),
+      update: jest.fn(),
+    };
+    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
+    const hashing = { hash: jest.fn() } as any;
+    const notifications = { sendEmail: jest.fn() } as any;
+    const tokenService = new TokenService({ sign: jest.fn() } as any);
+    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
+    const service = new CustomersAuthService(
+      tenantDb,
+      hashing,
+      notifications,
+      tokenService,
+      cls,
+    );
+
+    await expect(
+      service.resetPassword('expired-token', 'new password value'),
+    ).rejects.toThrow(NotFoundException);
+    expect(manager.update).not.toHaveBeenCalled();
   });
 });
