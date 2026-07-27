@@ -1,4 +1,4 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, Unique } from 'typeorm';
 import { ImmutableTenantEntityBase } from './base';
 import { Customer } from './customers.entity';
 
@@ -8,6 +8,15 @@ import { Customer } from './customers.entity';
   'customerId',
 ])
 @Index('customer_refresh_tokens_tenant_family_idx', ['tenantId', 'familyId'])
+// token_hash is the ONLY lookup key refresh()/logout() use, on a table that
+// grows unbounded with every login — without an index each rotation degrades
+// to a full scan. UNIQUE rather than a plain index because a hash collision
+// across two live tokens would make the lookup ambiguous, and the constraint
+// makes that impossible at the storage layer instead of hoping for it.
+@Unique('customer_refresh_tokens_tenant_token_hash_uq', [
+  'tenantId',
+  'tokenHash',
+])
 export class CustomerRefreshToken extends ImmutableTenantEntityBase {
   @ManyToOne(() => Customer)
   @JoinColumn([

@@ -1,4 +1,4 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, Unique } from 'typeorm';
 import { ImmutableTenantEntityBase } from './base';
 import { MerchantUser } from './merchant-users.entity';
 
@@ -10,6 +10,13 @@ import { MerchantUser } from './merchant-users.entity';
 @Index('merchant_user_refresh_tokens_tenant_family_idx', [
   'tenantId',
   'familyId',
+])
+// See CustomerRefreshToken for why this is UNIQUE and not a plain index:
+// token_hash is the only lookup key refresh()/logout() use, on an unbounded
+// table.
+@Unique('merchant_user_refresh_tokens_tenant_token_hash_uq', [
+  'tenantId',
+  'tokenHash',
 ])
 export class MerchantUserRefreshToken extends ImmutableTenantEntityBase {
   @ManyToOne(() => MerchantUser)
