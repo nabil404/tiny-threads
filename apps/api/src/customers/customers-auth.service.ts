@@ -29,6 +29,11 @@ import { VerifyCustomerEmailDto } from './dto/verify-customer-email.dto';
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+// A well-formed but unroutable UUID used as a guaranteed-non-matching lookup
+// key in requestPasswordReset()'s "account doesn't exist" branch — see the
+// comment there for why this needs to stay a real DB round trip rather than
+// a short-circuited no-op.
+const NON_EXISTENT_ID = '00000000-0000-0000-0000-000000000000';
 
 interface GoogleProfile {
   tenantId: string;
@@ -358,30 +363,55 @@ export class CustomersAuthService {
   }
 
   async requestPasswordReset(email: string): Promise<void> {
+    // Token + hash are computed unconditionally, before we even know whether
+    // `email` is registered, and every branch below performs the same shape
+    // of DB round trips and always sends the same email. A response that's
+    // identical in body but faster/cheaper on the "not registered" path
+    // (fewer queries, no write, no outbound email) would still leak account
+    // existence via timing/call-count even though nothing in the response
+    // itself differs — see Task 15 review fix round 1.
+    const resetToken = randomBytes(32).toString('base64url');
+    const resetTokenHash = createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+    const resetTokenExpiresAt = new Date(
+      Date.now() + PASSWORD_RESET_TOKEN_TTL_MS,
+    );
+
     await this.tenantDb.run(async (manager) => {
       const customer = await manager.findOne(Customer, { where: { email } });
-      if (!customer) {
-        return; // do not reveal whether the email is registered
-      }
       const identity = await manager.findOne(CustomerIdentity, {
-        where: { customerId: customer.id, provider: 'password' },
+        where: {
+          customerId: customer?.id ?? NON_EXISTENT_ID,
+          provider: 'password',
+        },
       });
-      if (!identity) {
-        return;
-      }
 
-      const resetToken = randomBytes(32).toString('base64url');
-      identity.passwordResetTokenHash = createHash('sha256')
-        .update(resetToken)
-        .digest('hex');
-      identity.passwordResetTokenExpiresAt = new Date(
-        Date.now() + PASSWORD_RESET_TOKEN_TTL_MS,
+      // manager.update() against an explicit `id` predicate, not
+      // manager.save() on a loaded entity: when there's no real identity to
+      // update, there's nothing to load, and save()-ing a plain object would
+      // attempt an INSERT that violates this table's NOT NULL columns.
+      // update() against a guaranteed-non-matching id costs one comparable
+      // UPDATE round-trip and reliably touches zero rows, so this branch's
+      // DB cost matches the real one without writing anything.
+      await manager.update(
+        CustomerIdentity,
+        { id: identity?.id ?? NON_EXISTENT_ID },
+        {
+          passwordResetTokenHash: resetTokenHash,
+          passwordResetTokenExpiresAt: resetTokenExpiresAt,
+        },
       );
-      await manager.save(CustomerIdentity, identity);
+    });
 
-      await this.notifications.sendEmail(email, 'password-reset', {
-        token: resetToken,
-      });
+    // Sent after the transaction commits, not from inside tenantDb.run() —
+    // same reasoning as register() above: a slow/failing notification
+    // provider must not hold the CustomerIdentity row lock open or roll back
+    // a reset token that was already persisted. Sent unconditionally
+    // regardless of whether `email` matched a real account/identity, for the
+    // same anti-enumeration reason as the DB work above.
+    await this.notifications.sendEmail(email, 'password-reset', {
+      token: resetToken,
     });
   }
 

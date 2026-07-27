@@ -410,23 +410,25 @@ describe('CustomersAuthService.login/refresh/logout', () => {
 });
 
 describe('CustomersAuthService.requestPasswordReset', () => {
-  it('sends a password-reset email with a token when the email is registered with a password identity', async () => {
-    const customer = { id: 'cust-1', email: 'jane@example.com' };
-    const identity = {
-      customerId: 'cust-1',
-      provider: 'password',
-    };
+  // Builds a fresh service + manager stub for one requestPasswordReset()
+  // scenario. `customer`/`identity` are `null` to simulate "email not
+  // registered" / "no password identity for this account" respectively.
+  function buildService(options: {
+    customer: { id: string; email: string } | null;
+    identity: { id: string; customerId: string; provider: string } | null;
+  }) {
     const manager = {
       findOne: jest.fn().mockImplementation((entity: unknown) => {
-        if (entity === Customer) return Promise.resolve(customer);
-        if (entity === CustomerIdentity) return Promise.resolve(identity);
+        if (entity === Customer) return Promise.resolve(options.customer);
+        if (entity === CustomerIdentity)
+          return Promise.resolve(options.identity);
         return Promise.resolve(null);
       }),
-      save: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue({ affected: options.identity ? 1 : 0 }),
     };
     const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
     const hashing = { hash: jest.fn() } as any;
-    const notifications = { sendEmail: jest.fn() } as any;
+    const notifications = { sendEmail: jest.fn().mockResolvedValue(undefined) } as any;
     const tokenService = new TokenService({ sign: jest.fn() } as any);
     const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
     const service = new CustomersAuthService(
@@ -436,11 +438,20 @@ describe('CustomersAuthService.requestPasswordReset', () => {
       tokenService,
       cls,
     );
+    return { service, manager, notifications };
+  }
+
+  it('persists the reset token hash and sends a password-reset email when the email is registered with a password identity', async () => {
+    const { service, manager, notifications } = buildService({
+      customer: { id: 'cust-1', email: 'jane@example.com' },
+      identity: { id: 'identity-1', customerId: 'cust-1', provider: 'password' },
+    });
 
     await service.requestPasswordReset('jane@example.com');
 
-    expect(manager.save).toHaveBeenCalledWith(
+    expect(manager.update).toHaveBeenCalledWith(
       CustomerIdentity,
+      { id: 'identity-1' },
       expect.objectContaining({
         passwordResetTokenHash: expect.any(String),
         passwordResetTokenExpiresAt: expect.any(Date),
@@ -453,60 +464,118 @@ describe('CustomersAuthService.requestPasswordReset', () => {
     );
   });
 
-  it('does not reveal whether the email is registered: no-ops silently when the customer does not exist', async () => {
-    const manager = {
-      findOne: jest.fn().mockResolvedValue(null),
-      save: jest.fn(),
-    };
-    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
-    const hashing = { hash: jest.fn() } as any;
-    const notifications = { sendEmail: jest.fn() } as any;
-    const tokenService = new TokenService({ sign: jest.fn() } as any);
-    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
-    const service = new CustomersAuthService(
-      tenantDb,
-      hashing,
-      notifications,
-      tokenService,
-      cls,
-    );
+  // Task 15 review fix round 1 (Important #1): the whole point of this
+  // method is that "email not registered" must be indistinguishable from
+  // "email registered" by response body AND by the shape/cost of work done
+  // to produce it. These two tests (unregistered email; registered email
+  // with no password identity) assert the DB write and the outbound email
+  // both still happen — the opposite of what a pre-fix "silent no-op"
+  // implementation would do — precisely so neither branch is cheaper.
+  it('still performs a DB write and sends an email when the email is not registered (prevents enumeration via timing/behavior)', async () => {
+    const { service, manager, notifications } = buildService({
+      customer: null,
+      identity: null,
+    });
 
     await expect(
       service.requestPasswordReset('unknown@example.com'),
     ).resolves.toBeUndefined();
 
-    expect(manager.save).not.toHaveBeenCalled();
-    expect(notifications.sendEmail).not.toHaveBeenCalled();
+    expect(manager.update).toHaveBeenCalledWith(
+      CustomerIdentity,
+      { id: expect.any(String) },
+      expect.objectContaining({
+        passwordResetTokenHash: expect.any(String),
+        passwordResetTokenExpiresAt: expect.any(Date),
+      }),
+    );
+    expect(notifications.sendEmail).toHaveBeenCalledWith(
+      'unknown@example.com',
+      'password-reset',
+      expect.objectContaining({ token: expect.any(String) }),
+    );
   });
 
-  it('no-ops silently when the customer exists but has no password identity (e.g. Google-only account)', async () => {
-    const customer = { id: 'cust-1', email: 'jane@example.com' };
-    const manager = {
-      findOne: jest.fn().mockImplementation((entity: unknown) => {
-        if (entity === Customer) return Promise.resolve(customer);
-        return Promise.resolve(null);
-      }),
-      save: jest.fn(),
-    };
-    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
-    const hashing = { hash: jest.fn() } as any;
-    const notifications = { sendEmail: jest.fn() } as any;
-    const tokenService = new TokenService({ sign: jest.fn() } as any);
-    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
-    const service = new CustomersAuthService(
-      tenantDb,
-      hashing,
-      notifications,
-      tokenService,
-      cls,
-    );
+  it('still performs a DB write and sends an email when the account exists but has no password identity (e.g. Google-only account)', async () => {
+    const { service, manager, notifications } = buildService({
+      customer: { id: 'cust-1', email: 'jane@example.com' },
+      identity: null,
+    });
 
     await expect(
       service.requestPasswordReset('jane@example.com'),
     ).resolves.toBeUndefined();
 
-    expect(manager.save).not.toHaveBeenCalled();
+    expect(manager.update).toHaveBeenCalledWith(
+      CustomerIdentity,
+      { id: expect.any(String) },
+      expect.objectContaining({
+        passwordResetTokenHash: expect.any(String),
+        passwordResetTokenExpiresAt: expect.any(Date),
+      }),
+    );
+    expect(notifications.sendEmail).toHaveBeenCalledWith(
+      'jane@example.com',
+      'password-reset',
+      expect.objectContaining({ token: expect.any(String) }),
+    );
+  });
+
+  it('performs the same shape of DB work (2 reads + 1 write) whether or not the account/identity exists', async () => {
+    const found = buildService({
+      customer: { id: 'cust-1', email: 'jane@example.com' },
+      identity: { id: 'identity-1', customerId: 'cust-1', provider: 'password' },
+    });
+    const notFound = buildService({ customer: null, identity: null });
+
+    await found.service.requestPasswordReset('jane@example.com');
+    await notFound.service.requestPasswordReset('unknown@example.com');
+
+    expect(found.manager.findOne).toHaveBeenCalledTimes(2);
+    expect(notFound.manager.findOne).toHaveBeenCalledTimes(2);
+    expect(found.manager.update).toHaveBeenCalledTimes(1);
+    expect(notFound.manager.update).toHaveBeenCalledTimes(1);
+    expect(found.notifications.sendEmail).toHaveBeenCalledTimes(1);
+    expect(notFound.notifications.sendEmail).toHaveBeenCalledTimes(1);
+  });
+
+  // Task 15 review fix round 1 (Important #2): mirrors register()'s
+  // existing "does not send the verification email when the DB transaction
+  // fails" test above — the email must never go out if the DB write never
+  // committed, and (when it does commit) must be sent only after
+  // tenantDb.run() has resolved, not from inside it.
+  it('does not send the email when the DB transaction fails', async () => {
+    const { service, manager, notifications } = buildService({
+      customer: { id: 'cust-1', email: 'jane@example.com' },
+      identity: { id: 'identity-1', customerId: 'cust-1', provider: 'password' },
+    });
+    manager.update.mockRejectedValue(new Error('db exploded'));
+
+    await expect(
+      service.requestPasswordReset('jane@example.com'),
+    ).rejects.toThrow('db exploded');
+
     expect(notifications.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it('sends the email only after the DB transaction has resolved', async () => {
+    const { service, manager, notifications } = buildService({
+      customer: { id: 'cust-1', email: 'jane@example.com' },
+      identity: { id: 'identity-1', customerId: 'cust-1', provider: 'password' },
+    });
+    const callOrder: string[] = [];
+    manager.update.mockImplementation(() => {
+      callOrder.push('db-update');
+      return Promise.resolve({ affected: 1 });
+    });
+    notifications.sendEmail.mockImplementation(() => {
+      callOrder.push('send-email');
+      return Promise.resolve(undefined);
+    });
+
+    await service.requestPasswordReset('jane@example.com');
+
+    expect(callOrder).toEqual(['db-update', 'send-email']);
   });
 });
 
