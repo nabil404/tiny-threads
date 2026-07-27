@@ -280,6 +280,32 @@ export class CustomersAuthService {
         if (!profile.emailVerified) {
           return { linkRequired: true };
         }
+        // Google vouching for the email is necessary but NOT sufficient: it
+        // says nothing about whether the LOCAL password account on this email
+        // was ever proven. register() completes without email verification, so
+        // an attacker can pre-register victim@gmail.com with a password of
+        // their choosing; auto-linking the victim's real Google identity onto
+        // that unverified row would leave both parties sharing one account
+        // (pre-account-hijacking). If our own verifyEmail() flow never
+        // confirmed that password identity, force the deliberate path:
+        // authenticate with the password first, then link explicitly.
+        //
+        // A customer with no password identity at all has no local credential
+        // to hijack, so that case still auto-links on Google's claim alone —
+        // requiring a verified password identity to EXIST would lock out
+        // accounts that only ever had an OAuth identity.
+        const existingPasswordIdentity = await manager.findOne(
+          CustomerIdentity,
+          {
+            where: { customerId: existingCustomer.id, provider: 'password' },
+          },
+        );
+        if (
+          existingPasswordIdentity &&
+          !existingPasswordIdentity.emailVerified
+        ) {
+          return { linkRequired: true };
+        }
         await manager.save(
           manager.create(CustomerIdentity, {
             tenantId: profile.tenantId,

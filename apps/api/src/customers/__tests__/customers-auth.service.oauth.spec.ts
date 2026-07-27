@@ -41,7 +41,7 @@ describe('CustomersAuthService.findOrCreateFromGoogle', () => {
   it('auto-links when an existing password account matches and Google reports email_verified', async () => {
     const { service } = buildService(
       { id: 'cust-1', email: 'jane@example.com' },
-      { customerId: 'cust-1' },
+      { customerId: 'cust-1', emailVerified: true },
     );
 
     const result = await service.findOrCreateFromGoogle({
@@ -57,7 +57,7 @@ describe('CustomersAuthService.findOrCreateFromGoogle', () => {
   it('does NOT auto-link when Google reports an unverified email for a matching account', async () => {
     const { service } = buildService(
       { id: 'cust-1', email: 'jane@example.com' },
-      { customerId: 'cust-1' },
+      { customerId: 'cust-1', emailVerified: true },
     );
 
     const result = await service.findOrCreateFromGoogle({
@@ -96,7 +96,7 @@ describe('CustomersAuthService.findOrCreateFromGoogle', () => {
   it('stamps tenantId onto the CustomerIdentity row it creates when auto-linking', async () => {
     const { service, manager } = buildService(
       { id: 'cust-1', email: 'jane@example.com' },
-      { customerId: 'cust-1' },
+      { customerId: 'cust-1', emailVerified: true },
     );
 
     await service.findOrCreateFromGoogle({
@@ -133,6 +133,32 @@ describe('CustomersAuthService.findOrCreateFromGoogle', () => {
     });
 
     expect(result).toEqual({ linkRequired: true });
+  });
+
+  // Regression coverage for final-review finding C2 (pre-account-hijacking):
+  // register() completes without email verification, so an attacker can
+  // pre-register victim@example.com with a password of their choosing. Google
+  // reporting email_verified=true for the real victim must NOT be enough to
+  // auto-link onto that unproven local row — otherwise attacker (password) and
+  // victim (Google) end up sharing one account.
+  it('does not auto-link when the existing password identity has never been verified locally, even when Google reports email_verified=true', async () => {
+    const { service, manager } = buildService(
+      { id: 'cust-1', email: 'jane@example.com' },
+      { customerId: 'cust-1', emailVerified: false },
+    );
+
+    const result = await service.findOrCreateFromGoogle({
+      tenantId: 'tenant-1',
+      googleSub: 'google-sub-1',
+      email: 'jane@example.com',
+      emailVerified: true,
+    });
+
+    expect(result).toEqual({ linkRequired: true });
+    expect('accessToken' in result).toBe(false);
+    // No google identity row may be created on the unverified account.
+    expect(manager.create).not.toHaveBeenCalled();
+    expect(manager.save).not.toHaveBeenCalled();
   });
 
   it('auto-links when Google reports a verified email for a matching account that has no password identity', async () => {

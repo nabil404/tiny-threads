@@ -313,7 +313,21 @@ export class MerchantAdminsAuthService {
           },
         );
         if (existingPasswordIdentity) {
-          if (!profile.emailVerified) {
+          // Google vouching for the email is necessary but NOT sufficient: it
+          // says nothing about whether the LOCAL password account on this
+          // email was ever proven. register() completes without email
+          // verification, so an attacker holding an unredeemed invite (or an
+          // account provisioned but never verified) can sit on
+          // victim@example.com with a password of their choosing;
+          // auto-linking the victim's real Google identity onto that
+          // unverified row would leave both parties sharing one merchant
+          // admin account (pre-account-hijacking). If our own verifyEmail()
+          // flow never confirmed this password identity, force the deliberate
+          // path: authenticate with the password first, then link.
+          if (
+            !profile.emailVerified ||
+            !existingPasswordIdentity.emailVerified
+          ) {
             return { linkRequired: true };
           }
           // tenant_id is a NOT NULL composite-PK column on
