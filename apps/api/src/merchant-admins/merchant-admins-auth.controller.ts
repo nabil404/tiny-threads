@@ -18,6 +18,8 @@ import { MerchantAdminsAuthService } from './merchant-admins-auth.service';
 import { RegisterMerchantUserDto } from './dto/register-merchant-user.dto';
 import { VerifyMerchantUserEmailDto } from './dto/verify-merchant-user-email.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { RequestMerchantUserPasswordResetDto } from './dto/request-merchant-user-password-reset.dto';
+import { ResetMerchantUserPasswordDto } from './dto/reset-merchant-user-password.dto';
 import { MerchantAdminOAuthExchangeDto } from './dto/merchant-admin-oauth-exchange.dto';
 import { MerchantAdminJwtAuthGuard } from './merchant-admin-jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
@@ -132,6 +134,21 @@ export class MerchantAdminsAuthController {
     }
     res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_OPTIONS.path });
     return { success: true };
+  }
+
+  @Post('request-password-reset')
+  @HttpCode(200)
+  requestPasswordReset(@Body() dto: RequestMerchantUserPasswordResetDto) {
+    return this.merchantAdminsAuthService.requestPasswordReset(dto.email);
+  }
+
+  @Post('reset-password')
+  @HttpCode(200)
+  resetPassword(@Body() dto: ResetMerchantUserPasswordDto) {
+    return this.merchantAdminsAuthService.resetPassword(
+      dto.token,
+      dto.password,
+    );
   }
 
   // Merchant admins don't self-register via OAuth (see

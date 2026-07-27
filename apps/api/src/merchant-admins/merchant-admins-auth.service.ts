@@ -32,6 +32,12 @@ import { roleOutranks } from './role-hierarchy';
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const INVITE_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+// A well-formed but unroutable UUID used as a guaranteed-non-matching lookup
+// key in requestPasswordReset()'s "account doesn't exist" branch — see the
+// comment there for why this needs to stay a real DB round trip rather than
+// a short-circuited no-op. Mirrors CustomersAuthService's NON_EXISTENT_ID.
+const NON_EXISTENT_ID = '00000000-0000-0000-0000-000000000000';
 
 interface GoogleProfile {
   tenantId: string;
@@ -270,7 +276,9 @@ export class MerchantAdminsAuthService {
   // access, so there's no "create" branch here, only "find or reject".
   async findOrCreateFromGoogle(
     profile: GoogleProfile,
-  ): Promise<{ accessToken: string; refreshToken: string } | { linkRequired: true }> {
+  ): Promise<
+    { accessToken: string; refreshToken: string } | { linkRequired: true }
+  > {
     return this.tenantDb.run(async (manager) => {
       const existingGoogleIdentity = await manager.findOne(
         MerchantUserIdentity,
@@ -416,6 +424,91 @@ export class MerchantAdminsAuthService {
           { revokedAt: new Date() },
         );
       }
+    });
+  }
+
+  async requestPasswordReset(email: string): Promise<void> {
+    // Token + hash are computed unconditionally, before we even know whether
+    // `email` is registered, and every branch below performs the same shape
+    // of DB round trips and always sends the same email. A response that's
+    // identical in body but faster/cheaper on the "not registered" path
+    // (fewer queries, no write, no outbound email) would still leak account
+    // existence via timing/call-count even though nothing in the response
+    // itself differs — mirrors CustomersAuthService.requestPasswordReset
+    // (Task 15 review fix round 1).
+    const resetToken = randomBytes(32).toString('base64url');
+    const resetTokenHash = createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+    const resetTokenExpiresAt = new Date(
+      Date.now() + PASSWORD_RESET_TOKEN_TTL_MS,
+    );
+
+    await this.tenantDb.run(async (manager) => {
+      const merchantUser = await manager.findOne(MerchantUser, {
+        where: { email },
+      });
+      const identity = await manager.findOne(MerchantUserIdentity, {
+        where: {
+          merchantUserId: merchantUser?.id ?? NON_EXISTENT_ID,
+          provider: 'password',
+        },
+      });
+
+      // manager.update() against an explicit `id` predicate, not
+      // manager.save() on a loaded entity: when there's no real identity to
+      // update, there's nothing to load, and save()-ing a plain object would
+      // attempt an INSERT that violates this table's NOT NULL columns.
+      // update() against a guaranteed-non-matching id costs one comparable
+      // UPDATE round-trip and reliably touches zero rows, so this branch's
+      // DB cost matches the real one without writing anything.
+      await manager.update(
+        MerchantUserIdentity,
+        { id: identity?.id ?? NON_EXISTENT_ID },
+        {
+          passwordResetTokenHash: resetTokenHash,
+          passwordResetTokenExpiresAt: resetTokenExpiresAt,
+        },
+      );
+    });
+
+    // Sent after the transaction commits, not from inside tenantDb.run() —
+    // same reasoning as register() above: a slow/failing notification
+    // provider must not hold the MerchantUserIdentity row lock open or roll
+    // back a reset token that was already persisted. Sent unconditionally
+    // regardless of whether `email` matched a real account/identity, for the
+    // same anti-enumeration reason as the DB work above.
+    await this.notifications.sendEmail(email, 'password-reset', {
+      token: resetToken,
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+
+    await this.tenantDb.run(async (manager) => {
+      const identity = await manager.findOne(MerchantUserIdentity, {
+        where: { provider: 'password', passwordResetTokenHash: tokenHash },
+      });
+      if (
+        !identity ||
+        !identity.passwordResetTokenExpiresAt ||
+        identity.passwordResetTokenExpiresAt < new Date()
+      ) {
+        throw new NotFoundException('Invalid or expired password reset token');
+      }
+
+      identity.passwordHash = await this.hashing.hash(newPassword);
+      identity.passwordResetTokenHash = null;
+      identity.passwordResetTokenExpiresAt = null;
+      await manager.save(MerchantUserIdentity, identity);
+
+      // MUST invalidate all refresh tokens on reset (§3).
+      await manager.update(
+        MerchantUserRefreshToken,
+        { merchantUserId: identity.merchantUserId },
+        { revokedAt: new Date() },
+      );
     });
   }
 

@@ -46,8 +46,7 @@ function buildService(options?: {
   const manager = {
     findOne: jest.fn().mockImplementation((entity: unknown) => {
       if (entity === MerchantUserInvite) return Promise.resolve(invite);
-      if (entity === MerchantUser)
-        return Promise.resolve(existingMerchantUser);
+      if (entity === MerchantUser) return Promise.resolve(existingMerchantUser);
       return Promise.resolve(null);
     }),
     create: jest.fn((_entity: any, data: any) => data),
@@ -669,5 +668,282 @@ describe('MerchantAdminsAuthService.login/refresh/logout', () => {
 
       expect(manager.update).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('MerchantAdminsAuthService.requestPasswordReset', () => {
+  // Mirrors CustomersAuthService.requestPasswordReset's buildService (see
+  // customers-auth.service.spec.ts) — `merchantUser`/`identity` are `null` to
+  // simulate "email not registered" / "no password identity for this
+  // account" respectively.
+  function buildService(options: {
+    merchantUser: { id: string; email: string } | null;
+    identity: { id: string; merchantUserId: string; provider: string } | null;
+  }) {
+    const manager = {
+      findOne: jest.fn().mockImplementation((entity: unknown) => {
+        if (entity === MerchantUser)
+          return Promise.resolve(options.merchantUser);
+        if (entity === MerchantUserIdentity)
+          return Promise.resolve(options.identity);
+        return Promise.resolve(null);
+      }),
+      update: jest
+        .fn()
+        .mockResolvedValue({ affected: options.identity ? 1 : 0 }),
+    };
+    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
+    const hashing = { hash: jest.fn() } as any;
+    const notifications = {
+      sendEmail: jest.fn().mockResolvedValue(undefined),
+    } as any;
+    const tokenService = new TokenService({ sign: jest.fn() } as any);
+    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
+    const service = new MerchantAdminsAuthService(
+      tenantDb,
+      hashing,
+      notifications,
+      tokenService,
+      cls,
+    );
+    return { service, manager, notifications };
+  }
+
+  it('persists the reset token hash and sends a password-reset email when the email is registered with a password identity', async () => {
+    const { service, manager, notifications } = buildService({
+      merchantUser: { id: 'mu-1', email: 'owner@shop.com' },
+      identity: {
+        id: 'identity-1',
+        merchantUserId: 'mu-1',
+        provider: 'password',
+      },
+    });
+
+    await service.requestPasswordReset('owner@shop.com');
+
+    expect(manager.update).toHaveBeenCalledWith(
+      MerchantUserIdentity,
+      { id: 'identity-1' },
+      expect.objectContaining({
+        passwordResetTokenHash: expect.any(String),
+        passwordResetTokenExpiresAt: expect.any(Date),
+      }),
+    );
+    expect(notifications.sendEmail).toHaveBeenCalledWith(
+      'owner@shop.com',
+      'password-reset',
+      expect.objectContaining({ token: expect.any(String) }),
+    );
+  });
+
+  // Mirrors Task 15 review fix round 1 (Important #1): "email not
+  // registered" must be indistinguishable from "email registered" by
+  // response body AND by the shape/cost of work done to produce it. These
+  // tests assert the DB write and outbound email both still happen.
+  it('still performs a DB write and sends an email when the email is not registered (prevents enumeration via timing/behavior)', async () => {
+    const { service, manager, notifications } = buildService({
+      merchantUser: null,
+      identity: null,
+    });
+
+    await expect(
+      service.requestPasswordReset('unknown@shop.com'),
+    ).resolves.toBeUndefined();
+
+    expect(manager.update).toHaveBeenCalledWith(
+      MerchantUserIdentity,
+      { id: expect.any(String) },
+      expect.objectContaining({
+        passwordResetTokenHash: expect.any(String),
+        passwordResetTokenExpiresAt: expect.any(Date),
+      }),
+    );
+    expect(notifications.sendEmail).toHaveBeenCalledWith(
+      'unknown@shop.com',
+      'password-reset',
+      expect.objectContaining({ token: expect.any(String) }),
+    );
+  });
+
+  it('still performs a DB write and sends an email when the account exists but has no password identity (e.g. Google-only account)', async () => {
+    const { service, manager, notifications } = buildService({
+      merchantUser: { id: 'mu-1', email: 'owner@shop.com' },
+      identity: null,
+    });
+
+    await expect(
+      service.requestPasswordReset('owner@shop.com'),
+    ).resolves.toBeUndefined();
+
+    expect(manager.update).toHaveBeenCalledWith(
+      MerchantUserIdentity,
+      { id: expect.any(String) },
+      expect.objectContaining({
+        passwordResetTokenHash: expect.any(String),
+        passwordResetTokenExpiresAt: expect.any(Date),
+      }),
+    );
+    expect(notifications.sendEmail).toHaveBeenCalledWith(
+      'owner@shop.com',
+      'password-reset',
+      expect.objectContaining({ token: expect.any(String) }),
+    );
+  });
+
+  it('performs the same shape of DB work (2 reads + 1 write) whether or not the account/identity exists', async () => {
+    const found = buildService({
+      merchantUser: { id: 'mu-1', email: 'owner@shop.com' },
+      identity: {
+        id: 'identity-1',
+        merchantUserId: 'mu-1',
+        provider: 'password',
+      },
+    });
+    const notFound = buildService({ merchantUser: null, identity: null });
+
+    await found.service.requestPasswordReset('owner@shop.com');
+    await notFound.service.requestPasswordReset('unknown@shop.com');
+
+    expect(found.manager.findOne).toHaveBeenCalledTimes(2);
+    expect(notFound.manager.findOne).toHaveBeenCalledTimes(2);
+    expect(found.manager.update).toHaveBeenCalledTimes(1);
+    expect(notFound.manager.update).toHaveBeenCalledTimes(1);
+    expect(found.notifications.sendEmail).toHaveBeenCalledTimes(1);
+    expect(notFound.notifications.sendEmail).toHaveBeenCalledTimes(1);
+  });
+
+  // Mirrors Task 15 review fix round 1 (Important #2): the email must never
+  // go out if the DB write never committed, and (when it does commit) must
+  // be sent only after tenantDb.run() has resolved, not from inside it.
+  it('does not send the email when the DB transaction fails', async () => {
+    const { service, manager, notifications } = buildService({
+      merchantUser: { id: 'mu-1', email: 'owner@shop.com' },
+      identity: {
+        id: 'identity-1',
+        merchantUserId: 'mu-1',
+        provider: 'password',
+      },
+    });
+    manager.update.mockRejectedValue(new Error('db exploded'));
+
+    await expect(
+      service.requestPasswordReset('owner@shop.com'),
+    ).rejects.toThrow('db exploded');
+
+    expect(notifications.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it('sends the email only after the DB transaction has resolved', async () => {
+    const { service, manager, notifications } = buildService({
+      merchantUser: { id: 'mu-1', email: 'owner@shop.com' },
+      identity: {
+        id: 'identity-1',
+        merchantUserId: 'mu-1',
+        provider: 'password',
+      },
+    });
+    const callOrder: string[] = [];
+    manager.update.mockImplementation(() => {
+      callOrder.push('db-update');
+      return Promise.resolve({ affected: 1 });
+    });
+    notifications.sendEmail.mockImplementation(() => {
+      callOrder.push('send-email');
+      return Promise.resolve(undefined);
+    });
+
+    await service.requestPasswordReset('owner@shop.com');
+
+    expect(callOrder).toEqual(['db-update', 'send-email']);
+  });
+});
+
+describe('MerchantAdminsAuthService.resetPassword', () => {
+  it('rejects an invalid or expired reset token', async () => {
+    const manager = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
+    const hashing = { hash: jest.fn() } as any;
+    const notifications = { sendEmail: jest.fn() } as any;
+    const tokenService = new TokenService({ sign: jest.fn() } as any);
+    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
+    const service = new MerchantAdminsAuthService(
+      tenantDb,
+      hashing,
+      notifications,
+      tokenService,
+      cls,
+    );
+
+    await expect(
+      service.resetPassword('bad-token', 'new password value'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('hashes the new password and revokes all refresh tokens for that merchant user', async () => {
+    const identity = {
+      merchantUserId: 'mu-1',
+      passwordResetTokenHash: 'expected-hash',
+      passwordResetTokenExpiresAt: new Date(Date.now() + 60_000),
+    };
+    const manager = {
+      findOne: jest.fn().mockResolvedValue(identity),
+      save: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue(undefined),
+    };
+    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
+    const hashing = {
+      hash: jest.fn().mockResolvedValue('new-hashed-password'),
+    } as any;
+    const notifications = { sendEmail: jest.fn() } as any;
+    const tokenService = new TokenService({ sign: jest.fn() } as any);
+    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
+    const service = new MerchantAdminsAuthService(
+      tenantDb,
+      hashing,
+      notifications,
+      tokenService,
+      cls,
+    );
+
+    await service.resetPassword('valid-token', 'new password value');
+
+    expect(hashing.hash).toHaveBeenCalledWith('new password value');
+    expect(manager.update).toHaveBeenCalledWith(
+      MerchantUserRefreshToken,
+      { merchantUserId: 'mu-1' },
+      { revokedAt: expect.any(Date) },
+    );
+  });
+
+  it('rejects a reset token whose expiry has passed', async () => {
+    const identity = {
+      merchantUserId: 'mu-1',
+      passwordResetTokenHash: 'expected-hash',
+      passwordResetTokenExpiresAt: new Date(Date.now() - 1000),
+    };
+    const manager = {
+      findOne: jest.fn().mockResolvedValue(identity),
+      save: jest.fn(),
+      update: jest.fn(),
+    };
+    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
+    const hashing = { hash: jest.fn() } as any;
+    const notifications = { sendEmail: jest.fn() } as any;
+    const tokenService = new TokenService({ sign: jest.fn() } as any);
+    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
+    const service = new MerchantAdminsAuthService(
+      tenantDb,
+      hashing,
+      notifications,
+      tokenService,
+      cls,
+    );
+
+    await expect(
+      service.resetPassword('expired-token', 'new password value'),
+    ).rejects.toThrow(NotFoundException);
+    expect(manager.update).not.toHaveBeenCalled();
   });
 });
