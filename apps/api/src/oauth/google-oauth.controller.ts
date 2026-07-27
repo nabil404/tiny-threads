@@ -10,6 +10,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { ClsService } from 'nestjs-cls';
 import { OAuthStateService } from '../auth-core/oauth-state.service';
 import { CustomersAuthService } from '../customers/customers-auth.service';
+import { MerchantAdminsAuthService } from '../merchant-admins/merchant-admins-auth.service';
 import { OneTimeCodeService } from './one-time-code.service';
 
 // Single centralized callback registered once in Google Cloud Console —
@@ -27,6 +28,7 @@ export class GoogleOAuthController {
   constructor(
     private readonly oauthState: OAuthStateService,
     private readonly customersAuthService: CustomersAuthService,
+    private readonly merchantAdminsAuthService: MerchantAdminsAuthService,
     private readonly oneTimeCodeService: OneTimeCodeService,
     private readonly cls: ClsService,
   ) {}
@@ -96,7 +98,31 @@ export class GoogleOAuthController {
       );
     }
 
-    // 'merchant_admin' population handled once Task 14 adds its branch here.
+    if (state.population === 'merchant_admin') {
+      const result = await this.merchantAdminsAuthService.findOrCreateFromGoogle({
+        tenantId: state.tenantId,
+        googleSub: payload.sub,
+        email: payload.email,
+        emailVerified: Boolean(payload.email_verified),
+      });
+      if ('linkRequired' in result) {
+        return res.redirect(`${state.returnUrl}?linkRequired=true`);
+      }
+
+      // Same opaque, single-use, tenant-bound hand-off as the customer
+      // branch above — see CustomersAuthController#exchangeGoogleCode /
+      // MerchantAdminsAuthController#exchangeGoogleCode.
+      const oneTimeCode = this.oneTimeCodeService.issue({
+        population: 'merchant_admin',
+        tenantId: state.tenantId,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      });
+      return res.redirect(
+        `${state.returnUrl}?code=${encodeURIComponent(oneTimeCode)}`,
+      );
+    }
+
     throw new BadRequestException('Unsupported OAuth population');
   }
 }

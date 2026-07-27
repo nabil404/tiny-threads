@@ -33,6 +33,13 @@ const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const INVITE_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+interface GoogleProfile {
+  tenantId: string;
+  googleSub: string;
+  email: string;
+  emailVerified: boolean;
+}
+
 @Injectable()
 export class MerchantAdminsAuthService {
   constructor(
@@ -252,6 +259,80 @@ export class MerchantAdminsAuthService {
         merchantUser.id,
         merchantUser.role,
         randomUUID(),
+      );
+    });
+  }
+
+  // Mirrors CustomersAuthService.findOrCreateFromGoogle (Task 11), against
+  // MerchantUser/MerchantUserIdentity. Unlike Customers, a merchant admin
+  // account is provisioned by an existing admin (register endpoint /
+  // invite flow), not self-service via OAuth — no matching account means no
+  // access, so there's no "create" branch here, only "find or reject".
+  async findOrCreateFromGoogle(
+    profile: GoogleProfile,
+  ): Promise<{ accessToken: string; refreshToken: string } | { linkRequired: true }> {
+    return this.tenantDb.run(async (manager) => {
+      const existingGoogleIdentity = await manager.findOne(
+        MerchantUserIdentity,
+        {
+          where: { provider: 'google', providerSubject: profile.googleSub },
+        },
+      );
+      if (existingGoogleIdentity) {
+        const owner = await manager.findOne(MerchantUser, {
+          where: { id: existingGoogleIdentity.merchantUserId },
+        });
+        return this.issueTokenPair(
+          manager,
+          profile.tenantId,
+          owner!.id,
+          owner!.role,
+          randomUUID(),
+        );
+      }
+
+      const existingMerchantUser = await manager.findOne(MerchantUser, {
+        where: { email: profile.email },
+      });
+      if (existingMerchantUser) {
+        const existingPasswordIdentity = await manager.findOne(
+          MerchantUserIdentity,
+          {
+            where: {
+              merchantUserId: existingMerchantUser.id,
+              provider: 'password',
+            },
+          },
+        );
+        if (existingPasswordIdentity) {
+          if (!profile.emailVerified) {
+            return { linkRequired: true };
+          }
+          // tenant_id is a NOT NULL composite-PK column on
+          // MerchantUserIdentity, enforced by an RLS WITH CHECK policy —
+          // must be stamped explicitly, same as everywhere else in this
+          // service that creates a tenant-scoped row.
+          await manager.save(
+            manager.create(MerchantUserIdentity, {
+              tenantId: profile.tenantId,
+              merchantUserId: existingMerchantUser.id,
+              provider: 'google',
+              providerSubject: profile.googleSub,
+              emailVerified: true,
+            }),
+          );
+          return this.issueTokenPair(
+            manager,
+            profile.tenantId,
+            existingMerchantUser.id,
+            existingMerchantUser.role,
+            randomUUID(),
+          );
+        }
+      }
+
+      throw new NotFoundException(
+        'No merchant admin account found for this email',
       );
     });
   }

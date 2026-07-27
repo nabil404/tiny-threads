@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   HttpCode,
@@ -11,10 +12,13 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
+import { OAuthStateService } from '../auth-core/oauth-state.service';
+import { OneTimeCodeService } from '../oauth/one-time-code.service';
 import { MerchantAdminsAuthService } from './merchant-admins-auth.service';
 import { RegisterMerchantUserDto } from './dto/register-merchant-user.dto';
 import { VerifyMerchantUserEmailDto } from './dto/verify-merchant-user-email.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { MerchantAdminOAuthExchangeDto } from './dto/merchant-admin-oauth-exchange.dto';
 import { MerchantAdminJwtAuthGuard } from './merchant-admin-jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
@@ -33,6 +37,8 @@ export class MerchantAdminsAuthController {
   constructor(
     private readonly merchantAdminsAuthService: MerchantAdminsAuthService,
     private readonly cls: ClsService,
+    private readonly oauthState: OAuthStateService,
+    private readonly oneTimeCodeService: OneTimeCodeService,
   ) {}
 
   @Post('register')
@@ -126,5 +132,62 @@ export class MerchantAdminsAuthController {
     }
     res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_OPTIONS.path });
     return { success: true };
+  }
+
+  // Merchant admins don't self-register via OAuth (see
+  // MerchantAdminsAuthService.findOrCreateFromGoogle), so there's no
+  // link-initiate counterpart here — just login.
+  @Post('google/initiate')
+  initiateGoogle(@Body('returnUrl') returnUrl: string) {
+    const tenantId = this.cls.get<string>('tenantId');
+    const state = this.oauthState.encode({
+      population: 'merchant_admin',
+      tenantId,
+      returnUrl,
+      intent: 'login',
+    });
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_OAUTH_CLIENT_ID!,
+      redirect_uri: `${process.env.PLATFORM_BASE_URL}/auth/google/callback`,
+      response_type: 'code',
+      scope: 'openid email profile',
+      state,
+    });
+    return {
+      redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
+    };
+  }
+
+  // Exchanges the short-lived, single-use one-time code minted by
+  // GoogleOAuthController's callback for the real token pair — mirrors
+  // CustomersAuthController#exchangeGoogleCode exactly (see there for the
+  // full rationale on why tokens travel via this code rather than the
+  // redirect URL itself).
+  @Post('google/exchange')
+  @HttpCode(200)
+  exchangeGoogleCode(
+    @Body() dto: MerchantAdminOAuthExchangeDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const payload = this.oneTimeCodeService.redeem(dto.code);
+    // This route IS behind TenantResolutionMiddleware (unlike the Google
+    // callback), so the redeeming request's own tenant is available in CLS.
+    // A code is only honored if it was minted for THIS tenant — otherwise,
+    // within its 60s TTL, a code obtained on one tenant's domain could be
+    // redeemed against a different tenant's exchange endpoint.
+    const tenantId = this.cls.get<string>('tenantId');
+    if (
+      !payload ||
+      payload.population !== 'merchant_admin' ||
+      payload.tenantId !== tenantId
+    ) {
+      throw new BadRequestException('Invalid or expired code');
+    }
+    res.cookie(
+      REFRESH_COOKIE_NAME,
+      payload.refreshToken,
+      REFRESH_COOKIE_OPTIONS,
+    );
+    return { accessToken: payload.accessToken };
   }
 }

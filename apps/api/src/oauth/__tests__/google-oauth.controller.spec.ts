@@ -41,6 +41,15 @@ function buildController(
       return Promise.resolve(undefined);
     }),
   } as any;
+  const merchantAdminsAuthService = {
+    findOrCreateFromGoogle: jest.fn().mockImplementation(() => {
+      callOrder.push('merchantAdminsFindOrCreateFromGoogle');
+      return Promise.resolve({
+        accessToken: 'merchant-access-token',
+        refreshToken: 'merchant-refresh-token',
+      });
+    }),
+  } as any;
   const oneTimeCodeService = {
     issue: jest.fn().mockReturnValue('one-time-code-123'),
   } as any;
@@ -53,6 +62,7 @@ function buildController(
   const controller = new GoogleOAuthController(
     oauthState,
     customersAuthService,
+    merchantAdminsAuthService,
     oneTimeCodeService,
     cls,
   );
@@ -76,6 +86,7 @@ function buildController(
     controller,
     oauthState,
     customersAuthService,
+    merchantAdminsAuthService,
     oneTimeCodeService,
     cls,
     callOrder,
@@ -165,6 +176,45 @@ describe('GoogleOAuthController#callback', () => {
 
     expect(res.redirect).toHaveBeenCalledWith(
       expect.stringContaining('linked=true'),
+    );
+    expect(oneTimeCodeService.issue).not.toHaveBeenCalled();
+  });
+
+  it('dispatches to MerchantAdminsAuthService and issues a tenant-bound one-time code for the merchant_admin population', async () => {
+    const { controller, merchantAdminsAuthService, oneTimeCodeService, cls } =
+      buildController({ population: 'merchant_admin' });
+    const res = { redirect: jest.fn() } as any;
+
+    await controller.callback('auth-code', 'signed-state-token', res);
+
+    expect(cls.set).toHaveBeenCalledWith('tenantId', 'tenant-1');
+    expect(merchantAdminsAuthService.findOrCreateFromGoogle).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: 'tenant-1', googleSub: 'google-sub-1', email: 'jane@example.com' }),
+    );
+    expect(oneTimeCodeService.issue).toHaveBeenCalledWith({
+      population: 'merchant_admin',
+      tenantId: 'tenant-1',
+      accessToken: 'merchant-access-token',
+      refreshToken: 'merchant-refresh-token',
+    });
+    const redirectUrl = res.redirect.mock.calls[0][0] as string;
+    expect(redirectUrl).toContain('code=one-time-code-123');
+    expect(redirectUrl).not.toContain('merchant-access-token');
+    expect(redirectUrl).not.toContain('merchant-refresh-token');
+  });
+
+  it('redirects with linkRequired=true for merchant_admin when auto-link is not allowed, without minting a code', async () => {
+    const { controller, merchantAdminsAuthService, oneTimeCodeService } =
+      buildController({ population: 'merchant_admin' });
+    merchantAdminsAuthService.findOrCreateFromGoogle.mockResolvedValue({
+      linkRequired: true,
+    });
+    const res = { redirect: jest.fn() } as any;
+
+    await controller.callback('auth-code', 'signed-state-token', res);
+
+    expect(res.redirect).toHaveBeenCalledWith(
+      expect.stringContaining('linkRequired=true'),
     );
     expect(oneTimeCodeService.issue).not.toHaveBeenCalled();
   });
