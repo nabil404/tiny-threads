@@ -17,7 +17,7 @@ made *before* columns, because it determines whether a table carries a
 | Scope | Tables |
 |---|---|
 | **Global** (no `tenant_id`, outside RLS) | `tenants`, `platform_admins`, `currencies`, `countries`, `payment_providers` |
-| **Tenant-scoped** (`tenant_id` + RLS) | `merchant_users`, `products`, `product_variants`, `categories`, `product_categories`, `customers`, `customer_addresses`, `carts`, `cart_items`, `orders`, `order_items`, `order_events`, `payments`, `settlements`, `refunds`, `payment_provider_configs` |
+| **Tenant-scoped** (`tenant_id` + RLS) | `merchant_users`, `merchant_user_identities`, `merchant_user_refresh_tokens`, `merchant_user_invites`, `products`, `product_variants`, `categories`, `product_categories`, `customers`, `customer_identities`, `customer_refresh_tokens`, `customer_addresses`, `carts`, `cart_items`, `orders`, `order_items`, `order_events`, `payments`, `settlements`, `refunds`, `payment_provider_configs` |
 
 `tenants` is global because a tenant *is* the scope — it is never filtered by
 `tenant_id`. `platform_admins` is global and deliberately outside RLS because
@@ -38,6 +38,48 @@ are shared reference data.
    a composite reference even though mermaid draws a single line.
 3. **RLS is the backstop.** Application `WHERE tenant_id = ?` filters remain,
    but PostgreSQL RLS is the enforced guarantee (see `ARCHITECTURE.md`).
+
+### Authentication tables
+
+Five tenant-scoped tables back authentication. The two populations —
+storefront **customers** and **merchant admins** — are modeled as parallel,
+deliberately separate table sets rather than one shared `users` table: they
+have different lifecycles (customers self-register, merchant admins are
+invite-provisioned), different credentials, and different blast radius if
+confused. Access tokens for the two are separated by an `aud` claim, and both
+are additionally bound to a tenant (see `ARCHITECTURE.md` D2a).
+
+| Table | Scope | Purpose |
+|---|---|---|
+| `customer_identities` | Tenant-scoped | One row per way a customer can authenticate — `provider` is `password` or `google`. Holds `password_hash` (argon2id, `NULL` for OAuth rows), `provider_subject` (the Google `sub`, `NULL` for password rows), `email_verified`, and the hashed+expiring `verification_token_*` / `password_reset_token_*` pairs. Splitting identities out of `customers` is what lets one account carry both a password and a linked Google login. |
+| `customer_refresh_tokens` | Tenant-scoped | Issued refresh tokens for customers, stored only as `token_hash` (never raw). `family_id` groups a rotation chain and `revoked_at` marks a spent or revoked token, which together implement rotation with theft detection: presenting an already-revoked token revokes its entire family. |
+| `merchant_user_identities` | Tenant-scoped | The `merchant_users` counterpart of `customer_identities` — identical shape and semantics, against `merchant_user_id`. |
+| `merchant_user_refresh_tokens` | Tenant-scoped | The `merchant_users` counterpart of `customer_refresh_tokens` — identical rotation/family/revocation model. |
+| `merchant_user_invites` | Tenant-scoped | Pending invitations to join a tenant as a merchant admin. Carries the invited `email`, the `role` to grant on redemption, a hashed single-use `token_hash`, `expires_at`, and `used_at` (`NULL` while outstanding). This table is what makes registration invite-gated: `role` comes from the invite an existing owner/admin issued, never from client input, so a registrant cannot select their own privileges. `invited_by_merchant_user_id` is a nullable audit-only FK. |
+
+Notes on their columns and constraints:
+
+- **Tokens are only ever stored hashed** — `token_hash`,
+  `verification_token_hash`, `password_reset_token_hash`. Nothing in these
+  tables is a usable credential if the database is read, and lookups are by
+  hash of the presented value.
+- **`(tenant_id, token_hash)` is UNIQUE** on both refresh-token tables. It is
+  the sole lookup key for refresh/logout on tables that grow unbounded (one row
+  per login plus one per rotation), so it needs the index; UNIQUE additionally
+  makes two live tokens sharing a hash impossible rather than merely unlikely.
+  Same constraint on `merchant_user_invites.token_hash`.
+- **`(tenant_id, provider, provider_subject)` is UNIQUE** on both identity
+  tables, so one Google account cannot be linked to two accounts within a
+  tenant. **`(tenant_id, <user>_id, provider)`** is also UNIQUE — an account
+  gets at most one identity per provider.
+- **`email_verified` is our own claim, not the provider's.** It is set only by
+  our verification flow, and the Google auto-link path requires it before
+  attaching a Google identity to a pre-existing password account — otherwise
+  pre-registering someone else's address would let an attacker share their
+  account.
+- All five are immutable-base tables (`created_at`, no `updated_at`) except for
+  the deliberate in-place mutations noted above (`revoked_at`, `used_at`,
+  `email_verified`, token columns).
 
 ### Design decisions reflected in columns
 
@@ -88,7 +130,13 @@ erDiagram
   TENANTS ||--o{ PRODUCTS : has
   TENANTS ||--o{ CUSTOMERS : has
   TENANTS ||--o{ MERCHANT_USERS : has
+  TENANTS ||--o{ MERCHANT_USER_INVITES : has
   TENANTS ||--o{ PAYMENT_PROVIDER_CONFIGS : has
+  CUSTOMERS ||--o{ CUSTOMER_IDENTITIES : authenticates_with
+  CUSTOMERS ||--o{ CUSTOMER_REFRESH_TOKENS : holds
+  MERCHANT_USERS ||--o{ MERCHANT_USER_IDENTITIES : authenticates_with
+  MERCHANT_USERS ||--o{ MERCHANT_USER_REFRESH_TOKENS : holds
+  MERCHANT_USERS ||--o{ MERCHANT_USER_INVITES : issued
   PRODUCTS ||--o{ PRODUCT_VARIANTS : has
   PRODUCTS ||--o{ PRODUCT_CATEGORIES : in
   CATEGORIES ||--o{ PRODUCT_CATEGORIES : groups
@@ -139,6 +187,34 @@ erDiagram
     string email
     string role
   }
+  MERCHANT_USER_IDENTITIES {
+    uuid tenant_id PK, FK
+    uuid id PK
+    uuid merchant_user_id FK
+    string provider
+    string provider_subject
+    string password_hash
+    bool email_verified
+  }
+  MERCHANT_USER_REFRESH_TOKENS {
+    uuid tenant_id PK, FK
+    uuid id PK
+    uuid merchant_user_id FK
+    string token_hash
+    uuid family_id
+    timestamptz expires_at
+    timestamptz revoked_at
+  }
+  MERCHANT_USER_INVITES {
+    uuid tenant_id PK, FK
+    uuid id PK
+    string email
+    string role
+    string token_hash
+    timestamptz expires_at
+    timestamptz used_at
+    uuid invited_by_merchant_user_id FK
+  }
   PRODUCTS {
     uuid tenant_id PK, FK
     uuid id PK
@@ -170,6 +246,24 @@ erDiagram
     uuid id PK
     string email
     string name
+  }
+  CUSTOMER_IDENTITIES {
+    uuid tenant_id PK, FK
+    uuid id PK
+    uuid customer_id FK
+    string provider
+    string provider_subject
+    string password_hash
+    bool email_verified
+  }
+  CUSTOMER_REFRESH_TOKENS {
+    uuid tenant_id PK, FK
+    uuid id PK
+    uuid customer_id FK
+    string token_hash
+    uuid family_id
+    timestamptz expires_at
+    timestamptz revoked_at
   }
   CUSTOMER_ADDRESSES {
     uuid tenant_id PK, FK

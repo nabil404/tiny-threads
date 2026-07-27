@@ -26,6 +26,23 @@ RLS (`FORCE` + `USING`/`WITH CHECK`) on every tenant-scoped table; app connects 
 
 → full rationale, RLS SQL, and `withTenant` reference implementation: [references/d2-rls-enforcement.md](references/d2-rls-enforcement.md)
 
+### D2a — `TenantResolutionMiddleware` is the entry point that populates the tenant context
+
+`withTenant` is the gate that *applies* tenant context to a transaction, but it reads that context from CLS rather than taking it as an argument — so something has to put it there first, exactly once, from a source the client cannot forge. That something is **`TenantResolutionMiddleware`** (`apps/api/src/tenancy/tenant-resolution.middleware.ts`), and it is the **only** thing that populates CLS `tenantId` for ordinary requests. The whole RLS mechanism therefore depends on it: `TenantDbService.run()`/`withTenant` throw rather than falling back if CLS is empty, so a request that bypasses this middleware cannot touch tenant data at all.
+
+It resolves the tenant from the request's **subdomain** (`shop.platform.com` → slug `shop`), looks the tenant up, and `404`s on an unknown slug. Deriving it from the host and never from a request body, query param, or header is the point: a client-supplied tenant id would make RLS trivially bypassable, and `tenant_id` is exactly what the policies compare against.
+
+Two consequences worth knowing:
+
+- **It is mounted on `forRoutes('*')` with a small, deliberate exclusion list** (`apps/api/src/app/app.module.ts`). Anything excluded must either not touch tenant data or set CLS itself from a verified source. Currently excluded:
+  - `GET /auth/google/callback` — a platform-domain route, because Google permits only one registered `redirect_uri` and it cannot be a per-tenant subdomain. It sets CLS itself from the HMAC-signed OAuth `state` before any DB call.
+  - `GET /` — the root/liveness route. It touches no tenant data, and health probes arrive by IP or internal DNS name, which resolves to no tenant slug; behind the middleware every probe would `404` with "Unknown tenant".
+- **The request's own resolved host is a trustworthy security primitive**, since the middleware has already confirmed it belongs to a real tenant. The OAuth `returnUrl` origin check (`apps/api/src/auth-core/return-url.ts`) is built on that: it pins redirect targets to `req.hostname` rather than an allow-list, which also means it keeps working when custom-domain resolution lands.
+
+Custom-domain resolution (as opposed to subdomain) is a known follow-up and is not implemented.
+
+**Keep in sync:** because this middleware is the sole populator of the context RLS depends on, any change to how the tenant is resolved, or to the exclusion list, must be reflected here **and** in the `backend-engineer` skill's tenancy-isolation rule in the same change.
+
 ## D3 — ORM: TypeORM
 
 Entity/repository model with migrations as the source of truth for schema. Chosen for NestJS-ecosystem fit — `@nestjs/typeorm` is the first-party integration, with broader community tooling and examples in the NestJS world. RLS (`ENABLE`/`FORCE`/policy) is not declarable on an entity — TypeORM has no policy API — so it is declared exclusively in raw-SQL migrations.
@@ -49,6 +66,16 @@ Every external capability is a domain-owned port with adapters at the edge; a re
 *Rejected:* vendor SDKs in domain code, a single fixed provider per capability.
 
 → [references/d5-ports-adapters.md](references/d5-ports-adapters.md)
+
+### D5a — Implemented ports
+
+| Capability | Port | Adapters |
+| --- | --- | --- |
+| Notifications (transactional email) | `NotificationsPort` — `apps/api/src/auth-core/notifications/notifications-port.ts` | `LogNotificationsAdapter` (dev/local: logs the send, redacting any `*token*` data key so log access alone can't hijack an account) |
+
+`NotificationsPort` is the first port to land. It is deliberately narrow — `sendEmail(to, template, data)` over an `EmailTemplate` union (`verification-email`, `password-reset`, `merchant-invite`) — so callers name an intent and never compose provider-specific payloads. It is injected by the `NOTIFICATIONS_PORT` symbol, so no auth service references an adapter type. Swapping in SES/SendGrid/Postmark means adding one adapter and rebinding that token; no domain code changes.
+
+Payments, shipping, tax, storage, and search remain designed-but-unimplemented.
 
 ## D6 — Orders modeled as three coordinated state machines
 
