@@ -26,7 +26,17 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer
       .apply(TenantResolutionMiddleware)
-      .exclude({ path: 'auth/google/callback', method: RequestMethod.GET })
+      .exclude(
+        // Platform-domain route, not a tenant subdomain — Google can only be
+        // given one callback URL, so this one resolves its tenant from the
+        // signed OAuth state instead (see GoogleOAuthController#callback).
+        { path: 'auth/google/callback', method: RequestMethod.GET },
+        // Root/liveness route. It touches no tenant data, and load-balancer
+        // and container health probes hit it by IP or internal DNS name, which
+        // resolves to no tenant slug — leaving it behind the middleware makes
+        // every probe 404 with "Unknown tenant".
+        { path: '/', method: RequestMethod.GET },
+      )
       .forRoutes('*');
   }
 }
