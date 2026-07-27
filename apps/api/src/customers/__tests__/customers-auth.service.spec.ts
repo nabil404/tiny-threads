@@ -424,11 +424,15 @@ describe('CustomersAuthService.requestPasswordReset', () => {
           return Promise.resolve(options.identity);
         return Promise.resolve(null);
       }),
-      update: jest.fn().mockResolvedValue({ affected: options.identity ? 1 : 0 }),
+      update: jest
+        .fn()
+        .mockResolvedValue({ affected: options.identity ? 1 : 0 }),
     };
     const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
     const hashing = { hash: jest.fn() } as any;
-    const notifications = { sendEmail: jest.fn().mockResolvedValue(undefined) } as any;
+    const notifications = {
+      sendEmail: jest.fn().mockResolvedValue(undefined),
+    } as any;
     const tokenService = new TokenService({ sign: jest.fn() } as any);
     const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
     const service = new CustomersAuthService(
@@ -444,7 +448,11 @@ describe('CustomersAuthService.requestPasswordReset', () => {
   it('persists the reset token hash and sends a password-reset email when the email is registered with a password identity', async () => {
     const { service, manager, notifications } = buildService({
       customer: { id: 'cust-1', email: 'jane@example.com' },
-      identity: { id: 'identity-1', customerId: 'cust-1', provider: 'password' },
+      identity: {
+        id: 'identity-1',
+        customerId: 'cust-1',
+        provider: 'password',
+      },
     });
 
     await service.requestPasswordReset('jane@example.com');
@@ -524,7 +532,11 @@ describe('CustomersAuthService.requestPasswordReset', () => {
   it('performs the same shape of DB work (2 reads + 1 write) whether or not the account/identity exists', async () => {
     const found = buildService({
       customer: { id: 'cust-1', email: 'jane@example.com' },
-      identity: { id: 'identity-1', customerId: 'cust-1', provider: 'password' },
+      identity: {
+        id: 'identity-1',
+        customerId: 'cust-1',
+        provider: 'password',
+      },
     });
     const notFound = buildService({ customer: null, identity: null });
 
@@ -547,7 +559,11 @@ describe('CustomersAuthService.requestPasswordReset', () => {
   it('does not send the email when the DB transaction fails', async () => {
     const { service, manager, notifications } = buildService({
       customer: { id: 'cust-1', email: 'jane@example.com' },
-      identity: { id: 'identity-1', customerId: 'cust-1', provider: 'password' },
+      identity: {
+        id: 'identity-1',
+        customerId: 'cust-1',
+        provider: 'password',
+      },
     });
     manager.update.mockRejectedValue(new Error('db exploded'));
 
@@ -561,7 +577,11 @@ describe('CustomersAuthService.requestPasswordReset', () => {
   it('sends the email only after the DB transaction has resolved', async () => {
     const { service, manager, notifications } = buildService({
       customer: { id: 'cust-1', email: 'jane@example.com' },
-      identity: { id: 'identity-1', customerId: 'cust-1', provider: 'password' },
+      identity: {
+        id: 'identity-1',
+        customerId: 'cust-1',
+        provider: 'password',
+      },
     });
     const callOrder: string[] = [];
     manager.update.mockImplementation(() => {

@@ -10,7 +10,10 @@ const SENSITIVE_KEY_PATTERN = /token/i;
 export class LogNotificationsAdapter implements NotificationsPort {
   private readonly logger = new Logger(LogNotificationsAdapter.name);
 
-  async sendEmail(
+  // Not `async`: this adapter only writes a log line, so there is nothing to
+  // await. Real adapters (SES/SendGrid/…) will be genuinely async, which is why
+  // NotificationsPort still returns a Promise.
+  sendEmail(
     to: string,
     template: EmailTemplate,
     data: Record<string, unknown>,
@@ -24,5 +27,6 @@ export class LogNotificationsAdapter implements NotificationsPort {
     this.logger.log(
       `sendEmail to=${to} template=${template} data=${JSON.stringify(redactedData)}`,
     );
+    return Promise.resolve();
   }
 }

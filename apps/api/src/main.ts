@@ -1,7 +1,10 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
-config({ path: resolve(__dirname, '../../../../.env') });
+// Repo root is three levels up from this file's directory, both from src/
+// (apps/api/src) when run via ts-node and from dist/ (apps/api/dist) after a
+// build. data-source.ts needs four because it sits one level deeper (src/db).
+config({ path: resolve(__dirname, '../../../.env') });
 
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';

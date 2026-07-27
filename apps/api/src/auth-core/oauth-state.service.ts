@@ -33,16 +33,22 @@ export class OAuthStateService {
     if (!payload || !signature || !this.isValidSignature(payload, signature)) {
       throw new BadRequestException('Invalid OAuth state');
     }
-    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as OAuthState;
+    return JSON.parse(
+      Buffer.from(payload, 'base64url').toString('utf8'),
+    ) as OAuthState;
   }
 
   private isValidSignature(payload: string, signature: string): boolean {
     const expected = Buffer.from(this.sign(payload));
     const actual = Buffer.from(signature);
-    return expected.length === actual.length && timingSafeEqual(expected, actual);
+    return (
+      expected.length === actual.length && timingSafeEqual(expected, actual)
+    );
   }
 
   private sign(payload: string): string {
-    return createHmac('sha256', this.secret).update(payload).digest('base64url');
+    return createHmac('sha256', this.secret)
+      .update(payload)
+      .digest('base64url');
   }
 }

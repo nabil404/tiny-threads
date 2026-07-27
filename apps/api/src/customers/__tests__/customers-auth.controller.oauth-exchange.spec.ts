@@ -61,9 +61,9 @@ describe('CustomersAuthController#exchangeGoogleCode', () => {
     const { controller } = buildController({ requestTenantId: 'tenant-2' });
     const res = { cookie: jest.fn() } as any;
 
-    expect(() => controller.exchangeGoogleCode({ code: 'a-code' }, res)).toThrow(
-      BadRequestException,
-    );
+    expect(() =>
+      controller.exchangeGoogleCode({ code: 'a-code' }, res),
+    ).toThrow(BadRequestException);
     expect(res.cookie).not.toHaveBeenCalled();
   });
 
@@ -71,9 +71,9 @@ describe('CustomersAuthController#exchangeGoogleCode', () => {
     const { controller } = buildController({ redeemedPayload: null });
     const res = { cookie: jest.fn() } as any;
 
-    expect(() => controller.exchangeGoogleCode({ code: 'a-code' }, res)).toThrow(
-      BadRequestException,
-    );
+    expect(() =>
+      controller.exchangeGoogleCode({ code: 'a-code' }, res),
+    ).toThrow(BadRequestException);
   });
 
   it('rejects a code minted for a different population', () => {
@@ -87,8 +87,8 @@ describe('CustomersAuthController#exchangeGoogleCode', () => {
     });
     const res = { cookie: jest.fn() } as any;
 
-    expect(() => controller.exchangeGoogleCode({ code: 'a-code' }, res)).toThrow(
-      BadRequestException,
-    );
+    expect(() =>
+      controller.exchangeGoogleCode({ code: 'a-code' }, res),
+    ).toThrow(BadRequestException);
   });
 });

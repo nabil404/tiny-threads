@@ -19,11 +19,7 @@ import { OneTimeCodeService } from './one-time-code.service';
 // redirected back to the originating tenant domain.
 @Controller('auth/google')
 export class GoogleOAuthController {
-  private readonly client = new OAuth2Client(
-    process.env.GOOGLE_OAUTH_CLIENT_ID,
-    process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-    `${process.env.PLATFORM_BASE_URL}/auth/google/callback`,
-  );
+  private readonly client: OAuth2Client;
 
   constructor(
     private readonly oauthState: OAuthStateService,
@@ -31,7 +27,24 @@ export class GoogleOAuthController {
     private readonly merchantAdminsAuthService: MerchantAdminsAuthService,
     private readonly oneTimeCodeService: OneTimeCodeService,
     private readonly cls: ClsService,
-  ) {}
+  ) {
+    // Fail fast at boot rather than at the first OAuth attempt, mirroring
+    // OAuthStateService's constructor. Unset, this silently becomes the string
+    // "undefined/auth/google/callback" — a redirect_uri that no longer matches
+    // what's registered in Google Cloud Console, so every OAuth login breaks
+    // with an opaque Google-side error. Both /google/initiate handlers build
+    // their authorize URL from the same variable, so validating it once here
+    // (this controller is instantiated at bootstrap) covers all three
+    // read sites.
+    if (!process.env.PLATFORM_BASE_URL) {
+      throw new Error('PLATFORM_BASE_URL is not set');
+    }
+    this.client = new OAuth2Client(
+      process.env.GOOGLE_OAUTH_CLIENT_ID,
+      process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+      `${process.env.PLATFORM_BASE_URL}/auth/google/callback`,
+    );
+  }
 
   @Get('callback')
   async callback(
@@ -99,12 +112,13 @@ export class GoogleOAuthController {
     }
 
     if (state.population === 'merchant_admin') {
-      const result = await this.merchantAdminsAuthService.findOrCreateFromGoogle({
-        tenantId: state.tenantId,
-        googleSub: payload.sub,
-        email: payload.email,
-        emailVerified: Boolean(payload.email_verified),
-      });
+      const result =
+        await this.merchantAdminsAuthService.findOrCreateFromGoogle({
+          tenantId: state.tenantId,
+          googleSub: payload.sub,
+          email: payload.email,
+          emailVerified: Boolean(payload.email_verified),
+        });
       if ('linkRequired' in result) {
         return res.redirect(`${state.returnUrl}?linkRequired=true`);
       }

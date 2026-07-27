@@ -188,8 +188,14 @@ describe('GoogleOAuthController#callback', () => {
     await controller.callback('auth-code', 'signed-state-token', res);
 
     expect(cls.set).toHaveBeenCalledWith('tenantId', 'tenant-1');
-    expect(merchantAdminsAuthService.findOrCreateFromGoogle).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: 'tenant-1', googleSub: 'google-sub-1', email: 'jane@example.com' }),
+    expect(
+      merchantAdminsAuthService.findOrCreateFromGoogle,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        googleSub: 'google-sub-1',
+        email: 'jane@example.com',
+      }),
     );
     expect(oneTimeCodeService.issue).toHaveBeenCalledWith({
       population: 'merchant_admin',

@@ -1,4 +1,7 @@
-import { generateOpaqueRefreshToken, hashRefreshToken } from '../refresh-token-crypto';
+import {
+  generateOpaqueRefreshToken,
+  hashRefreshToken,
+} from '../refresh-token-crypto';
 
 describe('refresh token crypto', () => {
   it('generates distinct high-entropy opaque tokens', () => {

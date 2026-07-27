@@ -14,7 +14,8 @@ export interface MerchantAdminAccessTokenPayload {
   role: string;
 }
 
-export type AccessTokenPayload = CustomerAccessTokenPayload | MerchantAdminAccessTokenPayload;
+export type AccessTokenPayload =
+  CustomerAccessTokenPayload | MerchantAdminAccessTokenPayload;
 
 @Injectable()
 export class TokenService {

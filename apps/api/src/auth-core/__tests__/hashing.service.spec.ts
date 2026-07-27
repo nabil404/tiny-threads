@@ -11,7 +11,9 @@ describe('HashingService', () => {
 
   it('verifies a matching plaintext against its hash', async () => {
     const hash = await service.hash('correct horse battery staple');
-    await expect(service.verify(hash, 'correct horse battery staple')).resolves.toBe(true);
+    await expect(
+      service.verify(hash, 'correct horse battery staple'),
+    ).resolves.toBe(true);
   });
 
   it('rejects a non-matching plaintext', async () => {

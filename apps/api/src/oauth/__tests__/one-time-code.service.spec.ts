@@ -1,7 +1,9 @@
 import { OneTimeCodeService } from '../one-time-code.service';
 
 describe('OneTimeCodeService', () => {
-  function payload(overrides: Partial<Parameters<OneTimeCodeService['issue']>[0]> = {}) {
+  function payload(
+    overrides: Partial<Parameters<OneTimeCodeService['issue']>[0]> = {},
+  ) {
     return {
       population: 'customer' as const,
       tenantId: 'tenant-1',
