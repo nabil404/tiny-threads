@@ -13,6 +13,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
 import { OAuthStateService } from '../auth-core/oauth-state.service';
+import { assertReturnUrlMatchesRequestHost } from '../auth-core/return-url';
 import { OneTimeCodeService } from '../oauth/one-time-code.service';
 import { CustomersAuthService } from './customers-auth.service';
 import { CustomerJwtAuthGuard } from './customer-jwt-auth.guard';
@@ -118,7 +119,12 @@ export class CustomersAuthController {
   }
 
   @Post('google/initiate')
-  initiateGoogle(@Body() dto: CustomerOAuthInitiateDto) {
+  initiateGoogle(@Req() req: Request, @Body() dto: CustomerOAuthInitiateDto) {
+    // This endpoint is unauthenticated and the returnUrl it accepts is where
+    // the callback later delivers a token-bearing one-time code — so it must
+    // be pinned to this request's own (tenant-validated) host, or it's an open
+    // redirect that hands victim sessions to an attacker. See return-url.ts.
+    assertReturnUrlMatchesRequestHost(dto.returnUrl, req);
     const tenantId = this.cls.get<string>('tenantId');
     const state = this.oauthState.encode({
       population: 'customer',
@@ -135,6 +141,7 @@ export class CustomersAuthController {
     @Req() req: Request,
     @Body() dto: CustomerOAuthInitiateDto,
   ) {
+    assertReturnUrlMatchesRequestHost(dto.returnUrl, req);
     const { sub: customerId, tenantId } = req.user as {
       sub: string;
       tenantId: string;

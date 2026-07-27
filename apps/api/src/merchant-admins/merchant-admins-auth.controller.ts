@@ -13,6 +13,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
 import { OAuthStateService } from '../auth-core/oauth-state.service';
+import { assertReturnUrlMatchesRequestHost } from '../auth-core/return-url';
 import { OneTimeCodeService } from '../oauth/one-time-code.service';
 import { MerchantAdminsAuthService } from './merchant-admins-auth.service';
 import { RegisterMerchantUserDto } from './dto/register-merchant-user.dto';
@@ -21,6 +22,7 @@ import { InviteMemberDto } from './dto/invite-member.dto';
 import { RequestMerchantUserPasswordResetDto } from './dto/request-merchant-user-password-reset.dto';
 import { ResetMerchantUserPasswordDto } from './dto/reset-merchant-user-password.dto';
 import { MerchantAdminOAuthExchangeDto } from './dto/merchant-admin-oauth-exchange.dto';
+import { MerchantAdminOAuthInitiateDto } from './dto/merchant-admin-oauth-initiate.dto';
 import { MerchantAdminJwtAuthGuard } from './merchant-admin-jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
@@ -155,12 +157,20 @@ export class MerchantAdminsAuthController {
   // MerchantAdminsAuthService.findOrCreateFromGoogle), so there's no
   // link-initiate counterpart here — just login.
   @Post('google/initiate')
-  initiateGoogle(@Body('returnUrl') returnUrl: string) {
+  initiateGoogle(
+    @Req() req: Request,
+    @Body() dto: MerchantAdminOAuthInitiateDto,
+  ) {
+    // This endpoint is unauthenticated and the returnUrl it accepts is where
+    // the callback later delivers a token-bearing one-time code — so it must
+    // be pinned to this request's own (tenant-validated) host, or it's an open
+    // redirect that hands victim sessions to an attacker. See return-url.ts.
+    assertReturnUrlMatchesRequestHost(dto.returnUrl, req);
     const tenantId = this.cls.get<string>('tenantId');
     const state = this.oauthState.encode({
       population: 'merchant_admin',
       tenantId,
-      returnUrl,
+      returnUrl: dto.returnUrl,
       intent: 'login',
     });
     const params = new URLSearchParams({
