@@ -24,10 +24,10 @@ import type { Request } from 'express';
 // from a route excluded from that middleware.
 //
 // Comparison is on `hostname` (port-excluded), not `host`, deliberately:
-// TenantResolutionMiddleware itself derives the tenant slug from
-// `req.hostname`, so the hostname is the actual tenancy boundary here, and in
-// local development the API and the storefront legitimately run on different
-// ports of the same host.
+// TenantResolutionMiddleware itself resolves the tenant by matching
+// `req.hostname` against `tenants.host`, so the hostname is the actual
+// tenancy boundary here, and in local development the API and the
+// storefront legitimately run on different ports of the same host.
 export function assertReturnUrlMatchesRequestHost(
   returnUrl: string,
   req: Request,
