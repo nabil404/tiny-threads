@@ -8,5 +8,5 @@ export class Tenant extends ImmutableEntityBase {
   name!: string;
 
   @Column({ type: 'text', unique: true })
-  slug!: string;
+  host!: string;
 }
