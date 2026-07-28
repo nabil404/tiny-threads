@@ -32,13 +32,13 @@ describe('Customer refresh token RLS isolation (e2e)', () => {
     const tenantA = await tenantRepo.save(
       tenantRepo.create({
         name: 'RLS Test Tenant A',
-        slug: `rls-test-a-${randomUUID()}`,
+        host: `rls-test-a-${randomUUID()}.localhost`,
       }),
     );
     const tenantB = await tenantRepo.save(
       tenantRepo.create({
         name: 'RLS Test Tenant B',
-        slug: `rls-test-b-${randomUUID()}`,
+        host: `rls-test-b-${randomUUID()}.localhost`,
       }),
     );
     tenantAId = tenantA.id;

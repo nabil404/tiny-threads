@@ -41,13 +41,13 @@ describe('Merchant user refresh token RLS isolation (e2e)', () => {
     const tenantA = await tenantRepo.save(
       tenantRepo.create({
         name: 'MU RLS Test Tenant A',
-        slug: `mu-rls-test-a-${randomUUID()}`,
+        host: `mu-rls-test-a-${randomUUID()}.localhost`,
       }),
     );
     const tenantB = await tenantRepo.save(
       tenantRepo.create({
         name: 'MU RLS Test Tenant B',
-        slug: `mu-rls-test-b-${randomUUID()}`,
+        host: `mu-rls-test-b-${randomUUID()}.localhost`,
       }),
     );
     tenantAId = tenantA.id;
