@@ -61,6 +61,19 @@ describe('MerchantAdminsAuthController#initiateGoogle returnUrl origin check', (
     ).not.toThrow();
   });
 
+  // See the customer equivalent: Host is case-insensitive, URL.hostname is
+  // already lowercased, so an unnormalized comparison rejects a legitimate
+  // same-origin request.
+  it('accepts a same-host returnUrl when the Host header is uppercase', () => {
+    const { controller } = buildController();
+
+    expect(() =>
+      controller.initiateGoogle(fakeRequest('SHOP.PLATFORM.TEST'), {
+        returnUrl: 'https://shop.platform.test/admin/callback',
+      }),
+    ).not.toThrow();
+  });
+
   it('rejects a cross-origin returnUrl', () => {
     const { controller, oauthState } = buildController();
 

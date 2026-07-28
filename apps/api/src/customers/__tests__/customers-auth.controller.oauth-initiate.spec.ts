@@ -60,6 +60,19 @@ describe('CustomersAuthController#initiateGoogle returnUrl origin check', () => 
     ).not.toThrow();
   });
 
+  // Host headers are case-insensitive (RFC 9110) and nothing normalizes them,
+  // while URL.hostname is already lowercased by the WHATWG parser. Comparing
+  // the two raw 400s a perfectly legitimate same-origin request.
+  it('accepts a same-host returnUrl when the Host header is uppercase', () => {
+    const { controller } = buildController();
+
+    expect(() =>
+      controller.initiateGoogle(fakeRequest('SHOP.PLATFORM.TEST'), {
+        returnUrl: 'https://shop.platform.test/auth/callback',
+      }),
+    ).not.toThrow();
+  });
+
   it('rejects a cross-origin returnUrl', () => {
     const { controller, oauthState } = buildController();
 

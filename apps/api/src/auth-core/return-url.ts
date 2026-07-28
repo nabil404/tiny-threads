@@ -12,10 +12,17 @@ import type { Request } from 'express';
 // victim, and receive the victim's one-time code on their own server.
 //
 // The redirect target is therefore pinned to the hostname of the request that
-// asked for it — the same hostname TenantResolutionMiddleware already resolved
-// and confirmed belongs to a real tenant. That needs no allow-list and no new
-// config, and keeps working if custom domains land later, since it is derived
-// from the request's own already-validated host rather than a hardcoded list.
+// asked for it. That needs no allow-list and keeps working if custom domains
+// land later, since it is derived from the request's own host rather than a
+// hardcoded list.
+//
+// ⚠️ This is only sound because TenantResolutionMiddleware has already pinned
+// req.hostname to the platform's own domain (PLATFORM_HOST_SUFFIX) and
+// resolved it to a real tenant. req.hostname is otherwise just the
+// client-supplied Host header: without that upstream check an attacker forging
+// `Host: <real-slug>.evil.example` would control BOTH sides of the comparison
+// below and sail straight through it. Never call this from a route excluded
+// from that middleware.
 //
 // Comparison is on `hostname` (port-excluded), not `host`, deliberately:
 // TenantResolutionMiddleware itself derives the tenant slug from
@@ -35,7 +42,12 @@ export function assertReturnUrlMatchesRequestHost(
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new BadRequestException('returnUrl must be an http(s) URL');
   }
-  if (parsed.hostname !== req.hostname) {
+  // URL.hostname is already lowercased (and punycoded) by the WHATWG parser,
+  // but req.hostname is the raw Host header, which RFC 9110 makes
+  // case-insensitive and which nothing normalizes. Comparing them directly
+  // 400s a legitimate same-origin request that happened to send
+  // `Host: SHOP.platform.com`.
+  if (parsed.hostname !== req.hostname.toLowerCase()) {
     throw new BadRequestException(
       'returnUrl must point at the same host as this request',
     );
