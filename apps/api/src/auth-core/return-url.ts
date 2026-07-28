@@ -16,13 +16,12 @@ import type { Request } from 'express';
 // land later, since it is derived from the request's own host rather than a
 // hardcoded list.
 //
-// ⚠️ This is only sound because TenantResolutionMiddleware has already pinned
-// req.hostname to the platform's own domain (PLATFORM_HOST_SUFFIX) and
-// resolved it to a real tenant. req.hostname is otherwise just the
-// client-supplied Host header: without that upstream check an attacker forging
-// `Host: <real-slug>.evil.example` would control BOTH sides of the comparison
-// below and sail straight through it. Never call this from a route excluded
-// from that middleware.
+// ⚠️ This is only sound because TenantResolutionMiddleware has already
+// matched req.hostname against a real tenant's `host` column and resolved
+// it to a tenant. req.hostname is otherwise just the client-supplied Host
+// header: without that upstream lookup, an attacker could send any Host
+// they like and control BOTH sides of the comparison below. Never call this
+// from a route excluded from that middleware.
 //
 // Comparison is on `hostname` (port-excluded), not `host`, deliberately:
 // TenantResolutionMiddleware itself derives the tenant slug from
