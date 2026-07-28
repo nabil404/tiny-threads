@@ -45,7 +45,7 @@ export function assertReturnUrlMatchesRequestHost(
   // but req.hostname is the raw Host header, which RFC 9110 makes
   // case-insensitive and which nothing normalizes. Comparing them directly
   // 400s a legitimate same-origin request that happened to send
-  // `Host: SHOP.platform.com`.
+  // `Host: SHOP.tiny-threads.com`.
   if (parsed.hostname !== req.hostname.toLowerCase()) {
     throw new BadRequestException(
       'returnUrl must point at the same host as this request',

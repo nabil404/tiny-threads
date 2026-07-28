@@ -160,7 +160,7 @@ erDiagram
   TENANTS {
     uuid id PK
     string name
-    string slug
+    string host
   }
   PLATFORM_ADMINS {
     uuid id PK

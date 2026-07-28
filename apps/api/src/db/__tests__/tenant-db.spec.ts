@@ -15,12 +15,12 @@ describe('withTenant (RLS isolation)', () => {
   const tenantA = {
     id: '019353c2-1b1a-7000-8000-000000000001',
     name: 'Tenant A',
-    slug: 'tenant-a',
+    host: 'tenant-a.localhost',
   };
   const tenantB = {
     id: '019353c2-1b1a-7000-8000-000000000002',
     name: 'Tenant B',
-    slug: 'tenant-b',
+    host: 'tenant-b.localhost',
   };
 
   beforeAll(async () => {

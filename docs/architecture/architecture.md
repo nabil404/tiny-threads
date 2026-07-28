@@ -34,6 +34,8 @@ It resolves the tenant by looking up the request's **hostname** (`req.hostname`,
 
 Because the lookup is an exact match against a real row, there's no separate "is this host trustworthy" step the way a subdomain-suffix scheme would need — an attacker-forged `Host` either matches a genuine tenant's registered host (in which case it's the same origin a legitimate request would use) or it matches nothing and gets the same `404` as an unknown tenant. The middleware also has no required env var and doesn't fail-fast at boot as a result.
 
+There is no tenant-provisioning API today — a tenant's `host` value is inserted directly/manually, the same as before this branch. That's currently safe only because containment used to be structural (a resolvable host had to sit under the platform's own DNS suffix) and is now purely a data invariant on `tenants.host` that nothing in code enforces; any future self-service or automated tenant-provisioning surface will need domain-ownership verification and a reserved-host denylist (to stop a tenant registering the platform's own hostname, or a host it doesn't actually control) before it ships.
+
 Two consequences worth knowing:
 
 - **It is mounted on `forRoutes('*')` with a small, deliberate exclusion list** (`apps/api/src/app/app.module.ts`). Anything excluded must either not touch tenant data or set CLS itself from a verified source. Currently excluded:

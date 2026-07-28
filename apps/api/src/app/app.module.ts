@@ -32,9 +32,9 @@ export class AppModule implements NestModule {
         // signed OAuth state instead (see GoogleOAuthController#callback).
         { path: 'auth/google/callback', method: RequestMethod.GET },
         // Root/liveness route. It touches no tenant data, and load-balancer
-        // and container health probes hit it by IP or internal DNS name, which
-        // resolves to no tenant slug — leaving it behind the middleware makes
-        // every probe 404 with "Unknown tenant".
+        // and container health probes hit it by IP or internal DNS name,
+        // which resolves to no registered tenant host — leaving it behind
+        // the middleware makes every probe 404 with "Unknown tenant".
         { path: '/', method: RequestMethod.GET },
       )
       .forRoutes('*');

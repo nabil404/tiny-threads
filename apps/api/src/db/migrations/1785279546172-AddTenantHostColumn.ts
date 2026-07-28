@@ -8,8 +8,13 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 // doesn't fail against dev/test databases that already have tenant rows
 // with no real host value to derive from. There is no production tenant
 // data to migrate for real; this is a safety net, not a migration
-// strategy. The transform is injective (slug was already unique), so it
-// can never collide with the new UNIQUE constraint on host.
+// strategy. The up() transform is injective (slug was already unique), so
+// it can never collide with the new UNIQUE constraint on host. down()'s
+// reverse transform is lossy/non-injective for real custom-domain hosts
+// (e.g. "shop.a.com" and "shop.b.com" both yield "shop") — it only
+// round-trips cleanly for the "<slug>.localhost"-shaped hosts this
+// migration's own backfill produces.
+
 export class AddTenantHostColumn1785279546172 implements MigrationInterface {
   name = 'AddTenantHostColumn1785279546172';
 
