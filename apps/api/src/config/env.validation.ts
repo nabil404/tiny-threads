@@ -4,6 +4,7 @@ import { plainToInstance } from 'class-transformer';
 import {
   IsEnum,
   IsNotEmpty,
+  IsNumberString,
   IsOptional,
   IsString,
   validateSync,
@@ -21,7 +22,7 @@ export class EnvironmentVariables {
   NODE_ENV?: NodeEnv;
 
   @IsOptional()
-  @IsString()
+  @IsNumberString()
   PORT?: string;
 
   @IsString()

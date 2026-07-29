@@ -52,6 +52,7 @@ describe('validate', () => {
 
   it.each([
     'DATABASE_URL',
+    'DATABASE_URL_MIGRATIONS',
     'JWT_SECRET',
     'OAUTH_STATE_SECRET',
     'GOOGLE_OAUTH_CLIENT_ID',
@@ -61,5 +62,13 @@ describe('validate', () => {
     const env = { ...validEnv(), [key]: '' };
 
     expect(() => validate(env)).toThrow();
+  });
+
+  it('accepts a valid numeric PORT', () => {
+    expect(() => validate({ ...validEnv(), PORT: '4000' })).not.toThrow();
+  });
+
+  it('throws when PORT is set to a non-numeric value', () => {
+    expect(() => validate({ ...validEnv(), PORT: 'abc' })).toThrow();
   });
 });
