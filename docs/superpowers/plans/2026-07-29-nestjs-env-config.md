@@ -76,6 +76,14 @@ describe('validate', () => {
     expect(() => validate({ ...validEnv(), NODE_ENV: 'staging' })).toThrow();
   });
 
+  it('accepts a valid numeric PORT', () => {
+    expect(() => validate({ ...validEnv(), PORT: '4000' })).not.toThrow();
+  });
+
+  it('throws when PORT is set to a non-numeric value', () => {
+    expect(() => validate({ ...validEnv(), PORT: 'abc' })).toThrow();
+  });
+
   it.each([
     'DATABASE_URL',
     'DATABASE_URL_MIGRATIONS',
@@ -93,6 +101,7 @@ describe('validate', () => {
 
   it.each([
     'DATABASE_URL',
+    'DATABASE_URL_MIGRATIONS',
     'JWT_SECRET',
     'OAUTH_STATE_SECRET',
     'GOOGLE_OAUTH_CLIENT_ID',
@@ -120,6 +129,7 @@ import { plainToInstance } from 'class-transformer';
 import {
   IsEnum,
   IsNotEmpty,
+  IsNumberString,
   IsOptional,
   IsString,
   validateSync,
@@ -137,7 +147,7 @@ export class EnvironmentVariables {
   NODE_ENV?: NodeEnv;
 
   @IsOptional()
-  @IsString()
+  @IsNumberString()
   PORT?: string;
 
   @IsString()

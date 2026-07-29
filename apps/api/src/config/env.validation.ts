@@ -10,7 +10,7 @@ import {
   validateSync,
 } from 'class-validator';
 
-enum NodeEnv {
+export enum NodeEnv {
   Development = 'development',
   Production = 'production',
   Test = 'test',

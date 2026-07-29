@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import * as entities from './entities';
-import { validate } from '../config/env.validation';
+import { NodeEnv, validate } from '../config/env.validation';
 
 config({ path: resolve(__dirname, '../../../../.env') });
 
@@ -20,8 +20,8 @@ export const typeOrmConfig: DataSourceOptions = {
   migrationsTableName: 'migrations',
   synchronize: false,
   migrationsRun: false,
-  ssl: env.NODE_ENV === 'production',
-  logging: env.NODE_ENV === 'development',
+  ssl: env.NODE_ENV === NodeEnv.Production,
+  logging: env.NODE_ENV === NodeEnv.Development,
 };
 
 export default new DataSource({
