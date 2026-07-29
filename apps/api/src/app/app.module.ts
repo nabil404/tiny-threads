@@ -4,6 +4,7 @@ import {
   NestModule,
   RequestMethod,
 } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from '../db/database.module';
@@ -11,9 +12,15 @@ import { TenantResolutionMiddleware } from '../tenancy/tenant-resolution.middlew
 import { CustomersAuthModule } from '../customers/customers-auth.module';
 import { OAuthModule } from '../oauth/oauth.module';
 import { MerchantAdminsAuthModule } from '../merchant-admins/merchant-admins-auth.module';
+import { validate } from '../config/env.validation';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      ignoreEnvFile: true, // main.ts already loads the repo-root .env via dotenv before Nest boots
+      validate,
+    }),
     DatabaseModule,
     CustomersAuthModule,
     OAuthModule,
