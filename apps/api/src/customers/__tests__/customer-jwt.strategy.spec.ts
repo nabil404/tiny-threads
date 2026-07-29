@@ -1,7 +1,9 @@
 import { UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import { CustomerJwtStrategy } from '../customer-jwt.strategy';
 import type { AccessTokenPayload } from '../../auth-core/token.service';
+import type { EnvironmentVariables } from '../../config/env.validation';
 
 // The two most load-bearing security properties of the access token are
 // audience separation (a customer token must not authenticate a merchant admin
@@ -12,12 +14,11 @@ function buildStrategy(clsTenantId: string | undefined) {
   const cls = {
     get: jest.fn().mockReturnValue(clsTenantId),
   } as unknown as ClsService;
-  return { strategy: new CustomerJwtStrategy(cls), cls };
+  const configService = {
+    get: jest.fn().mockReturnValue('test-jwt-secret'),
+  } as unknown as ConfigService<EnvironmentVariables, true>;
+  return { strategy: new CustomerJwtStrategy(cls, configService), cls };
 }
-
-beforeAll(() => {
-  process.env.JWT_SECRET = 'test-jwt-secret';
-});
 
 describe('CustomerJwtStrategy#validate', () => {
   const customerPayload: AccessTokenPayload = {

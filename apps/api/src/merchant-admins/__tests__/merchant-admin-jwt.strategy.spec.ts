@@ -1,7 +1,9 @@
 import { UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import { MerchantAdminJwtStrategy } from '../merchant-admin-jwt.strategy';
 import type { AccessTokenPayload } from '../../auth-core/token.service';
+import type { EnvironmentVariables } from '../../config/env.validation';
 
 // Mirrors customer-jwt.strategy.spec.ts — direct coverage for the audience
 // separation and tenant binding enforced by this strategy (see there for the
@@ -10,12 +12,14 @@ function buildStrategy(clsTenantId: string | undefined) {
   const cls = {
     get: jest.fn().mockReturnValue(clsTenantId),
   } as unknown as ClsService;
-  return { strategy: new MerchantAdminJwtStrategy(cls), cls };
+  const configService = {
+    get: jest.fn().mockReturnValue('test-jwt-secret'),
+  } as unknown as ConfigService<EnvironmentVariables, true>;
+  return {
+    strategy: new MerchantAdminJwtStrategy(cls, configService),
+    cls,
+  };
 }
-
-beforeAll(() => {
-  process.env.JWT_SECRET = 'test-jwt-secret';
-});
 
 describe('MerchantAdminJwtStrategy#validate', () => {
   const merchantAdminPayload: AccessTokenPayload = {

@@ -1,22 +1,23 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AccessTokenPayload } from '../auth-core/token.service';
+import { EnvironmentVariables } from '../config/env.validation';
 
 @Injectable()
 export class MerchantAdminJwtStrategy extends PassportStrategy(
   Strategy,
   'merchant-admin-jwt',
 ) {
-  constructor(private readonly cls: ClsService) {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      throw new Error('JWT_SECRET is not set');
-    }
+  constructor(
+    private readonly cls: ClsService,
+    configService: ConfigService<EnvironmentVariables, true>,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: secret,
+      secretOrKey: configService.get('JWT_SECRET', { infer: true }),
     });
   }
 
