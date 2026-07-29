@@ -1,19 +1,18 @@
 import { BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { OAuthStateService } from '../oauth-state.service';
+import type { EnvironmentVariables } from '../../config/env.validation';
+
+function buildService(secret = 'test-oauth-state-secret') {
+  const configService = {
+    get: jest.fn().mockReturnValue(secret),
+  } as unknown as ConfigService<EnvironmentVariables, true>;
+  return new OAuthStateService(configService);
+}
 
 describe('OAuthStateService', () => {
-  const originalSecret = process.env.OAUTH_STATE_SECRET;
-
-  beforeAll(() => {
-    process.env.OAUTH_STATE_SECRET = 'test-oauth-state-secret';
-  });
-
-  afterAll(() => {
-    process.env.OAUTH_STATE_SECRET = originalSecret;
-  });
-
   it('round-trips a state payload', () => {
-    const service = new OAuthStateService();
+    const service = buildService();
     const token = service.encode({
       population: 'customer',
       tenantId: 'tenant-1',
@@ -31,7 +30,7 @@ describe('OAuthStateService', () => {
   });
 
   it('rejects a tampered state token', () => {
-    const service = new OAuthStateService();
+    const service = buildService();
     const token = service.encode({
       population: 'merchant_admin',
       tenantId: 'tenant-1',

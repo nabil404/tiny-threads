@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { EnvironmentVariables } from '../config/env.validation';
 
 export interface OAuthState {
   population: 'customer' | 'merchant_admin';
@@ -14,12 +16,8 @@ export interface OAuthState {
 export class OAuthStateService {
   private readonly secret: string;
 
-  constructor() {
-    const secret = process.env.OAUTH_STATE_SECRET;
-    if (!secret) {
-      throw new Error('OAUTH_STATE_SECRET is not set');
-    }
-    this.secret = secret;
+  constructor(configService: ConfigService<EnvironmentVariables, true>) {
+    this.secret = configService.get('OAUTH_STATE_SECRET', { infer: true });
   }
 
   encode(state: Omit<OAuthState, 'nonce'>): string {

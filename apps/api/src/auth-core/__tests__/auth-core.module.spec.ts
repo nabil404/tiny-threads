@@ -1,26 +1,28 @@
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { HashingService } from '../hashing.service';
 import { TokenService } from '../token.service';
 import { OAuthStateService } from '../oauth-state.service';
 import { NOTIFICATIONS_PORT } from '../notifications/notifications-port';
 import { AuthCoreModule } from '../auth-core.module';
+import type { EnvironmentVariables } from '../../config/env.validation';
 
 describe('AuthCoreModule', () => {
-  const originalEnv = { ...process.env };
-
-  beforeAll(() => {
-    process.env.JWT_SECRET = 'test-jwt-secret';
-    process.env.OAUTH_STATE_SECRET = 'test-oauth-state-secret';
-  });
-
-  afterAll(() => {
-    process.env = originalEnv;
-  });
-
   it('provides HashingService, TokenService, OAuthStateService, and NOTIFICATIONS_PORT', async () => {
+    const configService = {
+      get: jest.fn().mockImplementation((key: string) => {
+        if (key === 'OAUTH_STATE_SECRET') return 'test-oauth-state-secret';
+        if (key === 'JWT_SECRET') return 'test-jwt-secret';
+        return undefined;
+      }),
+    } as unknown as ConfigService<EnvironmentVariables, true>;
+
     const moduleRef = await Test.createTestingModule({
       imports: [AuthCoreModule],
-    }).compile();
+    })
+      .overrideProvider(ConfigService)
+      .useValue(configService)
+      .compile();
 
     expect(moduleRef.get(HashingService)).toBeInstanceOf(HashingService);
     expect(moduleRef.get(TokenService)).toBeInstanceOf(TokenService);
