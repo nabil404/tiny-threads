@@ -1,5 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
 import { CustomersAuthController } from '../customers-auth.controller';
+import type { EnvironmentVariables } from '../../config/env.validation';
 
 // Regression coverage for the final-review finding C1: /google/initiate is
 // unauthenticated and the returnUrl it accepts is where the OAuth callback
@@ -12,12 +14,22 @@ function buildController() {
     encode: jest.fn().mockReturnValue('signed-state'),
   } as any;
   const oneTimeCodeService = {} as any;
+  const configService = {
+    get: jest.fn(
+      (key: string) =>
+        ({
+          GOOGLE_OAUTH_CLIENT_ID: 'test-client-id',
+          PLATFORM_BASE_URL: 'https://platform.test',
+        })[key],
+    ),
+  } as unknown as ConfigService<EnvironmentVariables, true>;
 
   const controller = new CustomersAuthController(
     customersAuthService,
     cls,
     oauthState,
     oneTimeCodeService,
+    configService,
   );
 
   return { controller, oauthState };
@@ -27,11 +39,6 @@ function buildController() {
 function fakeRequest(hostname: string, user?: unknown) {
   return { hostname, user } as any;
 }
-
-beforeAll(() => {
-  process.env.GOOGLE_OAUTH_CLIENT_ID = 'test-client-id';
-  process.env.PLATFORM_BASE_URL = 'https://platform.test';
-});
 
 describe('CustomersAuthController#initiateGoogle returnUrl origin check', () => {
   it('accepts a returnUrl on the same host as the request', () => {

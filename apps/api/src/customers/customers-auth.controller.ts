@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
 import { OAuthStateService } from '../auth-core/oauth-state.service';
@@ -23,6 +24,7 @@ import { CustomerOAuthInitiateDto } from './dto/customer-oauth-initiate.dto';
 import { CustomerOAuthExchangeDto } from './dto/customer-oauth-exchange.dto';
 import { RequestCustomerPasswordResetDto } from './dto/request-customer-password-reset.dto';
 import { ResetCustomerPasswordDto } from './dto/reset-customer-password.dto';
+import { EnvironmentVariables } from '../config/env.validation';
 
 const REFRESH_COOKIE_NAME = 'customer_refresh_token';
 const REFRESH_COOKIE_OPTIONS = {
@@ -39,6 +41,7 @@ export class CustomersAuthController {
     private readonly cls: ClsService,
     private readonly oauthState: OAuthStateService,
     private readonly oneTimeCodeService: OneTimeCodeService,
+    private readonly configService: ConfigService<EnvironmentVariables, true>,
   ) {}
 
   @Post('register')
@@ -192,8 +195,10 @@ export class CustomersAuthController {
 
   private googleAuthorizeUrl(state: string): string {
     const params = new URLSearchParams({
-      client_id: process.env.GOOGLE_OAUTH_CLIENT_ID!,
-      redirect_uri: `${process.env.PLATFORM_BASE_URL}/auth/google/callback`,
+      client_id: this.configService.get('GOOGLE_OAUTH_CLIENT_ID', {
+        infer: true,
+      }),
+      redirect_uri: `${this.configService.get('PLATFORM_BASE_URL', { infer: true })}/auth/google/callback`,
       response_type: 'code',
       scope: 'openid email profile',
       state,

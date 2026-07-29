@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
 import { OAuthStateService } from '../auth-core/oauth-state.service';
@@ -27,6 +28,7 @@ import { MerchantAdminJwtAuthGuard } from './merchant-admin-jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
 import type { MerchantAdminAccessTokenPayload } from '../auth-core/token.service';
+import { EnvironmentVariables } from '../config/env.validation';
 
 const REFRESH_COOKIE_NAME = 'merchant_admin_refresh_token';
 const REFRESH_COOKIE_OPTIONS = {
@@ -43,6 +45,7 @@ export class MerchantAdminsAuthController {
     private readonly cls: ClsService,
     private readonly oauthState: OAuthStateService,
     private readonly oneTimeCodeService: OneTimeCodeService,
+    private readonly configService: ConfigService<EnvironmentVariables, true>,
   ) {}
 
   @Post('register')
@@ -174,8 +177,10 @@ export class MerchantAdminsAuthController {
       intent: 'login',
     });
     const params = new URLSearchParams({
-      client_id: process.env.GOOGLE_OAUTH_CLIENT_ID!,
-      redirect_uri: `${process.env.PLATFORM_BASE_URL}/auth/google/callback`,
+      client_id: this.configService.get('GOOGLE_OAUTH_CLIENT_ID', {
+        infer: true,
+      }),
+      redirect_uri: `${this.configService.get('PLATFORM_BASE_URL', { infer: true })}/auth/google/callback`,
       response_type: 'code',
       scope: 'openid email profile',
       state,

@@ -37,6 +37,7 @@ function buildController(options?: {
     cls,
     oauthState,
     oneTimeCodeService,
+    { get: jest.fn() } as any,
   );
 
   return { controller, cls, oneTimeCodeService };

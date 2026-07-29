@@ -1,5 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
 import { MerchantAdminsAuthController } from '../merchant-admins-auth.controller';
+import type { EnvironmentVariables } from '../../config/env.validation';
 
 // Mirrors customers-auth.controller.oauth-initiate.spec.ts — regression
 // coverage for final-review finding C1 (unauthenticated open redirect on the
@@ -11,12 +13,22 @@ function buildController() {
     encode: jest.fn().mockReturnValue('signed-state'),
   } as any;
   const oneTimeCodeService = {} as any;
+  const configService = {
+    get: jest.fn(
+      (key: string) =>
+        ({
+          GOOGLE_OAUTH_CLIENT_ID: 'test-client-id',
+          PLATFORM_BASE_URL: 'https://platform.test',
+        })[key],
+    ),
+  } as unknown as ConfigService<EnvironmentVariables, true>;
 
   const controller = new MerchantAdminsAuthController(
     merchantAdminsAuthService,
     cls,
     oauthState,
     oneTimeCodeService,
+    configService,
   );
 
   return { controller, oauthState };
@@ -25,11 +37,6 @@ function buildController() {
 function fakeRequest(hostname: string) {
   return { hostname } as any;
 }
-
-beforeAll(() => {
-  process.env.GOOGLE_OAUTH_CLIENT_ID = 'test-client-id';
-  process.env.PLATFORM_BASE_URL = 'https://platform.test';
-});
 
 describe('MerchantAdminsAuthController#initiateGoogle returnUrl origin check', () => {
   it('accepts a returnUrl on the same host as the request', () => {
