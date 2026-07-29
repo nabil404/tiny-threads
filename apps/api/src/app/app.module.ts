@@ -8,7 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from '../db/database.module';
-import { TenantResolutionMiddleware } from '../tenancy/tenant-resolution.middleware';
+import { TenantResolutionMiddleware } from '../common/middleware/tenant-resolution.middleware';
 import { CustomersAuthModule } from '../customers/customers-auth.module';
 import { OAuthModule } from '../oauth/oauth.module';
 import { MerchantAdminsAuthModule } from '../merchant-admins/merchant-admins-auth.module';

@@ -51,7 +51,7 @@ There's no global `APP_GUARD` and no `@Public()` decorator — guards (`Customer
 
 Almost every request needs a resolved tenant before auth logic can run, because `TenantDbService.run()` (`withTenant`) reads `tenant_id` exclusively from CLS and throws if it's unset.
 
-`TenantResolutionMiddleware` (`apps/api/src/tenancy/tenant-resolution.middleware.ts:25-44`) is mounted `forRoutes('*')` and, for every request, looks up the lowercased `Host` header against `tenants.host` and calls `cls.set('tenantId', tenant.id)`. Unknown host → `404`.
+`TenantResolutionMiddleware` (`apps/api/src/common/middleware/tenant-resolution.middleware.ts:25-44`) is mounted `forRoutes('*')` and, for every request, looks up the lowercased `Host` header against `tenants.host` and calls `cls.set('tenantId', tenant.id)`. Unknown host → `404`.
 
 Two routes are excluded from it (see the backend-engineer skill for the full rationale): `GET /auth/google/callback` (a platform-domain route — seeds CLS itself from the signed OAuth `state`, §5 below) and `GET /` (health probe). Any other route excluded from this middleware would have an **unvalidated** `req.hostname` and must not use it as a security input — this is exactly what `return-url.ts` depends on (§5).
 
@@ -110,14 +110,14 @@ The conditional `UPDATE ... WHERE revoked_at IS NULL` closes a race where two co
 
 ## 5. JWT structure & guards
 
-Access tokens are short-lived JWTs (`expiresIn: '15m'`, hardcoded — not env-driven), signed with one shared `JWT_SECRET` across **all** tenants (`auth-core/token.service.ts`):
+Access tokens are short-lived JWTs (`expiresIn: '15m'`, hardcoded — not env-driven), signed with one shared `JWT_SECRET` across **all** tenants (`auth-core/services/token.service.ts`):
 
 | Population | `aud` | Payload |
 |---|---|---|
 | Customer | `'customer'` | `{ sub: customerId, aud, tenantId }` |
 | Merchant admin | `'merchant_admin'` | `{ sub: merchantUserId, aud, tenantId, role }` |
 
-Because the secret is shared, `CustomerJwtStrategy`/`MerchantAdminJwtStrategy` (`customer-jwt.strategy.ts:24-38`) can't rely on the signature alone to prove tenancy — they additionally reject with `401 Token tenant mismatch` if `payload.tenantId !== cls.get('tenantId')`, i.e. the token's tenant must match the tenant `TenantResolutionMiddleware` resolved from *this* request's own host. `RolesGuard` (`merchant-admins/roles.guard.ts`) runs after the JWT guard and checks `request.user.role` against `@Roles(...)` metadata on the handler.
+Because the secret is shared, `CustomerJwtStrategy`/`MerchantAdminJwtStrategy` (`customer-jwt.strategy.ts:24-38`) can't rely on the signature alone to prove tenancy — they additionally reject with `401 Token tenant mismatch` if `payload.tenantId !== cls.get('tenantId')`, i.e. the token's tenant must match the tenant `TenantResolutionMiddleware` resolved from *this* request's own host. `RolesGuard` (`merchant-admins/guards/roles.guard.ts`) runs after the JWT guard and checks `request.user.role` against `@Roles(...)` metadata on the handler.
 
 ## 6. Google OAuth flow
 

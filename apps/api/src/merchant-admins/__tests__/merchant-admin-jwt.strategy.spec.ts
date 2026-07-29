@@ -1,8 +1,8 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
-import { MerchantAdminJwtStrategy } from '../merchant-admin-jwt.strategy';
-import type { AccessTokenPayload } from '../../auth-core/token.service';
+import { MerchantAdminJwtStrategy } from '../strategies/merchant-admin-jwt.strategy';
+import type { AccessTokenPayload } from '../../auth-core/services/token.service';
 import type { EnvironmentVariables } from '../../config/env.validation';
 
 // Mirrors customer-jwt.strategy.spec.ts — direct coverage for the audience

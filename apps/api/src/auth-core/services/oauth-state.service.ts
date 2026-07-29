@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
-import { EnvironmentVariables } from '../config/env.validation';
+import { EnvironmentVariables } from '../../config/env.validation';
+import { AuthPopulation } from '../../common/constants';
 
 export interface OAuthState {
-  population: 'customer' | 'merchant_admin';
+  population: AuthPopulation;
   tenantId: string;
   returnUrl: string;
   intent: 'login' | 'link';

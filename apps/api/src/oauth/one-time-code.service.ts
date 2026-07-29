@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { randomBytes } from 'node:crypto';
-
-export type OAuthPopulation = 'customer' | 'merchant_admin';
+import { generateOpaqueToken } from '../common/utils/refresh-token-crypto';
+import { AUTH_TOKEN_TTL_MS, AuthPopulation } from '../common/constants';
 
 export interface OneTimeCodePayload {
-  population: OAuthPopulation;
+  population: AuthPopulation;
   // Bound to the tenant the tokens were minted for — the exchange endpoint
   // must check this against the redeeming request's own resolved tenant
   // (from CLS) before honoring the code, otherwise a code intercepted or
@@ -18,8 +17,6 @@ export interface OneTimeCodePayload {
 interface StoredEntry extends OneTimeCodePayload {
   expiresAt: number;
 }
-
-const CODE_TTL_MS = 60_000;
 
 // Hands a real (access, refresh) token pair from the centralized Google
 // callback (a platform domain) to a same-tenant-domain frontend via a
@@ -39,8 +36,11 @@ export class OneTimeCodeService {
 
   // ttlMs is overridable (defaults to the real 60s TTL) purely so tests can
   // exercise expiry deterministically without faking global timers.
-  issue(payload: OneTimeCodePayload, ttlMs: number = CODE_TTL_MS): string {
-    const code = randomBytes(32).toString('base64url');
+  issue(
+    payload: OneTimeCodePayload,
+    ttlMs: number = AUTH_TOKEN_TTL_MS.ONE_TIME_CODE,
+  ): string {
+    const code = generateOpaqueToken();
     this.codes.set(code, { ...payload, expiresAt: Date.now() + ttlMs });
     return code;
   }

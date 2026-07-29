@@ -13,8 +13,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
-import { OAuthStateService } from '../auth-core/oauth-state.service';
-import { assertReturnUrlMatchesRequestHost } from '../auth-core/return-url';
+import { OAuthStateService } from '../auth-core/services/oauth-state.service';
+import { assertReturnUrlMatchesRequestHost } from '../common/utils/return-url';
 import { OneTimeCodeService } from '../oauth/one-time-code.service';
 import { MerchantAdminsAuthService } from './merchant-admins-auth.service';
 import { RegisterMerchantUserDto } from './dto/register-merchant-user.dto';
@@ -24,19 +24,15 @@ import { RequestMerchantUserPasswordResetDto } from './dto/request-merchant-user
 import { ResetMerchantUserPasswordDto } from './dto/reset-merchant-user-password.dto';
 import { MerchantAdminOAuthExchangeDto } from './dto/merchant-admin-oauth-exchange.dto';
 import { MerchantAdminOAuthInitiateDto } from './dto/merchant-admin-oauth-initiate.dto';
-import { MerchantAdminJwtAuthGuard } from './merchant-admin-jwt-auth.guard';
-import { RolesGuard } from './roles.guard';
-import { Roles } from './roles.decorator';
-import type { MerchantAdminAccessTokenPayload } from '../auth-core/token.service';
+import { MerchantAdminJwtAuthGuard } from './guards/merchant-admin-jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
+import { Roles } from './decorators/roles.decorator';
+import type { MerchantAdminAccessTokenPayload } from '../auth-core/services/token.service';
 import { EnvironmentVariables } from '../config/env.validation';
+import { AUTH_REFRESH_COOKIE_OPTIONS } from '../common/constants';
 
 const REFRESH_COOKIE_NAME = 'merchant_admin_refresh_token';
-const REFRESH_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: true,
-  sameSite: 'lax' as const,
-  path: '/merchant-admins/auth',
-};
+const REFRESH_COOKIE_PATH = '/merchant-admins/auth';
 
 @Controller('merchant-admins/auth')
 export class MerchantAdminsAuthController {
@@ -94,7 +90,10 @@ export class MerchantAdminsAuthController {
       accessToken: string;
       refreshToken: string;
     };
-    res.cookie(REFRESH_COOKIE_NAME, refreshToken, REFRESH_COOKIE_OPTIONS);
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
+      ...AUTH_REFRESH_COOKIE_OPTIONS,
+      path: REFRESH_COOKIE_PATH,
+    });
     return { accessToken };
   }
 
@@ -119,11 +118,10 @@ export class MerchantAdminsAuthController {
       tenantId,
       rawRefreshToken,
     );
-    res.cookie(
-      REFRESH_COOKIE_NAME,
-      result.refreshToken,
-      REFRESH_COOKIE_OPTIONS,
-    );
+    res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, {
+      ...AUTH_REFRESH_COOKIE_OPTIONS,
+      path: REFRESH_COOKIE_PATH,
+    });
     return { accessToken: result.accessToken };
   }
 
@@ -137,7 +135,7 @@ export class MerchantAdminsAuthController {
     if (rawRefreshToken) {
       await this.merchantAdminsAuthService.logout(tenantId, rawRefreshToken);
     }
-    res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_OPTIONS.path });
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });
     return { success: true };
   }
 
@@ -215,11 +213,10 @@ export class MerchantAdminsAuthController {
     ) {
       throw new BadRequestException('Invalid or expired code');
     }
-    res.cookie(
-      REFRESH_COOKIE_NAME,
-      payload.refreshToken,
-      REFRESH_COOKIE_OPTIONS,
-    );
+    res.cookie(REFRESH_COOKIE_NAME, payload.refreshToken, {
+      ...AUTH_REFRESH_COOKIE_OPTIONS,
+      path: REFRESH_COOKIE_PATH,
+    });
     return { accessToken: payload.accessToken };
   }
 }

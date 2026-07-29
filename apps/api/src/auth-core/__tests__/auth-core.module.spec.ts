@@ -1,9 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
-import { HashingService } from '../hashing.service';
-import { TokenService } from '../token.service';
-import { OAuthStateService } from '../oauth-state.service';
-import { NOTIFICATIONS_PORT } from '../notifications/notifications-port';
+import { HashingService } from '../services/hashing.service';
+import { TokenService } from '../services/token.service';
+import { OAuthStateService } from '../services/oauth-state.service';
 import { AuthCoreModule } from '../auth-core.module';
 
 describe('AuthCoreModule', () => {
@@ -18,7 +17,7 @@ describe('AuthCoreModule', () => {
     process.env = originalEnv;
   });
 
-  it('provides HashingService, TokenService, OAuthStateService, and NOTIFICATIONS_PORT', async () => {
+  it('provides HashingService, TokenService, and OAuthStateService', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }),
@@ -29,6 +28,5 @@ describe('AuthCoreModule', () => {
     expect(moduleRef.get(HashingService)).toBeInstanceOf(HashingService);
     expect(moduleRef.get(TokenService)).toBeInstanceOf(TokenService);
     expect(moduleRef.get(OAuthStateService)).toBeInstanceOf(OAuthStateService);
-    expect(moduleRef.get(NOTIFICATIONS_PORT)).toBeDefined();
   });
 });

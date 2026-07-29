@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { OAuthStateService } from '../oauth-state.service';
+import { OAuthStateService } from '../services/oauth-state.service';
 import type { EnvironmentVariables } from '../../config/env.validation';
 
 function buildService(secret = 'test-oauth-state-secret') {

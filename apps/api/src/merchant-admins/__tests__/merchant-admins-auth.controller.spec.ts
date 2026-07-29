@@ -1,8 +1,8 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { MerchantAdminsAuthController } from '../merchant-admins-auth.controller';
-import { MerchantAdminJwtAuthGuard } from '../merchant-admin-jwt-auth.guard';
-import { RolesGuard } from '../roles.guard';
-import { ROLES_KEY } from '../roles.decorator';
+import { MerchantAdminJwtAuthGuard } from '../guards/merchant-admin-jwt-auth.guard';
+import { RolesGuard } from '../guards/roles.guard';
+import { ROLES_KEY } from '../decorators/roles.decorator';
 
 // Fix round 1 (security): POST /merchant-admins/auth/invite is the ONLY path
 // that grants a role now that register() no longer accepts a caller-supplied

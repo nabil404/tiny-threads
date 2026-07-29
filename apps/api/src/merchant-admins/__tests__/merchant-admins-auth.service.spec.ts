@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { MerchantAdminsAuthService } from '../merchant-admins-auth.service';
-import { TokenService } from '../../auth-core/token.service';
+import { TokenService } from '../../auth-core/services/token.service';
 import {
   MerchantUser,
   MerchantUserIdentity,

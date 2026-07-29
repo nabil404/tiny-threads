@@ -1,7 +1,12 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { AUTH_TOKEN_BYTE_LENGTH } from '../constants';
+
+export function generateOpaqueToken(): string {
+  return randomBytes(AUTH_TOKEN_BYTE_LENGTH).toString('base64url');
+}
 
 export function generateOpaqueRefreshToken(): string {
-  return randomBytes(32).toString('base64url');
+  return generateOpaqueToken();
 }
 
 export function hashRefreshToken(token: string): string {

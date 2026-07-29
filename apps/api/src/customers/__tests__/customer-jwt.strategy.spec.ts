@@ -1,8 +1,8 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
-import { CustomerJwtStrategy } from '../customer-jwt.strategy';
-import type { AccessTokenPayload } from '../../auth-core/token.service';
+import { CustomerJwtStrategy } from '../strategies/customer-jwt.strategy';
+import type { AccessTokenPayload } from '../../auth-core/services/token.service';
 import type { EnvironmentVariables } from '../../config/env.validation';
 
 // The two most load-bearing security properties of the access token are

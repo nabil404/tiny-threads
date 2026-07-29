@@ -3,13 +3,13 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { AccessTokenPayload } from '../auth-core/token.service';
-import { EnvironmentVariables } from '../config/env.validation';
+import { AccessTokenPayload } from '../../auth-core/services/token.service';
+import { EnvironmentVariables } from '../../config/env.validation';
 
 @Injectable()
-export class CustomerJwtStrategy extends PassportStrategy(
+export class MerchantAdminJwtStrategy extends PassportStrategy(
   Strategy,
-  'customer-jwt',
+  'merchant-admin-jwt',
 ) {
   constructor(
     private readonly cls: ClsService,
@@ -22,7 +22,7 @@ export class CustomerJwtStrategy extends PassportStrategy(
   }
 
   validate(payload: AccessTokenPayload): AccessTokenPayload {
-    if (payload.aud !== 'customer') {
+    if (payload.aud !== 'merchant_admin') {
       throw new UnauthorizedException('Wrong token audience');
     }
     // Every tenant shares one JWT signing secret, so a signature alone does

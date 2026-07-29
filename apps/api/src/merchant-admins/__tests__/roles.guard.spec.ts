@@ -1,6 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { RolesGuard } from '../roles.guard';
+import { RolesGuard } from '../guards/roles.guard';
 
 function buildContext(
   role: string | undefined,

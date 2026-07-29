@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { CustomersAuthService } from '../customers-auth.service';
-import { TokenService } from '../../auth-core/token.service';
+import { TokenService } from '../../auth-core/services/token.service';
 import {
   Customer,
   CustomerIdentity,

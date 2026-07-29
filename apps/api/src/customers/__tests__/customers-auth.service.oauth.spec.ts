@@ -1,7 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import { CustomersAuthService } from '../customers-auth.service';
 import { CustomerIdentity } from '../../db/entities';
-import { TokenService } from '../../auth-core/token.service';
+import { TokenService } from '../../auth-core/services/token.service';
 
 // Mirrors buildFullService() in customers-auth.service.spec.ts, but drives
 // manager.findOne off the where-clause shape (matching the brief's original

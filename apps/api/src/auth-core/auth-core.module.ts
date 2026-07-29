@@ -1,11 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { HashingService } from './hashing.service';
-import { TokenService } from './token.service';
-import { OAuthStateService } from './oauth-state.service';
-import { NOTIFICATIONS_PORT } from './notifications/notifications-port';
-import { LogNotificationsAdapter } from './notifications/log-notifications.adapter';
+import { HashingService } from './services/hashing.service';
+import { TokenService } from './services/token.service';
+import { OAuthStateService } from './services/oauth-state.service';
 import { EnvironmentVariables } from '../config/env.validation';
 
 @Module({
@@ -19,18 +17,7 @@ import { EnvironmentVariables } from '../config/env.validation';
       }),
     }),
   ],
-  providers: [
-    HashingService,
-    TokenService,
-    OAuthStateService,
-    { provide: NOTIFICATIONS_PORT, useClass: LogNotificationsAdapter },
-  ],
-  exports: [
-    JwtModule,
-    HashingService,
-    TokenService,
-    OAuthStateService,
-    NOTIFICATIONS_PORT,
-  ],
+  providers: [HashingService, TokenService, OAuthStateService],
+  exports: [JwtModule, HashingService, TokenService, OAuthStateService],
 })
 export class AuthCoreModule {}

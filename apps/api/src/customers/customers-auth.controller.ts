@@ -13,11 +13,11 @@ import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
-import { OAuthStateService } from '../auth-core/oauth-state.service';
-import { assertReturnUrlMatchesRequestHost } from '../auth-core/return-url';
+import { OAuthStateService } from '../auth-core/services/oauth-state.service';
+import { assertReturnUrlMatchesRequestHost } from '../common/utils/return-url';
 import { OneTimeCodeService } from '../oauth/one-time-code.service';
 import { CustomersAuthService } from './customers-auth.service';
-import { CustomerJwtAuthGuard } from './customer-jwt-auth.guard';
+import { CustomerJwtAuthGuard } from './guards/customer-jwt-auth.guard';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
 import { VerifyCustomerEmailDto } from './dto/verify-customer-email.dto';
 import { CustomerOAuthInitiateDto } from './dto/customer-oauth-initiate.dto';
@@ -25,14 +25,10 @@ import { CustomerOAuthExchangeDto } from './dto/customer-oauth-exchange.dto';
 import { RequestCustomerPasswordResetDto } from './dto/request-customer-password-reset.dto';
 import { ResetCustomerPasswordDto } from './dto/reset-customer-password.dto';
 import { EnvironmentVariables } from '../config/env.validation';
+import { AUTH_REFRESH_COOKIE_OPTIONS } from '../common/constants';
 
 const REFRESH_COOKIE_NAME = 'customer_refresh_token';
-const REFRESH_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: true,
-  sameSite: 'lax' as const,
-  path: '/customers/auth',
-};
+const REFRESH_COOKIE_PATH = '/customers/auth';
 
 @Controller('customers/auth')
 export class CustomersAuthController {
@@ -62,7 +58,10 @@ export class CustomersAuthController {
       accessToken: string;
       refreshToken: string;
     };
-    res.cookie(REFRESH_COOKIE_NAME, refreshToken, REFRESH_COOKIE_OPTIONS);
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
+      ...AUTH_REFRESH_COOKIE_OPTIONS,
+      path: REFRESH_COOKIE_PATH,
+    });
     return { accessToken };
   }
 
@@ -87,11 +86,10 @@ export class CustomersAuthController {
       tenantId,
       rawRefreshToken,
     );
-    res.cookie(
-      REFRESH_COOKIE_NAME,
-      result.refreshToken,
-      REFRESH_COOKIE_OPTIONS,
-    );
+    res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, {
+      ...AUTH_REFRESH_COOKIE_OPTIONS,
+      path: REFRESH_COOKIE_PATH,
+    });
     return { accessToken: result.accessToken };
   }
 
@@ -105,7 +103,7 @@ export class CustomersAuthController {
     if (rawRefreshToken) {
       await this.customersAuthService.logout(tenantId, rawRefreshToken);
     }
-    res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_OPTIONS.path });
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });
     return { success: true };
   }
 
@@ -185,11 +183,10 @@ export class CustomersAuthController {
     ) {
       throw new BadRequestException('Invalid or expired code');
     }
-    res.cookie(
-      REFRESH_COOKIE_NAME,
-      payload.refreshToken,
-      REFRESH_COOKIE_OPTIONS,
-    );
+    res.cookie(REFRESH_COOKIE_NAME, payload.refreshToken, {
+      ...AUTH_REFRESH_COOKIE_OPTIONS,
+      path: REFRESH_COOKIE_PATH,
+    });
     return { accessToken: payload.accessToken };
   }
 

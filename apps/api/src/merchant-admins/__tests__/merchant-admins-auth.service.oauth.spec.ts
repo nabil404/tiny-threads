@@ -1,6 +1,6 @@
 import { MerchantAdminsAuthService } from '../merchant-admins-auth.service';
 import { MerchantUserIdentity } from '../../db/entities';
-import { TokenService } from '../../auth-core/token.service';
+import { TokenService } from '../../auth-core/services/token.service';
 
 // Mirrors CustomersAuthService.findOrCreateFromGoogle (Task 11) against
 // MerchantUser/MerchantUserIdentity — see Task 11, Step 2 for the customer

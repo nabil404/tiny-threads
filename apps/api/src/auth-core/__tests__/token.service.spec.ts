@@ -1,5 +1,5 @@
 import { JwtService } from '@nestjs/jwt';
-import { TokenService } from '../token.service';
+import { TokenService } from '../services/token.service';
 
 describe('TokenService', () => {
   const jwtService = new JwtService({ secret: 'test-secret' });

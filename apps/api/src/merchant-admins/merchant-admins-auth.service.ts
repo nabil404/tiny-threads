@@ -6,7 +6,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { ClsService } from 'nestjs-cls';
 import { IsNull } from 'typeorm';
 import type { EntityManager } from 'typeorm';
@@ -17,22 +17,20 @@ import {
   MerchantUserRefreshToken,
 } from '../db/entities';
 import { TenantDbService } from '../db/tenant-db.service';
-import { HashingService } from '../auth-core/hashing.service';
-import { NOTIFICATIONS_PORT } from '../auth-core/notifications/notifications-port';
-import type { NotificationsPort } from '../auth-core/notifications/notifications-port';
-import { TokenService } from '../auth-core/token.service';
+import { HashingService } from '../auth-core/services/hashing.service';
+import { NOTIFICATIONS_PORT } from '../notifications/notifications-port';
+import type { NotificationsPort } from '../notifications/notifications-port';
+import { TokenService } from '../auth-core/services/token.service';
 import {
   generateOpaqueRefreshToken,
+  generateOpaqueToken,
   hashRefreshToken,
-} from '../auth-core/refresh-token-crypto';
+} from '../common/utils/refresh-token-crypto';
+import { AUTH_TOKEN_TTL_MS } from '../common/constants';
 import { RegisterMerchantUserDto } from './dto/register-merchant-user.dto';
 import { VerifyMerchantUserEmailDto } from './dto/verify-merchant-user-email.dto';
-import { roleOutranks } from './role-hierarchy';
+import { roleOutranks } from './utils/role-hierarchy';
 
-const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
-const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const INVITE_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 // A well-formed but unroutable UUID used as a guaranteed-non-matching lookup
 // key in requestPasswordReset()'s "account doesn't exist" branch — see the
 // comment there for why this needs to stay a real DB round trip rather than
@@ -118,7 +116,7 @@ export class MerchantAdminsAuthService {
         );
 
         const passwordHash = await this.hashing.hash(dto.password);
-        const verificationToken = randomBytes(32).toString('base64url');
+        const verificationToken = generateOpaqueToken();
         const verificationTokenHash = createHash('sha256')
           .update(verificationToken)
           .digest('hex');
@@ -133,7 +131,7 @@ export class MerchantAdminsAuthService {
             emailVerified: false,
             verificationTokenHash,
             verificationTokenExpiresAt: new Date(
-              Date.now() + VERIFICATION_TOKEN_TTL_MS,
+              Date.now() + AUTH_TOKEN_TTL_MS.EMAIL_VERIFICATION,
             ),
           }),
         );
@@ -188,7 +186,7 @@ export class MerchantAdminsAuthService {
       );
     }
 
-    const rawToken = randomBytes(32).toString('base64url');
+    const rawToken = generateOpaqueToken();
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
 
     await this.tenantDb.run(async (manager) => {
@@ -198,7 +196,7 @@ export class MerchantAdminsAuthService {
           email: params.email,
           role: params.role,
           tokenHash,
-          expiresAt: new Date(Date.now() + INVITE_TOKEN_TTL_MS),
+          expiresAt: new Date(Date.now() + AUTH_TOKEN_TTL_MS.MERCHANT_INVITE),
           usedAt: null,
           invitedByMerchantUserId: params.invitedByMerchantUserId,
         }),
@@ -450,12 +448,12 @@ export class MerchantAdminsAuthService {
     // existence via timing/call-count even though nothing in the response
     // itself differs — mirrors CustomersAuthService.requestPasswordReset
     // (Task 15 review fix round 1).
-    const resetToken = randomBytes(32).toString('base64url');
+    const resetToken = generateOpaqueToken();
     const resetTokenHash = createHash('sha256')
       .update(resetToken)
       .digest('hex');
     const resetTokenExpiresAt = new Date(
-      Date.now() + PASSWORD_RESET_TOKEN_TTL_MS,
+      Date.now() + AUTH_TOKEN_TTL_MS.PASSWORD_RESET,
     );
 
     await this.tenantDb.run(async (manager) => {
@@ -545,7 +543,7 @@ export class MerchantAdminsAuthService {
         merchantUserId,
         tokenHash: hashRefreshToken(rawRefreshToken),
         familyId,
-        expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+        expiresAt: new Date(Date.now() + AUTH_TOKEN_TTL_MS.REFRESH_TOKEN),
         revokedAt: null,
       }),
     );

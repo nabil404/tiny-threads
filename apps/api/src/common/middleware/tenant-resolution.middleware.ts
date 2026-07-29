@@ -3,7 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { NextFunction, Request, Response } from 'express';
 import { ClsService } from 'nestjs-cls';
 import { DataSource } from 'typeorm';
-import { Tenant } from '../db/entities';
+import { Tenant } from '../../db/entities';
 
 // Resolves tenant_id from the request's Host header via an exact match
 // against tenants.host, and sets it in CLS for withTenant()/TenantDbService
@@ -16,7 +16,7 @@ import { Tenant } from '../db/entities';
 // tenant. There is no separate "is this host trustworthy" step the way a
 // shared-suffix scheme would need. That also makes req.hostname unsafe to
 // reuse for anything else on a route that skips this middleware: the OAuth
-// returnUrl origin check (auth-core/return-url.ts) compares against this same
+// returnUrl origin check (common/utils/return-url.ts) compares against this same
 // value, and depends on this lookup having already run.
 //
 // Consequence: any route excluded from this middleware in AppModule has an

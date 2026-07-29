@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { ClsService } from 'nestjs-cls';
-import { OAuthStateService } from '../auth-core/oauth-state.service';
+import { OAuthStateService } from '../auth-core/services/oauth-state.service';
 import { CustomersAuthService } from '../customers/customers-auth.service';
 import { MerchantAdminsAuthService } from '../merchant-admins/merchant-admins-auth.service';
 import { OneTimeCodeService } from './one-time-code.service';
