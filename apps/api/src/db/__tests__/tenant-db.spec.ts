@@ -5,7 +5,8 @@ config({ path: resolve(__dirname, '../../../../../.env') });
 
 import { DataSource } from 'typeorm';
 import { ClsService, ClsServiceManager } from 'nestjs-cls';
-import { Tenant, Order } from '../entities';
+import * as entities from '../entities';
+import { Order } from '../entities';
 import { withTenant } from '../tenant-db';
 
 describe('withTenant (RLS isolation)', () => {
@@ -22,6 +23,30 @@ describe('withTenant (RLS isolation)', () => {
     name: 'Tenant B',
     host: 'tenant-b.localhost',
   };
+  const currency = { code: 'USD', name: 'US Dollar', symbol: '$' };
+  const customerA = {
+    id: '019353c2-1b1a-7000-8000-000000000003',
+    tenantId: tenantA.id,
+    email: 'customer-a@example.com',
+    name: 'Customer A',
+  };
+  const customerB = {
+    id: '019353c2-1b1a-7000-8000-000000000004',
+    tenantId: tenantB.id,
+    email: 'customer-b@example.com',
+    name: 'Customer B',
+  };
+
+  function baseOrder(tenantId: string, customerId: string) {
+    return {
+      tenantId,
+      customerId,
+      currencyCode: currency.code,
+      status: 'pending' as const,
+      paymentStatus: 'pending' as const,
+      totalCents: 1000,
+    };
+  }
 
   beforeAll(async () => {
     if (!process.env.DATABASE_URL) {
@@ -30,7 +55,7 @@ describe('withTenant (RLS isolation)', () => {
     dataSource = new DataSource({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [Tenant, Order],
+      entities: Object.values(entities),
     });
     await dataSource.initialize();
     cls = ClsServiceManager.getClsService();
@@ -39,13 +64,21 @@ describe('withTenant (RLS isolation)', () => {
     // seeding/cleanup needs an actual superuser connection to bypass it.
     const superuserDataSource = new DataSource({
       type: 'postgres',
-      url: `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@localhost:5432/${process.env.POSTGRES_DB}`,
-      entities: [Tenant, Order],
+      url: `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@localhost:${process.env.POSTGRES_PORT ?? '5432'}/${process.env.POSTGRES_DB}`,
+      entities: Object.values(entities),
     });
     await superuserDataSource.initialize();
     await superuserDataSource.query(`DELETE FROM "orders"`);
+    await superuserDataSource.query(`DELETE FROM "customers"`);
     await superuserDataSource.query(`DELETE FROM "tenants"`);
-    await superuserDataSource.getRepository(Tenant).save([tenantA, tenantB]);
+    await superuserDataSource.query(`DELETE FROM "currencies"`);
+    await superuserDataSource
+      .getRepository(entities.Tenant)
+      .save([tenantA, tenantB]);
+    await superuserDataSource.getRepository(entities.Currency).save(currency);
+    await superuserDataSource
+      .getRepository(entities.Customer)
+      .save([customerA, customerB]);
     await superuserDataSource.destroy();
   });
 
@@ -77,13 +110,19 @@ describe('withTenant (RLS isolation)', () => {
     await runAs(tenantA.id, (manager) => {
       const repo = manager.getRepository(Order);
       return repo.save(
-        repo.create({ tenantId: tenantA.id, number: 'A-1', status: 'pending' }),
+        repo.create({
+          ...baseOrder(tenantA.id, customerA.id),
+          number: 'A-1',
+        }),
       );
     });
     await runAs(tenantB.id, (manager) => {
       const repo = manager.getRepository(Order);
       return repo.save(
-        repo.create({ tenantId: tenantB.id, number: 'B-1', status: 'pending' }),
+        repo.create({
+          ...baseOrder(tenantB.id, customerB.id),
+          number: 'B-1',
+        }),
       );
     });
 
@@ -106,9 +145,8 @@ describe('withTenant (RLS isolation)', () => {
         const repo = manager.getRepository(Order);
         return repo.save(
           repo.create({
-            tenantId: tenantB.id,
+            ...baseOrder(tenantB.id, customerB.id),
             number: 'SNEAKY',
-            status: 'pending',
           }),
         );
       }),

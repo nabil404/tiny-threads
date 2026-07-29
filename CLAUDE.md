@@ -11,6 +11,7 @@ Tiny Threads is a **multi-tenant e-commerce marketplace** backend (dozens of mer
 - `packages/shared` — shared TypeScript code between `api` and `web` (currently empty, just `src/index.ts`).
 - `docs/architecture/architecture.md` — the decision record (the *why*) for the backend architecture, with full rationale per decision under `docs/architecture/references/`.
 - `docs/architecture/database-schema.md` — the table/ERD companion to the architecture doc: tenancy scope per table, composite PK/FK conventions, and design decisions behind specific columns (price snapshots, settlements, category hierarchy, etc.).
+- `docs/design/authentication.md` — as-built reference for the current authentication flow (customer + merchant-admin password auth, refresh rotation, the centralized Google OAuth callback), with flowcharts. `docs/AuthDesign.md` is the earlier pre-implementation spec; the design doc notes where the shipped system diverged from it.
 
 **Read `.claude/skills/backend-engineer/SKILL.md` before touching any backend code** — it is the operating manual (the *how*: tenancy rules, ORM conventions, provider ports, order state machine) that `docs/architecture/architecture.md` is the record for. It is invoked automatically for backend work, but skim it directly if you want the full detail up front. Two areas in it are marked ⚠️ because getting them wrong is a data breach or vendor lock-in, not a style nit:
 
@@ -42,6 +43,8 @@ pnpm --filter @tiny-threads/api db:verify-rls   # run the RLS check standalone
 ```
 
 Local Postgres runs via `docker-compose.yml` (`postgres:16-alpine`, port 5432, healthcheck-gated). Copy `.env.example` to `.env` and fill in passwords before running `docker compose up -d`.
+
+Tests run against a **separate** Postgres instance, never the dev one: `docker-compose.test.yml` adds a `postgres-test` service (port 5433, its own volume, same `docker/postgres/init/` roles). Copy `.env.test.example` to `.env.test` — it's self-contained, with no dependency on the root `.env`; `docker-compose.test.yml` loads it directly via `env_file` to boot the container's roles, and the app/tests connecting to it load the same file (see `apps/api/test/setup-unit.ts`/`setup-e2e.ts`). `pnpm test` / `pnpm test:e2e` (in `apps/api`) auto-start that container and migrate it via `pretest`/`pretest:e2e` hooks — no manual setup needed beyond the one-time `.env.test` copy.
 
 ## Commands
 

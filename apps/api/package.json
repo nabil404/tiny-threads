@@ -13,13 +13,17 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "pretest": "pnpm test:db:up && pnpm db:migrate:test",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "pretest:e2e": "pnpm test:db:up && pnpm db:migrate:test",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:db:up": "docker compose -f ../../docker-compose.yml -f ../../docker-compose.test.yml up -d --wait postgres-test",
     "db:generate": "sh scripts/db-generate.sh",
     "db:migrate": "sh scripts/db-migrate.sh",
+    "db:migrate:test": "NODE_ENV=test typeorm-ts-node-commonjs migration:run -d ./src/db/data-source.ts",
     "db:revert": "typeorm-ts-node-commonjs migration:revert -d ./src/db/data-source.ts",
     "db:verify-rls": "node -r ts-node/register -r tsconfig-paths/register src/db/verify-rls.ts"
   },
@@ -86,6 +90,9 @@
     ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
+    "setupFiles": [
+      "<rootDir>/../test/setup-unit.ts"
+    ],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },

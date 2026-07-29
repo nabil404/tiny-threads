@@ -3,7 +3,8 @@ import { resolve } from 'path';
 import * as entities from './entities';
 import { NodeEnv, validate } from '../config/env.validation';
 
-config({ path: resolve(__dirname, '../../../../.env') });
+const envFile = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
+config({ path: resolve(__dirname, '../../../../', envFile) });
 
 import { DataSource, DataSourceOptions } from 'typeorm';
 
