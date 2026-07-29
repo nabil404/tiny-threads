@@ -5,6 +5,7 @@ import {
   Query,
   Res,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { ClsService } from 'nestjs-cls';
@@ -12,6 +13,7 @@ import { OAuthStateService } from '../auth-core/oauth-state.service';
 import { CustomersAuthService } from '../customers/customers-auth.service';
 import { MerchantAdminsAuthService } from '../merchant-admins/merchant-admins-auth.service';
 import { OneTimeCodeService } from './one-time-code.service';
+import { EnvironmentVariables } from '../config/env.validation';
 
 // Single centralized callback registered once in Google Cloud Console —
 // tenant subdomains/custom domains can't be registered individually with
@@ -27,22 +29,18 @@ export class GoogleOAuthController {
     private readonly merchantAdminsAuthService: MerchantAdminsAuthService,
     private readonly oneTimeCodeService: OneTimeCodeService,
     private readonly cls: ClsService,
+    configService: ConfigService<EnvironmentVariables, true>,
   ) {
-    // Fail fast at boot rather than at the first OAuth attempt, mirroring
-    // OAuthStateService's constructor. Unset, this silently becomes the string
-    // "undefined/auth/google/callback" — a redirect_uri that no longer matches
-    // what's registered in Google Cloud Console, so every OAuth login breaks
-    // with an opaque Google-side error. Both /google/initiate handlers build
-    // their authorize URL from the same variable, so validating it once here
-    // (this controller is instantiated at bootstrap) covers all three
-    // read sites.
-    if (!process.env.PLATFORM_BASE_URL) {
-      throw new Error('PLATFORM_BASE_URL is not set');
-    }
+    // ConfigModule validates PLATFORM_BASE_URL (and the Google client
+    // id/secret) at boot — see src/config/env.validation.ts — so by the time
+    // this constructor runs they are guaranteed to be set. Unset, this would
+    // otherwise silently become the string "undefined/auth/google/callback" —
+    // a redirect_uri that no longer matches what's registered in Google Cloud
+    // Console, so every OAuth login breaks with an opaque Google-side error.
     this.client = new OAuth2Client(
-      process.env.GOOGLE_OAUTH_CLIENT_ID,
-      process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-      `${process.env.PLATFORM_BASE_URL}/auth/google/callback`,
+      configService.get('GOOGLE_OAUTH_CLIENT_ID', { infer: true }),
+      configService.get('GOOGLE_OAUTH_CLIENT_SECRET', { infer: true }),
+      `${configService.get('PLATFORM_BASE_URL', { infer: true })}/auth/google/callback`,
     );
   }
 

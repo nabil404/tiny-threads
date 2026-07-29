@@ -1,11 +1,6 @@
 import { GoogleOAuthController } from '../google-oauth.controller';
-
-// GoogleOAuthController builds its own OAuth2Client from these env vars as a
-// class field, evaluated at construction time — set to harmless dummy values
-// so constructing the controller in tests never depends on real credentials.
-process.env.GOOGLE_OAUTH_CLIENT_ID ??= 'test-client-id';
-process.env.GOOGLE_OAUTH_CLIENT_SECRET ??= 'test-client-secret';
-process.env.PLATFORM_BASE_URL ??= 'https://platform.example.com';
+import type { ConfigService } from '@nestjs/config';
+import type { EnvironmentVariables } from '../../config/env.validation';
 
 function buildController(
   stateOverrides: Partial<{
@@ -58,6 +53,16 @@ function buildController(
       callOrder.push(`cls.set:${key}`);
     }),
   } as any;
+  const configService = {
+    get: jest.fn(
+      (key: string) =>
+        ({
+          GOOGLE_OAUTH_CLIENT_ID: 'test-client-id',
+          GOOGLE_OAUTH_CLIENT_SECRET: 'test-client-secret',
+          PLATFORM_BASE_URL: 'https://platform.example.com',
+        })[key],
+    ),
+  } as unknown as ConfigService<EnvironmentVariables, true>;
 
   const controller = new GoogleOAuthController(
     oauthState,
@@ -65,6 +70,7 @@ function buildController(
     merchantAdminsAuthService,
     oneTimeCodeService,
     cls,
+    configService,
   );
   // The Google API client is a real OAuth2Client instance created in a class
   // field — swap it for a stub so tests never make a real network call.
@@ -89,6 +95,7 @@ function buildController(
     merchantAdminsAuthService,
     oneTimeCodeService,
     cls,
+    configService,
     callOrder,
     state,
   };
