@@ -1,21 +1,22 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { HashingService } from './hashing.service';
 import { TokenService } from './token.service';
 import { OAuthStateService } from './oauth-state.service';
 import { NOTIFICATIONS_PORT } from './notifications/notifications-port';
 import { LogNotificationsAdapter } from './notifications/log-notifications.adapter';
+import { EnvironmentVariables } from '../config/env.validation';
 
 @Module({
   imports: [
     JwtModule.registerAsync({
-      useFactory: () => {
-        const secret = process.env.JWT_SECRET;
-        if (!secret) {
-          throw new Error('JWT_SECRET is not set');
-        }
-        return { secret };
-      },
+      inject: [ConfigService],
+      useFactory: (
+        configService: ConfigService<EnvironmentVariables, true>,
+      ) => ({
+        secret: configService.get('JWT_SECRET', { infer: true }),
+      }),
     }),
   ],
   providers: [
