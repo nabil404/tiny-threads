@@ -1,3 +1,1 @@
-export type ExampleShared = {
-  message: string;
-};
+export * from './errors';
