@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
 import { OAuthStateService } from '../auth-core/services/oauth-state.service';
@@ -42,17 +42,32 @@ export class CustomersAuthController {
     private readonly configService: ConfigService<EnvironmentVariables, true>,
   ) {}
 
+  @ApiOperation({
+    summary: 'Register a customer',
+    description:
+      'Creates a customer account for the current tenant and sends a verification email.',
+  })
   @Post('register')
   register(@Body() dto: RegisterCustomerDto) {
     return this.customersAuthService.register(dto);
   }
 
+  @ApiOperation({
+    summary: 'Verify customer email',
+    description:
+      "Confirms a customer's email address using the token sent at registration.",
+  })
   @Post('verify-email')
   @HttpCode(200)
   verifyEmail(@Body() dto: VerifyCustomerEmailDto) {
     return this.customersAuthService.verifyEmail(dto);
   }
 
+  @ApiOperation({
+    summary: 'Log in a customer',
+    description:
+      'Authenticates a customer by email/password, returns an access token, and sets a refresh token cookie.',
+  })
   @UseGuards(AuthGuard('customer-local'))
   @Post('login')
   login(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
@@ -67,6 +82,11 @@ export class CustomersAuthController {
     return { accessToken };
   }
 
+  @ApiOperation({
+    summary: 'Refresh customer access token',
+    description:
+      'Rotates the refresh token cookie and issues a new access token.',
+  })
   @Post('refresh')
   async refresh(
     @Req() req: Request,
@@ -95,6 +115,11 @@ export class CustomersAuthController {
     return { accessToken: result.accessToken };
   }
 
+  @ApiOperation({
+    summary: 'Log out a customer',
+    description:
+      "Revokes the customer's refresh token and clears the refresh token cookie.",
+  })
   @Post('logout')
   @HttpCode(200)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
@@ -109,18 +134,32 @@ export class CustomersAuthController {
     return { success: true };
   }
 
+  @ApiOperation({
+    summary: 'Request a customer password reset',
+    description:
+      'Sends a password reset email if an account exists for the given address.',
+  })
   @Post('request-password-reset')
   @HttpCode(200)
   requestPasswordReset(@Body() dto: RequestCustomerPasswordResetDto) {
     return this.customersAuthService.requestPasswordReset(dto.email);
   }
 
+  @ApiOperation({
+    summary: 'Reset customer password',
+    description: 'Sets a new password using a valid password reset token.',
+  })
   @Post('reset-password')
   @HttpCode(200)
   resetPassword(@Body() dto: ResetCustomerPasswordDto) {
     return this.customersAuthService.resetPassword(dto.token, dto.password);
   }
 
+  @ApiOperation({
+    summary: 'Start customer Google sign-in',
+    description:
+      'Returns the Google OAuth authorization URL to sign in or sign up a customer.',
+  })
   @Post('google/initiate')
   initiateGoogle(@Req() req: Request, @Body() dto: CustomerOAuthInitiateDto) {
     // This endpoint is unauthenticated and the returnUrl it accepts is where
@@ -138,6 +177,11 @@ export class CustomersAuthController {
     return { redirectUrl: this.googleAuthorizeUrl(state) };
   }
 
+  @ApiOperation({
+    summary: 'Start linking Google to a customer account',
+    description:
+      'Returns the Google OAuth authorization URL to link a Google identity to the authenticated customer.',
+  })
   @ApiBearerAuth()
   @UseGuards(CustomerJwtAuthGuard)
   @Post('google/link/initiate')
@@ -165,6 +209,11 @@ export class CustomersAuthController {
   // itself is safe to pass through a redirect URL (query param) since it's
   // opaque, expires in 60s, and is deleted on first read; the tokens it
   // unlocks never travel through a URL.
+  @ApiOperation({
+    summary: 'Exchange Google one-time code',
+    description:
+      "Redeems the one-time code from the Google callback for the customer's access token and sets the refresh token cookie.",
+  })
   @Post('google/exchange')
   @HttpCode(200)
   exchangeGoogleCode(

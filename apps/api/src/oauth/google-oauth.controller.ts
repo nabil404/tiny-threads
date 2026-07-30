@@ -6,7 +6,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { ClsService } from 'nestjs-cls';
@@ -46,6 +46,11 @@ export class GoogleOAuthController {
     );
   }
 
+  @ApiOperation({
+    summary: 'Handle Google OAuth callback',
+    description:
+      'Centralized callback Google redirects to after sign-in; verifies the id token, resolves the customer or merchant admin for the originating tenant, and redirects back with a one-time code.',
+  })
   @Get('callback')
   async callback(
     @Query('code') code: string,

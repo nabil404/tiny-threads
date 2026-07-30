@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
 import { OAuthStateService } from '../auth-core/services/oauth-state.service';
@@ -46,11 +46,21 @@ export class MerchantAdminsAuthController {
     private readonly configService: ConfigService<EnvironmentVariables, true>,
   ) {}
 
+  @ApiOperation({
+    summary: 'Register a merchant admin',
+    description:
+      'Creates a merchant admin account by redeeming an invite and sends a verification email.',
+  })
   @Post('register')
   register(@Body() dto: RegisterMerchantUserDto) {
     return this.merchantAdminsAuthService.register(dto);
   }
 
+  @ApiOperation({
+    summary: 'Verify merchant admin email',
+    description:
+      "Confirms a merchant admin's email address using the token sent at registration.",
+  })
   @Post('verify-email')
   @HttpCode(200)
   verifyEmail(@Body() dto: VerifyMerchantUserEmailDto) {
@@ -65,6 +75,11 @@ export class MerchantAdminsAuthController {
   // doesn't stop an 'admin' from inviting someone in as 'owner' though —
   // that's enforced by inviteMember() itself via the caller's own role
   // (invitedByRole), passed through here from the verified JWT.
+  @ApiOperation({
+    summary: 'Invite a merchant admin member',
+    description:
+      'Invites a new member to the tenant with a given role; only existing owners/admins may call this.',
+  })
   @ApiBearerAuth()
   @UseGuards(MerchantAdminJwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
@@ -86,6 +101,11 @@ export class MerchantAdminsAuthController {
     return { success: true };
   }
 
+  @ApiOperation({
+    summary: 'Log in a merchant admin',
+    description:
+      'Authenticates a merchant admin by email/password, returns an access token, and sets a refresh token cookie.',
+  })
   @UseGuards(AuthGuard('merchant-admin-local'))
   @Post('login')
   login(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
@@ -100,6 +120,11 @@ export class MerchantAdminsAuthController {
     return { accessToken };
   }
 
+  @ApiOperation({
+    summary: 'Refresh merchant admin access token',
+    description:
+      'Rotates the refresh token cookie and issues a new access token.',
+  })
   @Post('refresh')
   async refresh(
     @Req() req: Request,
@@ -128,6 +153,11 @@ export class MerchantAdminsAuthController {
     return { accessToken: result.accessToken };
   }
 
+  @ApiOperation({
+    summary: 'Log out a merchant admin',
+    description:
+      "Revokes the merchant admin's refresh token and clears the refresh token cookie.",
+  })
   @Post('logout')
   @HttpCode(200)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
@@ -142,12 +172,21 @@ export class MerchantAdminsAuthController {
     return { success: true };
   }
 
+  @ApiOperation({
+    summary: 'Request a merchant admin password reset',
+    description:
+      'Sends a password reset email if an account exists for the given address.',
+  })
   @Post('request-password-reset')
   @HttpCode(200)
   requestPasswordReset(@Body() dto: RequestMerchantUserPasswordResetDto) {
     return this.merchantAdminsAuthService.requestPasswordReset(dto.email);
   }
 
+  @ApiOperation({
+    summary: 'Reset merchant admin password',
+    description: 'Sets a new password using a valid password reset token.',
+  })
   @Post('reset-password')
   @HttpCode(200)
   resetPassword(@Body() dto: ResetMerchantUserPasswordDto) {
@@ -160,6 +199,11 @@ export class MerchantAdminsAuthController {
   // Merchant admins don't self-register via OAuth (see
   // MerchantAdminsAuthService.findOrCreateFromGoogle), so there's no
   // link-initiate counterpart here — just login.
+  @ApiOperation({
+    summary: 'Start merchant admin Google sign-in',
+    description:
+      'Returns the Google OAuth authorization URL to sign in a merchant admin.',
+  })
   @Post('google/initiate')
   initiateGoogle(
     @Req() req: Request,
@@ -196,6 +240,11 @@ export class MerchantAdminsAuthController {
   // CustomersAuthController#exchangeGoogleCode exactly (see there for the
   // full rationale on why tokens travel via this code rather than the
   // redirect URL itself).
+  @ApiOperation({
+    summary: 'Exchange Google one-time code',
+    description:
+      "Redeems the one-time code from the Google callback for the merchant admin's access token and sets the refresh token cookie.",
+  })
   @Post('google/exchange')
   @HttpCode(200)
   exchangeGoogleCode(
