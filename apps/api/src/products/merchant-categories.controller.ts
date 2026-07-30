@@ -17,6 +17,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { MerchantAdminJwtAuthGuard } from '../merchant-admins/guards/merchant-admin-jwt-auth.guard';
+import { RolesGuard } from '../merchant-admins/guards/roles.guard';
+import { Roles } from '../merchant-admins/decorators/roles.decorator';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -33,6 +35,8 @@ export class MerchantCategoriesController {
     description: 'Creates a category with an optional parent category.',
   })
   @ApiResponse({ status: 201, description: 'Category created successfully.' })
+  @UseGuards(MerchantAdminJwtAuthGuard, RolesGuard)
+  @Roles('owner', 'admin')
   @Post()
   create(@Body() dto: CreateCategoryDto) {
     return this.categoriesService.create(dto);
@@ -66,6 +70,8 @@ export class MerchantCategoriesController {
   })
   @ApiResponse({ status: 200, description: 'Category updated successfully.' })
   @ApiResponse({ status: 404, description: 'Category not found.' })
+  @UseGuards(MerchantAdminJwtAuthGuard, RolesGuard)
+  @Roles('owner', 'admin')
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateCategoryDto) {
     return this.categoriesService.update(id, dto);
@@ -81,6 +87,8 @@ export class MerchantCategoriesController {
     description: 'Cannot delete category with sub-categories.',
   })
   @ApiResponse({ status: 404, description: 'Category not found.' })
+  @UseGuards(MerchantAdminJwtAuthGuard, RolesGuard)
+  @Roles('owner', 'admin')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {

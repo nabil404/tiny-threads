@@ -6,6 +6,7 @@ import {
   Max,
   IsIn,
   IsUUID,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { ProductStatus } from '../../db/entities/products.entity';
@@ -34,5 +35,6 @@ export class ProductQueryDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   q?: string;
 }

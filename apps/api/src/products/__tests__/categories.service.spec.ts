@@ -1,5 +1,6 @@
 import { CategoriesService } from '../categories.service';
 import { TenantDbService } from '../../db/tenant-db.service';
+import { ClsService } from 'nestjs-cls';
 import {
   CodedBadRequestException,
   CodedNotFoundException,
@@ -8,12 +9,16 @@ import {
 describe('CategoriesService', () => {
   let service: CategoriesService;
   let tenantDbService: jest.Mocked<TenantDbService>;
+  let clsService: jest.Mocked<ClsService>;
 
   beforeEach(() => {
     tenantDbService = {
       run: jest.fn(),
     } as unknown as jest.Mocked<TenantDbService>;
-    service = new CategoriesService(tenantDbService);
+    clsService = {
+      get: jest.fn().mockReturnValue('tenant-123'),
+    } as unknown as jest.Mocked<ClsService>;
+    service = new CategoriesService(tenantDbService, clsService);
   });
 
   describe('create', () => {

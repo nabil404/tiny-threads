@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ProductsService } from '../products.service';
 import { TenantDbService } from '../../db/tenant-db.service';
+import { ClsService } from 'nestjs-cls';
 import {
   CodedBadRequestException,
   CodedConflictException,
@@ -10,12 +11,16 @@ import {
 describe('ProductsService', () => {
   let service: ProductsService;
   let tenantDbService: jest.Mocked<TenantDbService>;
+  let clsService: jest.Mocked<ClsService>;
 
   beforeEach(() => {
     tenantDbService = {
       run: jest.fn(),
     } as unknown as jest.Mocked<TenantDbService>;
-    service = new ProductsService(tenantDbService);
+    clsService = {
+      get: jest.fn().mockReturnValue('tenant-123'),
+    } as unknown as jest.Mocked<ClsService>;
+    service = new ProductsService(tenantDbService, clsService);
   });
 
   describe('create', () => {
@@ -390,6 +395,107 @@ describe('ProductsService', () => {
 
       await service.delete('prod-1');
       expect(savedProduct.status).toEqual('archived');
+    });
+
+    it('stamps tenantId from ClsService on created entities', async () => {
+      let createdProduct: any;
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          find: jest.fn().mockResolvedValue([]),
+          create: jest.fn().mockImplementation((_, entity) => entity),
+          save: jest.fn().mockImplementation((_, entity) => {
+            if (entity.title) createdProduct = entity;
+            return Promise.resolve({ id: 'prod-tenant-1', ...entity });
+          }),
+          findOne: jest.fn().mockResolvedValue({
+            id: 'prod-tenant-1',
+            title: 'Tenant Tee',
+            status: 'active',
+            variants: [],
+          }),
+        };
+        return cb(em as any);
+      });
+
+      await service.create({ title: 'Tenant Tee', status: 'active' });
+      expect(createdProduct).toBeDefined();
+      expect(createdProduct.tenantId).toBe('tenant-123');
+    });
+
+    it('translates Postgres 23505 unique violation error to CodedConflictException', async () => {
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          find: jest.fn().mockResolvedValue([]),
+          create: jest.fn().mockImplementation((_, entity) => entity),
+          save: jest.fn().mockRejectedValue({
+            code: '23505',
+            message: 'duplicate key value violates unique constraint',
+          }),
+        };
+        return cb(em as any);
+      });
+
+      await expect(
+        service.create({ title: 'Duplicate Tee', status: 'active' }),
+      ).rejects.toThrow(CodedConflictException);
+    });
+
+    it('preserves existing variant ID when updating an existing variant in update()', async () => {
+      const existingProduct = { id: 'prod-1', title: 'Tee', status: 'active' };
+      const existingVariant = {
+        id: 'var-123',
+        productId: 'prod-1',
+        sku: 'SKU-OLD',
+        priceCents: 1000,
+        stock: 5,
+        isDefault: true,
+      };
+
+      let savedVariants: any[];
+
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          findOne: jest.fn().mockImplementation((entityClass, options) => {
+            if (options?.where?.sku) return Promise.resolve(null);
+            return Promise.resolve(existingProduct);
+          }),
+          find: jest.fn().mockImplementation((entityClass, options) => {
+            if (
+              entityClass.name === 'ProductVariant' ||
+              options?.where?.productId
+            ) {
+              return Promise.resolve([existingVariant]);
+            }
+            return Promise.resolve([]);
+          }),
+          save: jest.fn().mockImplementation((entityClass, entity) => {
+            if (Array.isArray(entity)) {
+              savedVariants = entity;
+            }
+            return Promise.resolve(entity);
+          }),
+          delete: jest.fn().mockResolvedValue({ affected: 0 }),
+          create: jest.fn().mockImplementation((_, entity) => entity),
+        };
+        return cb(em as any);
+      });
+
+      await service.update('prod-1', {
+        variants: [
+          {
+            id: 'var-123',
+            sku: 'SKU-OLD',
+            priceCents: 1500,
+            stock: 10,
+            isDefault: true,
+          },
+        ],
+      });
+
+      expect(savedVariants).toBeDefined();
+      expect(savedVariants.length).toBe(1);
+      expect(savedVariants[0].id).toBe('var-123');
+      expect(savedVariants[0].priceCents).toBe(1500);
     });
 
     it('throws CodedNotFoundException when deleting non-existent product', async () => {

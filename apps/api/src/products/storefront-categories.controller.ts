@@ -9,7 +9,8 @@ export class StorefrontCategoriesController {
 
   @ApiOperation({
     summary: 'Get category tree',
-    description: 'Returns the full hierarchical category tree for storefront navigation.',
+    description:
+      'Returns the full hierarchical category tree for storefront navigation.',
   })
   @ApiResponse({ status: 200, description: 'Hierarchical category tree.' })
   @Get()
@@ -19,7 +20,8 @@ export class StorefrontCategoriesController {
 
   @ApiOperation({
     summary: 'Get category by ID',
-    description: 'Retrieves a single category by ID with its immediate children.',
+    description:
+      'Retrieves a single category by ID with its immediate children.',
   })
   @ApiResponse({ status: 200, description: 'Category found.' })
   @ApiResponse({ status: 404, description: 'Category not found.' })

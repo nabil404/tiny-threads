@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ClsService } from 'nestjs-cls';
 import { TenantDbService } from '../db/tenant-db.service';
 import { Product } from '../db/entities/products.entity';
 import { ProductVariant } from '../db/entities/product-variants.entity';
@@ -24,7 +25,31 @@ export interface PaginatedProducts {
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly tenantDb: TenantDbService) {}
+  constructor(
+    private readonly tenantDb: TenantDbService,
+    private readonly cls: ClsService,
+  ) {}
+
+  private async saveWithUniqueCheck<T>(saveFn: () => Promise<T>): Promise<T> {
+    try {
+      return await saveFn();
+    } catch (err: unknown) {
+      const isObj = typeof err === 'object' && err !== null;
+      const code = isObj && 'code' in err ? String(err.code) : undefined;
+      const message =
+        isObj && 'message' in err && typeof err.message === 'string'
+          ? err.message
+          : '';
+
+      if (code === '23505' || message.includes('unique constraint')) {
+        throw new CodedConflictException(
+          ErrorCode.DUPLICATE_RESOURCE,
+          'A resource with this unique constraint (e.g. SKU) already exists',
+        );
+      }
+      throw err;
+    }
+  }
 
   private async findProductById(
     em: EntityManager,
@@ -49,6 +74,8 @@ export class ProductsService {
 
   async create(dto: CreateProductDto): Promise<Product> {
     return this.tenantDb.run(async (em) => {
+      const tenantId = this.cls.get<string>('tenantId');
+
       // 1. Validate Category IDs
       if (dto.categoryIds && dto.categoryIds.length > 0) {
         const foundCategories = await em.find(Category, {
@@ -64,10 +91,13 @@ export class ProductsService {
 
       // 2. Create Product
       const product = em.create(Product, {
+        tenantId,
         title: dto.title,
         status: dto.status,
       });
-      const savedProduct = await em.save(Product, product);
+      const savedProduct = await this.saveWithUniqueCheck(() =>
+        em.save(Product, product),
+      );
 
       // 3. Create Variants
       if (dto.variants && dto.variants.length > 0) {
@@ -102,6 +132,7 @@ export class ProductsService {
             }
           }
           return em.create(ProductVariant, {
+            tenantId,
             productId: savedProduct.id,
             sku: v.sku,
             priceCents: v.priceCents,
@@ -114,23 +145,29 @@ export class ProductsService {
           variantsToSave[0].isDefault = true;
         }
 
-        await em.save(ProductVariant, variantsToSave);
+        await this.saveWithUniqueCheck(() =>
+          em.save(ProductVariant, variantsToSave),
+        );
       } else {
         // Auto-create default variant
         const defaultVariant = em.create(ProductVariant, {
+          tenantId,
           productId: savedProduct.id,
           sku: `SKU-${savedProduct.id}`,
           priceCents: 0,
           stock: 0,
           isDefault: true,
         });
-        await em.save(ProductVariant, defaultVariant);
+        await this.saveWithUniqueCheck(() =>
+          em.save(ProductVariant, defaultVariant),
+        );
       }
 
       // 4. Create Product-Category Associations
       if (dto.categoryIds && dto.categoryIds.length > 0) {
         const productCategories = dto.categoryIds.map((catId) =>
           em.create(ProductCategory, {
+            tenantId,
             productId: savedProduct.id,
             categoryId: catId,
           }),
@@ -202,6 +239,7 @@ export class ProductsService {
 
   async update(id: string, dto: UpdateProductDto): Promise<Product> {
     return this.tenantDb.run(async (em) => {
+      const tenantId = this.cls.get<string>('tenantId');
       const product = await em.findOne(Product, {
         where: { id },
         relations: { variants: true, productCategories: true },
@@ -216,7 +254,7 @@ export class ProductsService {
 
       if (dto.title !== undefined) product.title = dto.title;
       if (dto.status !== undefined) product.status = dto.status;
-      await em.save(Product, product);
+      await this.saveWithUniqueCheck(() => em.save(Product, product));
 
       // Category update sync
       if (dto.categoryIds !== undefined) {
@@ -235,13 +273,17 @@ export class ProductsService {
         await em.delete(ProductCategory, { productId: id });
         if (dto.categoryIds.length > 0) {
           const pcs = dto.categoryIds.map((catId) =>
-            em.create(ProductCategory, { productId: id, categoryId: catId }),
+            em.create(ProductCategory, {
+              tenantId,
+              productId: id,
+              categoryId: catId,
+            }),
           );
           await em.save(ProductCategory, pcs);
         }
       }
 
-      // Variant update sync
+      // Variant update sync with upsert diffing
       if (dto.variants !== undefined) {
         if (dto.variants.length > 0) {
           const skus = dto.variants.map((v) => v.sku);
@@ -262,12 +304,22 @@ export class ProductsService {
           }
         }
 
-        await em.delete(ProductVariant, { productId: id });
+        const currentVariants = await em.find(ProductVariant, {
+          where: { productId: id },
+        });
 
         if (dto.variants.length > 0) {
+          const currentMapById = new Map(currentVariants.map((v) => [v.id, v]));
+          const currentMapBySku = new Map(
+            currentVariants.map((v) => [v.sku, v]),
+          );
+          const matchedIds = new Set<string>();
+
           let defaultSet = false;
-          const newVariants = dto.variants.map((v) => {
-            let isDefault = v.isDefault ?? false;
+          const variantsToSave: ProductVariant[] = [];
+
+          for (const vDto of dto.variants) {
+            let isDefault = vDto.isDefault ?? false;
             if (isDefault) {
               if (defaultSet) {
                 isDefault = false;
@@ -275,28 +327,65 @@ export class ProductsService {
                 defaultSet = true;
               }
             }
-            return em.create(ProductVariant, {
-              productId: id,
-              sku: v.sku,
-              priceCents: v.priceCents,
-              stock: v.stock,
-              isDefault,
-            });
-          });
-          if (!defaultSet && newVariants.length > 0) {
-            newVariants[0].isDefault = true;
+
+            let existing: ProductVariant | undefined;
+            if (vDto.id && currentMapById.has(vDto.id)) {
+              existing = currentMapById.get(vDto.id);
+            } else if (currentMapBySku.has(vDto.sku)) {
+              existing = currentMapBySku.get(vDto.sku);
+            }
+
+            if (existing) {
+              matchedIds.add(existing.id);
+              existing.sku = vDto.sku;
+              existing.priceCents = vDto.priceCents;
+              existing.stock = vDto.stock;
+              existing.isDefault = isDefault;
+              variantsToSave.push(existing);
+            } else {
+              const newVar = em.create(ProductVariant, {
+                tenantId,
+                productId: id,
+                sku: vDto.sku,
+                priceCents: vDto.priceCents,
+                stock: vDto.stock,
+                isDefault,
+              });
+              variantsToSave.push(newVar);
+            }
           }
-          await em.save(ProductVariant, newVariants);
+
+          if (!defaultSet && variantsToSave.length > 0) {
+            variantsToSave[0].isDefault = true;
+          }
+
+          const variantsToRemove = currentVariants.filter(
+            (v) => !matchedIds.has(v.id),
+          );
+          const removeIds = variantsToRemove.map((v) => v.id);
+          if (removeIds.length > 0) {
+            await em.delete(ProductVariant, { id: In(removeIds) });
+          }
+
+          await this.saveWithUniqueCheck(() =>
+            em.save(ProductVariant, variantsToSave),
+          );
         } else {
-          // If all variants removed, auto-create default variant
+          // If all variants removed, delete existing and auto-create default variant
+          if (currentVariants.length > 0) {
+            await em.delete(ProductVariant, { productId: id });
+          }
           const defaultVariant = em.create(ProductVariant, {
+            tenantId,
             productId: id,
             sku: `SKU-${id}`,
             priceCents: 0,
             stock: 0,
             isDefault: true,
           });
-          await em.save(ProductVariant, defaultVariant);
+          await this.saveWithUniqueCheck(() =>
+            em.save(ProductVariant, defaultVariant),
+          );
         }
       }
 

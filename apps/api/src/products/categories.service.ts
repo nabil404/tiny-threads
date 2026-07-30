@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ClsService } from 'nestjs-cls';
 import { ErrorCode } from '@tiny-threads/shared';
 import { TenantDbService } from '../db/tenant-db.service';
 import { Category } from '../db/entities/categories.entity';
@@ -21,10 +22,14 @@ export interface CategoryTreeNode {
 
 @Injectable()
 export class CategoriesService {
-  constructor(private readonly tenantDb: TenantDbService) {}
+  constructor(
+    private readonly tenantDb: TenantDbService,
+    private readonly cls: ClsService,
+  ) {}
 
   async create(dto: CreateCategoryDto): Promise<Category> {
     return this.tenantDb.run(async (em) => {
+      const tenantId = this.cls.get<string>('tenantId');
       if (dto.parentId) {
         const parent = await em.findOne(Category, {
           where: { id: dto.parentId },
@@ -37,6 +42,7 @@ export class CategoriesService {
         }
       }
       const category = em.create(Category, {
+        tenantId,
         name: dto.name,
         parentId: dto.parentId ?? null,
       });

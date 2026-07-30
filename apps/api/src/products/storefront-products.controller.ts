@@ -10,7 +10,8 @@ export class StorefrontProductsController {
 
   @ApiOperation({
     summary: 'List public products',
-    description: 'Returns a paginated list of active products for storefront viewers.',
+    description:
+      'Returns a paginated list of active products for storefront viewers.',
   })
   @ApiResponse({ status: 200, description: 'Paginated active product list.' })
   @Get()
@@ -20,7 +21,8 @@ export class StorefrontProductsController {
 
   @ApiOperation({
     summary: 'Get active product by ID',
-    description: 'Retrieves a single active product by ID for storefront viewers.',
+    description:
+      'Retrieves a single active product by ID for storefront viewers.',
   })
   @ApiResponse({ status: 200, description: 'Product found.' })
   @ApiResponse({ status: 404, description: 'Product not found or not active.' })

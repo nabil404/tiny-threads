@@ -9,6 +9,7 @@ import {
   IsInt,
   Min,
   IsBoolean,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { ProductStatus } from '../../db/entities/products.entity';
@@ -16,6 +17,7 @@ import type { ProductStatus } from '../../db/entities/products.entity';
 export class CreateVariantDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   sku!: string;
 
   @IsInt()
