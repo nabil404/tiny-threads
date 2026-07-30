@@ -221,14 +221,38 @@ from the DTO to the exception factory:
 
 ```ts
 // validation-field.ts
-const PARAMS_BY_CODE: Partial<Record<ErrorCode, (constraints: unknown[]) => Record<string, unknown>>> = {
-  [ErrorCode.MIN_LENGTH]: ([min]) => ({ min }),
-  [ErrorCode.MAX_LENGTH]: ([max]) => ({ max }),
+interface FieldCodeMeta {
+  // May contain {paramName} placeholders resolved from `params` below.
+  message: string;
+  params?: (constraints: unknown[]) => Record<string, unknown>;
+}
+
+// The one place a field-level code's human message (and how its params are
+// derived from the decorator's raw constraint args) is authored. Adding a
+// new field(...) call site never requires writing a message by hand.
+const FIELD_CODE_META: Partial<Record<ErrorCode, FieldCodeMeta>> = {
+  [ErrorCode.IS_EMAIL]: { message: 'must be a valid email address' },
+  [ErrorCode.IS_NOT_EMPTY]: { message: 'must not be empty' },
+  [ErrorCode.IS_STRING]: { message: 'must be a string' },
+  [ErrorCode.MIN_LENGTH]: {
+    message: 'must be at least {min} characters',
+    params: ([min]) => ({ min }),
+  },
+  [ErrorCode.IS_IN]: {
+    message: 'must be one of: {values}',
+    params: ([values]) => ({ values: (values as unknown[]).join(', ') }),
+  },
 };
 
 export function field(code: ErrorCode) {
-  return (args: ValidationArguments) =>
-    JSON.stringify({ code, params: PARAMS_BY_CODE[code]?.(args.constraints) ?? {} });
+  return (args: ValidationArguments): string => {
+    const meta = FIELD_CODE_META[code];
+    const params = meta?.params?.(args.constraints) ?? {};
+    const message = meta
+      ? `${args.property} ${interpolate(meta.message, params)}`
+      : `${args.property} failed ${code}`;
+    return JSON.stringify({ code, message, params });
+  };
 }
 ```
 
@@ -247,34 +271,32 @@ export class RegisterCustomerDto {
 }
 ```
 
-Custom `exceptionFactory`, wired into the global `ValidationPipe` in
-`main.ts`:
+`buildValidationException`, wired into the global `ValidationPipe`'s
+`exceptionFactory` in `main.ts` (Task 5):
 
 ```ts
-function buildFieldErrors(errors: ValidationError[]): Record<string, FieldError[]> {
+function decodeConstraintMessage(raw: string, constraintName: string): FieldError {
+  try {
+    return JSON.parse(raw) as FieldError;
+  } catch {
+    // a decorator was added without field(...) — degrade instead of crashing
+    return { code: fallbackCodeFor(constraintName), message: raw, params: {} };
+  }
+}
+
+export function buildValidationFields(errors: ValidationError[]): Record<string, FieldError[]> {
   const fields: Record<string, FieldError[]> = {};
   for (const error of errors) {
-    fields[error.property] = Object.values(error.constraints ?? {}).map((raw) => decode(raw, error));
+    fields[error.property] = Object.entries(error.constraints ?? {}).map(([constraintName, raw]) =>
+      decodeConstraintMessage(raw, constraintName),
+    );
   }
   return fields;
 }
 
-function decode(raw: string, error: ValidationError): FieldError {
-  try {
-    const { code, params } = JSON.parse(raw);
-    return { code, params, message: raw };
-  } catch {
-    // a decorator was added without field(...) — degrade instead of crashing
-    return { code: fallbackCodeFor(error), params: {}, message: raw };
-  }
+export function buildValidationException(errors: ValidationError[]): CodedBadRequestException {
+  return new CodedBadRequestException(ErrorCode.VALIDATION_FAILED, 'Validation failed', {}, buildValidationFields(errors));
 }
-
-new ValidationPipe({
-  whitelist: true,
-  transform: true,
-  exceptionFactory: (errors) =>
-    new CodedBadRequestException(ErrorCode.VALIDATION_FAILED, 'Validation failed', {}, buildFieldErrors(errors)),
-});
 ```
 
 `fallbackCodeFor` derives a best-effort code from the class-validator

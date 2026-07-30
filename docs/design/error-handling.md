@@ -94,17 +94,24 @@ throw new CodedUnauthorizedException(
 class-validator only retains an already-interpolated message per failed
 rule — not the rule's raw argument (e.g. the `12` in `MinLength(12)`). Each
 decorator's `message` option is the one place that argument is still
-available, so it's used to smuggle `{code, params}` out as JSON:
+available, so it's used to smuggle `{code, message, params}` out as JSON;
+the human `message` (and how `params` are derived from the raw constraint
+args) is authored once per code in a `FIELD_CODE_META` table in
+`validation-field.ts`, so adding a new `field(...)` call site never
+requires writing a message by hand:
 
 ```ts
 @MinLength(12, { message: field(ErrorCode.MIN_LENGTH) })
 password!: string;
 ```
 
-A custom `exceptionFactory` on the global `ValidationPipe` decodes each
-constraint's message back into `{code, params}` and groups them by field
-into the `fields` map. A decorator added without `field(...)` degrades to a
-best-effort code instead of crashing the request.
+`buildValidationException`, passed as the global `ValidationPipe`'s
+`exceptionFactory`, decodes each constraint's message back into
+`{code, message, params}` via `buildValidationFields` and groups them by
+field into the `fields` map. A decorator added without `field(...)`
+degrades to a best-effort code (derived from the class-validator
+constraint name, e.g. `minLength` → `MIN_LENGTH`) instead of crashing the
+request.
 
 ## 5. The global filter
 
