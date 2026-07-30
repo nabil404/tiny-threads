@@ -5,13 +5,13 @@ import {
   HttpException,
   Logger,
 } from '@nestjs/common';
-import { ErrorCode, ErrorResponseBody } from '@tiny-threads/shared';
+import { ErrorCode, ErrorResponseBody, FieldError } from '@tiny-threads/shared';
 
 interface CodedErrorBody {
   code: ErrorCode;
   message: string;
   params: Record<string, unknown>;
-  fields?: unknown;
+  fields?: Record<string, FieldError[]>;
 }
 
 function isCodedErrorBody(body: unknown): body is CodedErrorBody {
