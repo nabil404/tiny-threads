@@ -216,8 +216,8 @@ class-validator's `ValidationError` only exposes a pre-interpolated message
 per failed rule (`constraints: { minLength: "password must be longer than
 or equal to 12 characters" }`) — the raw rule argument (`12`) isn't
 retained anywhere else on the error object. The decorator's `message`
-option is therefore the only channel available to carry `{code, params}`
-from the DTO to the exception factory:
+option is therefore the only channel available to carry
+`{code, message, params}` from the DTO to the exception factory:
 
 ```ts
 // validation-field.ts
@@ -344,8 +344,8 @@ concrete integration:
   there's a support/observability workflow that consumes it; adding it
   later is a non-breaking, additive change to `ErrorResponseBody`.
 - Nested/array DTO field paths (e.g. `items[0].sku`) — no current DTO has
-  nested validation; `buildFieldErrors` handles the flat case only until one
-  exists.
+  nested validation; `buildValidationFields` handles the flat case only
+  until one exists.
 - Retrofitting non-auth modules — none exist yet (see CLAUDE.md: domain
   modules like products/orders aren't built). Every new module written
   after this lands uses `Coded*Exception` and `field(...)` from the start.
