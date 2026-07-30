@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import { Controller, Get, Query, Res, VERSION_NEUTRAL } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -17,7 +17,7 @@ import { EnvironmentVariables } from '../config/env.validation';
 // Google, so every population's OAuth flow routes through here and is then
 // redirected back to the originating tenant domain.
 @ApiTags('OAuth Google')
-@Controller('auth/google')
+@Controller({ path: 'auth/google', version: VERSION_NEUTRAL })
 export class GoogleOAuthController {
   private readonly client: OAuth2Client;
 

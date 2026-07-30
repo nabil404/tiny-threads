@@ -1,3 +1,11 @@
+// Single source of truth for both the Nest-level prefix/versioning config
+// (bootstrap.ts) and the auth controllers' refresh-cookie `path` — those
+// cookies are scoped to the route path, so if this drifts from the actual
+// route the browser stops sending the refresh token back on it.
+export const API_PREFIX = 'api';
+export const API_VERSION = '1';
+export const API_ROUTE_PREFIX = `/${API_PREFIX}/v${API_VERSION}`;
+
 export const AUTH_REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,

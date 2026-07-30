@@ -47,6 +47,8 @@ Both populations are **tenant-scoped**: `Customer`/`CustomerIdentity`/`CustomerR
 
 There's no global `APP_GUARD` and no `@Public()` decorator — guards (`CustomerJwtAuthGuard`, `MerchantAdminJwtAuthGuard`, `RolesGuard`) are applied per-route with `@UseGuards(...)`; a route with none of those is implicitly public.
 
+All routes are served under URI versioning (`apps/api/src/bootstrap.ts`, `app.enableVersioning({ type: VersioningType.URI, defaultVersion: API_VERSION })`) plus a global `/api` prefix (`app.setGlobalPrefix(API_PREFIX, ...)`), so `CustomersAuthController`/`MerchantAdminsAuthController` routes live under `/api/v1/...` — e.g. `POST /api/v1/customers/auth/login`. The refresh-token cookies' `path` (`REFRESH_COOKIE_PATH` in each controller) is built from the same `API_ROUTE_PREFIX` constant (`apps/api/src/common/constants.ts`) so it can't drift from the route it's scoped to. `GET /` and `GET /auth/google/callback` are excluded from both the prefix and versioning (`version: VERSION_NEUTRAL`), so their paths are unaffected — see §2 for why.
+
 ## 2. Prerequisite: tenant resolution
 
 Almost every request needs a resolved tenant before auth logic can run, because `TenantDbService.run()` (`withTenant`) reads `tenant_id` exclusively from CLS and throws if it's unset.
@@ -57,7 +59,7 @@ Two routes are excluded from it (see the backend-engineer skill for the full rat
 
 ## 3. Password auth lifecycle
 
-Identical shape for both populations (`customers-auth.service.ts` / `merchant-admins-auth.service.ts`); the one structural difference is that merchant-admin `register()` requires redeeming a valid, unexpired, single-use `MerchantUserInvite` (issued by an existing `owner`/`admin` via `POST merchant-admins/auth/invite`, guarded by `RolesGuard` + `@Roles('owner','admin')`, itself checked against `roleOutranks()` so an `admin` can't invite an `owner`) — customers self-register freely.
+Identical shape for both populations (`customers-auth.service.ts` / `merchant-admins-auth.service.ts`); the one structural difference is that merchant-admin `register()` requires redeeming a valid, unexpired, single-use `MerchantUserInvite` (issued by an existing `owner`/`admin` via `POST /api/v1/merchant-admins/auth/invite`, guarded by `RolesGuard` + `@Roles('owner','admin')`, itself checked against `roleOutranks()` so an `admin` can't invite an `owner`) — customers self-register freely.
 
 ```mermaid
 sequenceDiagram

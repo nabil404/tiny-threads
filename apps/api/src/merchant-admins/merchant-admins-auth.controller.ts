@@ -34,10 +34,13 @@ import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import type { MerchantAdminAccessTokenPayload } from '../auth-core/services/token.service';
 import { EnvironmentVariables } from '../config/env.validation';
-import { AUTH_REFRESH_COOKIE_OPTIONS } from '../common/constants';
+import {
+  API_ROUTE_PREFIX,
+  AUTH_REFRESH_COOKIE_OPTIONS,
+} from '../common/constants';
 
 const REFRESH_COOKIE_NAME = 'merchant_admin_refresh_token';
-const REFRESH_COOKIE_PATH = '/merchant-admins/auth';
+const REFRESH_COOKIE_PATH = `${API_ROUTE_PREFIX}/merchant-admins/auth`;
 
 @ApiTags('Merchant Admins Auth')
 @Controller('merchant-admins/auth')

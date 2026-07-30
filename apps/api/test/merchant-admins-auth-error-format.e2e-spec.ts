@@ -36,7 +36,7 @@ describe('Merchant admins auth error envelope (e2e)', () => {
 
   it('returns a VALIDATION_FAILED envelope with a decoded fields map for a short password', async () => {
     const response = await request(app.getHttpServer())
-      .post('/merchant-admins/auth/register')
+      .post('/api/v1/merchant-admins/auth/register')
       .set('Host', tenantHost)
       .send({ token: 'some-token', password: 'short' })
       .expect(400);
@@ -58,7 +58,7 @@ describe('Merchant admins auth error envelope (e2e)', () => {
 
   it('returns an AUTH_INVALID_CREDENTIALS envelope for a login with a wrong password', async () => {
     const response = await request(app.getHttpServer())
-      .post('/merchant-admins/auth/login')
+      .post('/api/v1/merchant-admins/auth/login')
       .set('Host', tenantHost)
       .send({
         email: 'no-such-admin@example.com',

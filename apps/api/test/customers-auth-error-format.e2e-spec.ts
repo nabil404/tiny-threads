@@ -36,7 +36,7 @@ describe('Customers auth error envelope (e2e)', () => {
 
   it('returns a VALIDATION_FAILED envelope with a decoded fields map for a short password', async () => {
     const response = await request(app.getHttpServer())
-      .post('/customers/auth/register')
+      .post('/api/v1/customers/auth/register')
       .set('Host', tenantHost)
       .send({ email: 'jane@example.com', password: 'short', name: 'Jane' })
       .expect(400);
@@ -58,7 +58,7 @@ describe('Customers auth error envelope (e2e)', () => {
 
   it('returns an AUTH_INVALID_CREDENTIALS envelope for a login with a wrong password', async () => {
     await request(app.getHttpServer())
-      .post('/customers/auth/register')
+      .post('/api/v1/customers/auth/register')
       .set('Host', tenantHost)
       .send({
         email: 'wrong-password@example.com',
@@ -68,7 +68,7 @@ describe('Customers auth error envelope (e2e)', () => {
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .post('/customers/auth/login')
+      .post('/api/v1/customers/auth/login')
       .set('Host', tenantHost)
       .send({
         email: 'wrong-password@example.com',

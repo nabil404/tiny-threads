@@ -30,10 +30,13 @@ import { CustomerOAuthExchangeDto } from './dto/customer-oauth-exchange.dto';
 import { RequestCustomerPasswordResetDto } from './dto/request-customer-password-reset.dto';
 import { ResetCustomerPasswordDto } from './dto/reset-customer-password.dto';
 import { EnvironmentVariables } from '../config/env.validation';
-import { AUTH_REFRESH_COOKIE_OPTIONS } from '../common/constants';
+import {
+  API_ROUTE_PREFIX,
+  AUTH_REFRESH_COOKIE_OPTIONS,
+} from '../common/constants';
 
 const REFRESH_COOKIE_NAME = 'customer_refresh_token';
-const REFRESH_COOKIE_PATH = '/customers/auth';
+const REFRESH_COOKIE_PATH = `${API_ROUTE_PREFIX}/customers/auth`;
 
 @ApiTags('Customers Auth')
 @Controller('customers/auth')
