@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
 import { OAuthStateService } from '../auth-core/services/oauth-state.service';
@@ -34,6 +35,7 @@ import { AUTH_REFRESH_COOKIE_OPTIONS } from '../common/constants';
 const REFRESH_COOKIE_NAME = 'merchant_admin_refresh_token';
 const REFRESH_COOKIE_PATH = '/merchant-admins/auth';
 
+@ApiTags('Merchant Admins Auth')
 @Controller('merchant-admins/auth')
 export class MerchantAdminsAuthController {
   constructor(
@@ -63,6 +65,7 @@ export class MerchantAdminsAuthController {
   // doesn't stop an 'admin' from inviting someone in as 'owner' though —
   // that's enforced by inviteMember() itself via the caller's own role
   // (invitedByRole), passed through here from the verified JWT.
+  @ApiBearerAuth()
   @UseGuards(MerchantAdminJwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
   @Post('invite')

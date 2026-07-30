@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
 import { OAuthStateService } from '../auth-core/services/oauth-state.service';
@@ -30,6 +31,7 @@ import { AUTH_REFRESH_COOKIE_OPTIONS } from '../common/constants';
 const REFRESH_COOKIE_NAME = 'customer_refresh_token';
 const REFRESH_COOKIE_PATH = '/customers/auth';
 
+@ApiTags('Customers Auth')
 @Controller('customers/auth')
 export class CustomersAuthController {
   constructor(
@@ -136,6 +138,7 @@ export class CustomersAuthController {
     return { redirectUrl: this.googleAuthorizeUrl(state) };
   }
 
+  @ApiBearerAuth()
   @UseGuards(CustomerJwtAuthGuard)
   @Post('google/link/initiate')
   initiateGoogleLink(

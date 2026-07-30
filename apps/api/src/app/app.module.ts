@@ -43,6 +43,15 @@ export class AppModule implements NestModule {
         // which resolves to no registered tenant host — leaving it behind
         // the middleware makes every probe 404 with "Unknown tenant".
         { path: '/', method: RequestMethod.GET },
+        // Swagger docs (main.ts only mounts these outside production). Not
+        // tenant data, and accessed via the platform domain rather than a
+        // tenant subdomain, so it would otherwise 404 with "Unknown tenant".
+        // The wildcard covers the UI's static assets (swagger-ui-bundle.js,
+        // swagger-ui-init.js, etc.), all served under the /docs prefix.
+        { path: 'docs', method: RequestMethod.GET },
+        { path: 'docs/{*path}', method: RequestMethod.GET },
+        { path: 'docs-json', method: RequestMethod.GET },
+        { path: 'docs-yaml', method: RequestMethod.GET },
       )
       .forRoutes('*');
   }

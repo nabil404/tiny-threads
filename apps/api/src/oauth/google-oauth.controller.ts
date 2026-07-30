@@ -6,6 +6,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { ClsService } from 'nestjs-cls';
@@ -19,6 +20,7 @@ import { EnvironmentVariables } from '../config/env.validation';
 // tenant subdomains/custom domains can't be registered individually with
 // Google, so every population's OAuth flow routes through here and is then
 // redirected back to the originating tenant domain.
+@ApiTags('OAuth Google')
 @Controller('auth/google')
 export class GoogleOAuthController {
   private readonly client: OAuth2Client;
