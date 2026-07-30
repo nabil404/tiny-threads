@@ -1,14 +1,14 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { ClsService } from 'nestjs-cls';
 import { IsNull } from 'typeorm';
 import type { EntityManager } from 'typeorm';
+import { ErrorCode } from '@tiny-threads/shared';
+import {
+  CodedConflictException,
+  CodedNotFoundException,
+  CodedUnauthorizedException,
+} from '../common/errors/coded-exceptions';
 import {
   Customer,
   CustomerIdentity,
@@ -70,7 +70,10 @@ export class CustomersAuthService {
           where: { email: dto.email },
         });
         if (existing) {
-          throw new ConflictException('Email already registered');
+          throw new CodedConflictException(
+            ErrorCode.CUSTOMER_EMAIL_ALREADY_REGISTERED,
+            'Email already registered',
+          );
         }
 
         // Must go through manager.create() + save(), not save(Entity, plainLiteral) —
@@ -132,7 +135,10 @@ export class CustomersAuthService {
         !identity.verificationTokenExpiresAt ||
         identity.verificationTokenExpiresAt < new Date()
       ) {
-        throw new NotFoundException('Invalid or expired verification token');
+        throw new CodedNotFoundException(
+          ErrorCode.CUSTOMER_VERIFICATION_TOKEN_INVALID,
+          'Invalid or expired verification token',
+        );
       }
 
       identity.emailVerified = true;
@@ -162,7 +168,10 @@ export class CustomersAuthService {
         !identity.passwordHash ||
         !(await this.hashing.verify(identity.passwordHash, password))
       ) {
-        throw new UnauthorizedException('Invalid email or password');
+        throw new CodedUnauthorizedException(
+          ErrorCode.AUTH_INVALID_CREDENTIALS,
+          'Invalid email or password',
+        );
       }
 
       return this.issueTokenPair(
@@ -185,7 +194,10 @@ export class CustomersAuthService {
         where: { tokenHash },
       });
       if (!existing) {
-        throw new UnauthorizedException('Invalid refresh token');
+        throw new CodedUnauthorizedException(
+          ErrorCode.AUTH_INVALID_REFRESH_TOKEN,
+          'Invalid refresh token',
+        );
       }
       if (existing.revokedAt) {
         // Reuse of a revoked token in this family is a theft signal: revoke
@@ -195,10 +207,16 @@ export class CustomersAuthService {
           { familyId: existing.familyId },
           { revokedAt: new Date() },
         );
-        throw new UnauthorizedException('Refresh token reuse detected');
+        throw new CodedUnauthorizedException(
+          ErrorCode.AUTH_REFRESH_TOKEN_REUSE_DETECTED,
+          'Refresh token reuse detected',
+        );
       }
       if (existing.expiresAt < new Date()) {
-        throw new UnauthorizedException('Refresh token expired');
+        throw new CodedUnauthorizedException(
+          ErrorCode.AUTH_REFRESH_TOKEN_EXPIRED,
+          'Refresh token expired',
+        );
       }
 
       // Conditional, atomic revoke: `WHERE id = $1 AND revoked_at IS NULL`
@@ -220,7 +238,10 @@ export class CustomersAuthService {
           { familyId: existing.familyId },
           { revokedAt: new Date() },
         );
-        throw new UnauthorizedException('Refresh token reuse detected');
+        throw new CodedUnauthorizedException(
+          ErrorCode.AUTH_REFRESH_TOKEN_REUSE_DETECTED,
+          'Refresh token reuse detected',
+        );
       }
 
       return this.issueTokenPair(
@@ -368,7 +389,8 @@ export class CustomersAuthService {
         conflictingIdentity &&
         conflictingIdentity.customerId !== params.customerId
       ) {
-        throw new ConflictException(
+        throw new CodedConflictException(
+          ErrorCode.CUSTOMER_GOOGLE_ALREADY_LINKED,
           'This Google account is already linked to a different customer',
         );
       }
@@ -452,7 +474,10 @@ export class CustomersAuthService {
         !identity.passwordResetTokenExpiresAt ||
         identity.passwordResetTokenExpiresAt < new Date()
       ) {
-        throw new NotFoundException('Invalid or expired password reset token');
+        throw new CodedNotFoundException(
+          ErrorCode.CUSTOMER_PASSWORD_RESET_TOKEN_INVALID,
+          'Invalid or expired password reset token',
+        );
       }
 
       identity.passwordHash = await this.hashing.hash(newPassword);
