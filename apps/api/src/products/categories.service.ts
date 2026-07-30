@@ -96,14 +96,34 @@ export class CategoriesService {
         }
 
         if (dto.parentId !== null) {
-          const parent = await em.findOne(Category, {
-            where: { id: dto.parentId },
-          });
-          if (!parent) {
-            throw new CodedNotFoundException(
-              ErrorCode.RESOURCE_NOT_FOUND,
-              `Parent category with ID ${dto.parentId} not found`,
-            );
+          let currentParentId: string | null = dto.parentId;
+          const visited = new Set<string>();
+
+          while (currentParentId) {
+            if (currentParentId === id) {
+              throw new CodedBadRequestException(
+                ErrorCode.VALIDATION_FAILED,
+                'Cannot set a descendant category as parent',
+              );
+            }
+            if (visited.has(currentParentId)) {
+              break;
+            }
+            visited.add(currentParentId);
+
+            const parent: Category | null = await em.findOne(Category, {
+              where: { id: currentParentId },
+            });
+            if (!parent) {
+              if (currentParentId === dto.parentId) {
+                throw new CodedNotFoundException(
+                  ErrorCode.RESOURCE_NOT_FOUND,
+                  `Parent category with ID ${dto.parentId} not found`,
+                );
+              }
+              break;
+            }
+            currentParentId = parent.parentId;
           }
         }
         category.parentId = dto.parentId;

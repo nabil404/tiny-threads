@@ -186,6 +186,28 @@ describe('CategoriesService', () => {
       ).rejects.toThrow(CodedBadRequestException);
     });
 
+    it('throws CodedBadRequestException when setting a descendant category as parent', async () => {
+      const cat1 = { id: 'cat-1', name: 'Apparel', parentId: null };
+      const cat2 = { id: 'cat-2', name: 'Shirts', parentId: 'cat-1' };
+      const cat3 = { id: 'cat-3', name: 'T-Shirts', parentId: 'cat-2' };
+
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          findOne: jest.fn().mockImplementation((_entity, opts) => {
+            if (opts.where.id === 'cat-1') return Promise.resolve(cat1);
+            if (opts.where.id === 'cat-2') return Promise.resolve(cat2);
+            if (opts.where.id === 'cat-3') return Promise.resolve(cat3);
+            return Promise.resolve(null);
+          }),
+        };
+        return cb(em as any);
+      });
+
+      await expect(
+        service.update('cat-1', { parentId: 'cat-3' }),
+      ).rejects.toThrow(CodedBadRequestException);
+    });
+
     it('throws CodedNotFoundException if target category does not exist', async () => {
       tenantDbService.run.mockImplementation(async (cb) => {
         const em = {
