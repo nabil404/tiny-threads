@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Tiny Threads is a **multi-tenant e-commerce marketplace** backend (dozens of merchant tenants, each selling to their own customers) plus a Next.js storefront/admin frontend. It's a pnpm monorepo:
 
-- **`apps/api`** — NestJS backend, the substantive app. Commerce domain modules (products, orders, etc.) don't exist yet. What's built so far: the tenancy/DB foundation, auth end-to-end (customer + merchant-admin password auth, Google OAuth, JWT refresh rotation), a coded error-envelope system every response goes through, and the first provider port (notifications).
+- **`apps/api`** — NestJS backend, the substantive app. What's built so far: the tenancy/DB foundation, auth end-to-end (customer + merchant-admin password auth, Google OAuth, JWT refresh rotation, role-based access control for merchant admins), a coded error-envelope system every response goes through, the first provider port (notifications), and the first commerce domain module — products and categories (storefront read endpoints, merchant-admin CRUD). Orders, payments, and the rest of the commerce domain don't exist yet.
 - **`apps/web`** — Next.js 16 (App Router) frontend. Currently a fresh `create-next-app` scaffold — no storefront/admin UI yet.
 - **`packages/shared`** — shared TypeScript code between `api` and `web`. Currently just the error-envelope types (`src/errors/` — `ErrorCode` enum, `ErrorResponseBody`/`FieldError`), kept here so neither app can drift from the other.
 
@@ -41,6 +41,7 @@ tiny-threads/
 │   │   │   ├── merchant-admins/    # Merchant-admin password auth (same shape as customers/)
 │   │   │   ├── notifications/      # NotificationsPort + LogNotificationsAdapter (first provider port)
 │   │   │   ├── oauth/              # Centralized Google OAuth callback, one-time-code exchange
+│   │   │   ├── products/           # Products + categories: storefront read endpoints, merchant-admin CRUD
 │   │   │   ├── bootstrap.ts        # configureApp() — global pipes/filters, called from main.ts
 │   │   │   └── main.ts
 │   │   ├── test/                   # e2e specs + Jest setup (setup-unit.ts / setup-e2e.ts)
@@ -137,6 +138,7 @@ pnpm test:e2e          # jest -c test/jest-e2e.json
 - **Tenancy isolation:** always execute tenant queries through `TenantDbService.run(...)` / `withTenant`. Consult `.claude/skills/backend-engineer/SKILL.md` before making database or entity changes.
 - **Vendor abstraction (ports & adapters):** integrations with third-party providers (payment gateways, shipping, tax, notifications, storage, search) must be hidden behind domain ports. Vendor SDK types must never leak into domain services or controllers.
 - **Error handling:** throw a `Coded*Exception` (`src/common/errors/`) with an `ErrorCode` from `packages/shared`, never a bare `HttpException`; the global `AllExceptionsFilter` is the only place a response body is produced. See `docs/design/error-handling.md`.
+- **Merchant-admin RBAC:** guard merchant-admin-scoped endpoints with `@Roles(...)` (`merchant-admins/decorators/roles.decorator.ts`) + `RolesGuard` (`merchant-admins/guards/roles.guard.ts`); rank checks (e.g. an `admin` inviting an `owner`) go through `roleOutranks()` in `merchant-admins/utils/role-hierarchy.ts`. This isn't a separate module — other modules with merchant-admin routes (e.g. `products`) import it from `merchant-admins/`.
 - **REST API design:** follow `.claude/skills/rest-api-design/SKILL.md` for resource naming, HTTP methods/status codes, versioning, pagination, and OpenAPI docs.
 - **Formatting:** single quotes, trailing commas everywhere (`.prettierrc` at repo root; enforced through ESLint's `prettier/prettier` rule, not a separate check).
 - **Linting:** `apps/api` ESLint runs with `recommendedTypeChecked`; `@typescript-eslint/no-explicit-any` is off, `no-floating-promises`/`no-unsafe-argument` are warnings not errors.

@@ -36,20 +36,20 @@ export class Order {
 }
 ```
 
-**Reference migration** (the policy — declared once, in the same migration that creates the table):
+**Reference migration** (the policy — declared once, in the same migration that creates the table, via the shared helper in `apps/api/src/db/migrations/helpers/rls.helper.ts`):
 
 ```ts
-await queryRunner.query(`ALTER TABLE "orders" ENABLE ROW LEVEL SECURITY`);
-await queryRunner.query(`ALTER TABLE "orders" FORCE ROW LEVEL SECURITY`);
-await queryRunner.query(`
-  CREATE POLICY tenant_isolation ON "orders"
-    FOR ALL
-    TO app_runtime
-    USING      (tenant_id = current_setting('app.current_tenant')::uuid)
-    WITH CHECK (tenant_id = current_setting('app.current_tenant')::uuid)
-`);
+import { enableRls, disableRls } from '../helpers/rls.helper';
+
+// up()
+await queryRunner.query(`CREATE TABLE "orders" (...)`);
+await enableRls(queryRunner, 'orders');
+
+// down()
+await disableRls(queryRunner, 'orders');
+await queryRunner.query(`DROP TABLE "orders"`);
 ```
 
-Every new tenant-scoped table follows the same two-step workflow: run `migration:generate` to get the auto-diffed `CREATE TABLE` migration from entity metadata, then hand-append the three RLS statements above to that same migration's `up()` (and the teardown to `down()`). `migration:generate` only diffs entity metadata against the database, so it has no concept of policies — it will never auto-regenerate or conflict with a hand-added policy.
+Every new tenant-scoped table follows the same two-step workflow: run `migration:generate` to get the auto-diffed `CREATE TABLE` migration from entity metadata, then call `enableRls(queryRunner, table)` / `disableRls(...)` in that same migration's `up()`/`down()`, adjacent to the `CREATE`/`DROP TABLE`. `enableRls` issues `ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL SECURITY`, and the tenant policy, then immediately re-reads `pg_catalog` in the same transaction to assert all three actually took — a broken call fails the whole migration (and its `CREATE TABLE`) rather than shipping an unprotected table. `migration:generate` only diffs entity metadata against the database, so it has no concept of policies — it will never auto-regenerate or conflict with the helper's calls.
 
 **Gotcha carried forward, not solved by this design:** there is no compiler-enforced link between an entity's `@Entity({ name: ... })` table name and the raw-SQL `CREATE POLICY ... ON "..."` string in its migration. Renaming a table means remembering to update the migration by hand — catch this in review (see the `backend-engineer` skill's pre-merge checklist).

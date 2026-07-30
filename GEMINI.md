@@ -8,7 +8,7 @@ This file provides guidance to Gemini / Antigravity AI agents working in this re
 
 **Tiny Threads** is a multi-tenant e-commerce marketplace platform (supporting dozens of merchant tenants, each selling to their own customers) built as a `pnpm` monorepo:
 
-- **`apps/api`**: NestJS 11 backend providing core APIs, authentication, multi-tenant DB foundation, RLS policies, and domain services.
+- **`apps/api`**: NestJS 11 backend providing core APIs, authentication (incl. merchant-admin RBAC), multi-tenant DB foundation, RLS policies, and domain services. The first commerce domain module — products and categories (storefront read endpoints, merchant-admin CRUD) — has shipped; orders, payments, and the rest of the commerce domain don't exist yet.
 - **`apps/web`**: Next.js 16 (App Router) frontend for storefronts and administration.
 - **`packages/shared`**: Shared TypeScript code used across `api` and `web`. Currently just the error-envelope types (`src/errors/` — `ErrorCode` enum, `ErrorResponseBody`/`FieldError`), kept here so neither app can drift from the other.
 - **`docs/`**: Architectural Decision Records (ADRs), database schema/ERD specifications, and feature design docs.
@@ -43,6 +43,7 @@ tiny-threads/
 │   │   │   ├── merchant-admins/ # Merchant admin authentication & user management
 │   │   │   ├── notifications/ # Notification domain module & provider interfaces
 │   │   │   ├── oauth/       # Centralized Google OAuth callback & one-time-code exchange
+│   │   │   ├── products/    # Products + categories: storefront read endpoints, merchant-admin CRUD
 │   │   │   ├── bootstrap.ts # configureApp(): global pipes/filters/prefix/versioning, called from main.ts
 │   │   ├── test/            # Integration & E2E tests, Jest setup scripts
 │   │   └── scripts/         # DB migration wrapper scripts
@@ -163,7 +164,10 @@ pnpm test:e2e                      # Run E2E test suite in apps/api
 4. **Error Handling**:
    Throw a `Coded*Exception` (`apps/api/src/common/errors/`, e.g. `CodedUnauthorizedException`, `CodedNotFoundException`) with an `ErrorCode` from `packages/shared`, never a bare `HttpException` — the global `AllExceptionsFilter` is the only place that produces a response body, as `{ error: { code, message, params } }` (plus a `fields` map for validation errors). See `docs/design/error-handling.md`.
 
-5. **Code Style & Formatting**:
+5. **Merchant-Admin RBAC**:
+   Guard merchant-admin-scoped endpoints with `@Roles(...)` (`apps/api/src/merchant-admins/decorators/roles.decorator.ts`) + `RolesGuard` (`apps/api/src/merchant-admins/guards/roles.guard.ts`); rank checks (e.g. an `admin` inviting an `owner`) go through `roleOutranks()` in `apps/api/src/merchant-admins/utils/role-hierarchy.ts`. Not a separate module — other modules with merchant-admin routes (e.g. `products`) import it from `merchant-admins/`.
+
+6. **Code Style & Formatting**:
    - Single quotes, trailing commas (`.prettierrc`).
    - Scoped package names (`@tiny-threads/api`, `@tiny-threads/web`, `@tiny-threads/shared`).
    - Avoid `any` types; prefer strict TypeScript interfaces and DTOs with `class-validator`.

@@ -79,13 +79,15 @@ Every external capability is a domain-owned port with adapters at the edge; a re
 
 `NotificationsPort` is the first port to land. It is deliberately narrow — `sendEmail(to, template, data)` over an `EmailTemplate` union (`verification-email`, `password-reset`, `merchant-invite`) — so callers name an intent and never compose provider-specific payloads. It is injected by the `NOTIFICATIONS_PORT` symbol, so no auth service references an adapter type. Swapping in SES/SendGrid/Postmark means adding one adapter and rebinding that token; no domain code changes.
 
-Payments, shipping, tax, storage, and search remain designed-but-unimplemented.
+Payments, shipping, tax, storage, and search remain designed-but-unimplemented as ports/adapters (the underlying DB schema for orders/payments already exists — see D6/D7 below).
 
 ## D6 — Orders modeled as three coordinated state machines
 
 Lifecycle, payment, and fulfillment are independently-changing concerns modeled as three sub-machines, not one flat enum.
 
 *Rejected:* single flat `status` enum; immediate-capture-only / single-shipment-only / per-merchant configurable flows.
+
+The `orders`/`order_items`/`order_events` tables and entities already exist with RLS enabled (since the initial migration) — it's the state-machine transition logic and its wiring to the payment port that remain unbuilt, not the schema.
 
 → [references/d6-order-state-machines.md](references/d6-order-state-machines.md)
 
@@ -94,6 +96,8 @@ Lifecycle, payment, and fulfillment are independently-changing concerns modeled 
 A provider-agnostic `PaymentPort` covering onboarding, split-settlement money movement, and normalized inbound events.
 
 *Rejected:* funds through the platform account then payout; coupling to one gateway's API.
+
+The `payments`/`payment_provider_configs`/`settlements`/`refunds` tables and entities already exist with RLS enabled — the `PaymentPort` implementation and its adapter are what's unbuilt, not the schema.
 
 → full rationale and `PaymentPort` interface: [references/d7-payment-port.md](references/d7-payment-port.md)
 
