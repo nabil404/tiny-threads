@@ -1,4 +1,8 @@
-import { ArgumentsHost, BadRequestException } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ErrorCode } from '@tiny-threads/shared';
 import { AllExceptionsFilter } from '../all-exceptions.filter';
 import { CodedUnauthorizedException } from '../coded-exceptions';
@@ -49,6 +53,29 @@ describe('AllExceptionsFilter', () => {
     expect(json).toHaveBeenCalledWith({
       error: { code: 'HTTP_400', message: 'plain nest message', params: {} },
     });
+  });
+
+  it('never leaks a raw 5xx HttpException message and logs it server-side instead', () => {
+    const { host, status, json } = buildHost();
+    const exception = new InternalServerErrorException(
+      'leaky internal detail',
+    );
+    const logSpy = jest.spyOn(filter['logger'], 'error');
+
+    filter.catch(exception, host);
+
+    expect(status).toHaveBeenCalledWith(500);
+    expect(json).toHaveBeenCalledWith({
+      error: {
+        code: 'HTTP_500',
+        message: 'Internal server error',
+        params: {},
+      },
+    });
+    expect(logSpy).toHaveBeenCalled();
+    expect(JSON.stringify(json.mock.calls[0])).not.toContain(
+      'leaky internal detail',
+    );
   });
 
   it('never leaks a raw error and logs it server-side instead', () => {

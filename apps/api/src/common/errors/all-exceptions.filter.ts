@@ -42,11 +42,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
       // Framework/library-thrown HttpException we haven't retrofitted (e.g.
       // Nest's own 404 for an unmatched route) — synthesize a code so the
-      // envelope shape stays consistent even for paths that were missed.
+      // envelope shape stays consistent even for paths that were missed. A
+      // 5xx here (e.g. a library throwing InternalServerErrorException) gets
+      // the same log-and-suppress treatment as the non-HttpException branch
+      // below — an uncoded 5xx is still an unexpected error, not a modeled one.
+      if (status >= 500) {
+        this.logger.error(exception.stack);
+      }
       response.status(status).json({
         error: {
           code: `HTTP_${status}` as ErrorCode,
-          message: exception.message,
+          message: status >= 500 ? 'Internal server error' : exception.message,
           params: {},
         },
       });
