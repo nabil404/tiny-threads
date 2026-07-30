@@ -57,9 +57,7 @@ describe('AllExceptionsFilter', () => {
 
   it('never leaks a raw 5xx HttpException message and logs it server-side instead', () => {
     const { host, status, json } = buildHost();
-    const exception = new InternalServerErrorException(
-      'leaky internal detail',
-    );
+    const exception = new InternalServerErrorException('leaky internal detail');
     const logSpy = jest.spyOn(filter['logger'], 'error');
 
     filter.catch(exception, host);
