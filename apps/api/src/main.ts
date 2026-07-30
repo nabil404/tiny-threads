@@ -6,18 +6,16 @@ import { resolve } from 'path';
 // build. data-source.ts needs four because it sits one level deeper (src/db).
 config({ path: resolve(__dirname, '../../../.env') });
 
-import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import cookieParser from 'cookie-parser';
 import { AppModule } from './app/app.module';
 import { EnvironmentVariables, NodeEnv } from './config/env.validation';
+import { configureApp } from './bootstrap';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.use(cookieParser());
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  configureApp(app);
   const configService =
     app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
 
