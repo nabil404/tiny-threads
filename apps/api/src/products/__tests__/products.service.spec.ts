@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { ProductsService } from '../products.service';
 import { TenantDbService } from '../../db/tenant-db.service';
 import {
@@ -28,13 +29,20 @@ describe('ProductsService', () => {
             return Promise.resolve({ id: 'prod-12345678-abcd', ...item });
           }),
           create: jest.fn().mockImplementation((entityClass, entity) => entity),
-          findOne: jest.fn().mockResolvedValue({ id: 'prod-12345678-abcd', status: 'active', variants: [] }),
+          findOne: jest.fn().mockResolvedValue({
+            id: 'prod-12345678-abcd',
+            status: 'active',
+            variants: [],
+          }),
           find: jest.fn().mockResolvedValue([]),
         };
         return cb(em as any);
       });
 
-      const result = await service.create({ title: 'Basic Tee', status: 'active' });
+      const result = await service.create({
+        title: 'Basic Tee',
+        status: 'active',
+      });
       expect(result).toBeDefined();
       expect(savedVariant).toBeDefined();
       expect(savedVariant.sku).toEqual('SKU-prod-12345678-abcd');
@@ -120,7 +128,9 @@ describe('ProductsService', () => {
           find: jest.fn().mockResolvedValue([]),
           create: jest.fn().mockImplementation((_, entity) => entity),
           save: jest.fn().mockResolvedValue({ id: 'prod-1' }),
-          findOne: jest.fn().mockResolvedValue({ id: 'v-99', sku: 'TSHIRT-RED' }),
+          findOne: jest
+            .fn()
+            .mockResolvedValue({ id: 'v-99', sku: 'TSHIRT-RED' }),
         };
         return cb(em as any);
       });
@@ -139,7 +149,15 @@ describe('ProductsService', () => {
         id: 'prod-1',
         title: 'Basic Tee',
         status: 'active',
-        variants: [{ id: 'v-1', sku: 'TSHIRT-S', priceCents: 1500, stock: 10, isDefault: true }],
+        variants: [
+          {
+            id: 'v-1',
+            sku: 'TSHIRT-S',
+            priceCents: 1500,
+            stock: 10,
+            isDefault: true,
+          },
+        ],
         productCategories: [{ productId: 'prod-1', categoryId: 'cat-1' }],
       };
 
@@ -147,7 +165,9 @@ describe('ProductsService', () => {
         const em = {
           find: jest.fn().mockResolvedValue([{ id: 'cat-1' }]),
           create: jest.fn().mockImplementation((_, entity) => entity),
-          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          save: jest
+            .fn()
+            .mockImplementation((_, entity) => Promise.resolve(entity)),
           findOne: jest.fn().mockImplementation((entityClass, options) => {
             if (options.where?.sku) return Promise.resolve(null);
             return Promise.resolve(mockProduct);
@@ -187,16 +207,32 @@ describe('ProductsService', () => {
         return cb(em as any);
       });
 
-      const result = await service.findAll({ page: 1, limit: 10, status: 'active', categoryId: 'cat-1', q: 'Tee' });
+      const result = await service.findAll({
+        page: 1,
+        limit: 10,
+        status: 'active',
+        categoryId: 'cat-1',
+        q: 'Tee',
+      });
       expect(result).toEqual({
         items: mockProducts,
         total: 1,
         page: 1,
         limit: 10,
       });
-      expect(mockQb.andWhere).toHaveBeenCalledWith('product.status = :status', { status: 'active' });
-      expect(mockQb.innerJoin).toHaveBeenCalledWith('product.productCategories', 'filterCat', 'filterCat.categoryId = :categoryId', { categoryId: 'cat-1' });
-      expect(mockQb.andWhere).toHaveBeenCalledWith('product.title ILIKE :search', { search: '%Tee%' });
+      expect(mockQb.andWhere).toHaveBeenCalledWith('product.status = :status', {
+        status: 'active',
+      });
+      expect(mockQb.innerJoin).toHaveBeenCalledWith(
+        'product.productCategories',
+        'filterCat',
+        'filterCat.categoryId = :categoryId',
+        { categoryId: 'cat-1' },
+      );
+      expect(mockQb.andWhere).toHaveBeenCalledWith(
+        'product.title ILIKE :search',
+        { search: '%Tee%' },
+      );
     });
 
     it('uses default pagination values page=1 and limit=20 if query parameters are omitted', async () => {
@@ -239,7 +275,10 @@ describe('ProductsService', () => {
       });
 
       await service.findAll({ page: 1, limit: 10 }, true);
-      expect(mockQb.andWhere).toHaveBeenCalledWith('product.status = :activeStatus', { activeStatus: 'active' });
+      expect(mockQb.andWhere).toHaveBeenCalledWith(
+        'product.status = :activeStatus',
+        { activeStatus: 'active' },
+      );
     });
   });
 
@@ -261,7 +300,9 @@ describe('ProductsService', () => {
         return cb(em as any);
       });
 
-      await expect(service.findById('prod-nonexistent')).rejects.toThrow(CodedNotFoundException);
+      await expect(service.findById('prod-nonexistent')).rejects.toThrow(
+        CodedNotFoundException,
+      );
     });
 
     it('throws CodedNotFoundException on storefront call if product is draft', async () => {
@@ -271,24 +312,37 @@ describe('ProductsService', () => {
         return cb(em as any);
       });
 
-      await expect(service.findById('prod-1', true)).rejects.toThrow(CodedNotFoundException);
+      await expect(service.findById('prod-1', true)).rejects.toThrow(
+        CodedNotFoundException,
+      );
     });
   });
 
   describe('update', () => {
     it('updates product basic details, categories, and variants without nested tenantDb.run calls', async () => {
-      const existingProduct = { id: 'prod-1', title: 'Old Tee', status: 'draft' };
-      const updatedProduct = { id: 'prod-1', title: 'New Tee', status: 'active' };
+      const existingProduct = {
+        id: 'prod-1',
+        title: 'Old Tee',
+        status: 'draft',
+      };
+      const updatedProduct = {
+        id: 'prod-1',
+        title: 'New Tee',
+        status: 'active',
+      };
 
       tenantDbService.run.mockImplementation(async (cb) => {
         const em = {
           findOne: jest.fn().mockImplementation((entityClass, options) => {
             if (options.where?.sku) return Promise.resolve(null);
-            if (options.where?.id === 'prod-1') return Promise.resolve(existingProduct);
+            if (options.where?.id === 'prod-1')
+              return Promise.resolve(existingProduct);
             return Promise.resolve(updatedProduct);
           }),
           find: jest.fn().mockResolvedValue([{ id: 'cat-2' }]),
-          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          save: jest
+            .fn()
+            .mockImplementation((_, entity) => Promise.resolve(entity)),
           delete: jest.fn().mockResolvedValue({ affected: 1 }),
           create: jest.fn().mockImplementation((_, entity) => entity),
         };
@@ -312,9 +366,9 @@ describe('ProductsService', () => {
         return cb(em as any);
       });
 
-      await expect(service.update('prod-nonexistent', { title: 'New' })).rejects.toThrow(
-        CodedNotFoundException,
-      );
+      await expect(
+        service.update('prod-nonexistent', { title: 'New' }),
+      ).rejects.toThrow(CodedNotFoundException);
     });
   });
 
@@ -344,7 +398,9 @@ describe('ProductsService', () => {
         return cb(em as any);
       });
 
-      await expect(service.delete('prod-nonexistent')).rejects.toThrow(CodedNotFoundException);
+      await expect(service.delete('prod-nonexistent')).rejects.toThrow(
+        CodedNotFoundException,
+      );
     });
   });
 });

@@ -33,7 +33,10 @@ export class ProductsService {
   ): Promise<Product> {
     const product = await em.findOne(Product, {
       where: { id },
-      relations: ['variants', 'productCategories', 'productCategories.category'],
+      relations: {
+        variants: true,
+        productCategories: { category: true },
+      },
     });
     if (!product || (isStorefront && product.status !== 'active')) {
       throw new CodedNotFoundException(
@@ -147,21 +150,29 @@ export class ProductsService {
       const page = query.page ?? 1;
       const limit = query.limit ?? 20;
 
-      const qb = em.createQueryBuilder(Product, 'product')
+      const qb = em
+        .createQueryBuilder(Product, 'product')
         .leftJoinAndSelect('product.variants', 'variant')
         .leftJoinAndSelect('product.productCategories', 'productCategory')
         .leftJoinAndSelect('productCategory.category', 'category');
 
       if (isStorefront) {
-        qb.andWhere('product.status = :activeStatus', { activeStatus: 'active' });
+        qb.andWhere('product.status = :activeStatus', {
+          activeStatus: 'active',
+        });
       } else if (query.status) {
         qb.andWhere('product.status = :status', { status: query.status });
       }
 
       if (query.categoryId) {
-        qb.innerJoin('product.productCategories', 'filterCat', 'filterCat.categoryId = :categoryId', {
-          categoryId: query.categoryId,
-        });
+        qb.innerJoin(
+          'product.productCategories',
+          'filterCat',
+          'filterCat.categoryId = :categoryId',
+          {
+            categoryId: query.categoryId,
+          },
+        );
       }
 
       if (query.q) {
@@ -193,7 +204,7 @@ export class ProductsService {
     return this.tenantDb.run(async (em) => {
       const product = await em.findOne(Product, {
         where: { id },
-        relations: ['variants', 'productCategories'],
+        relations: { variants: true, productCategories: true },
       });
 
       if (!product) {

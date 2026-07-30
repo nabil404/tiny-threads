@@ -8,7 +8,7 @@ import {
   IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ProductStatus } from '../../db/entities/products.entity';
+import type { ProductStatus } from '../../db/entities/products.entity';
 
 export class ProductQueryDto {
   @IsOptional()

@@ -9,7 +9,13 @@ import {
   CodedNotFoundException,
 } from '../common/errors/coded-exceptions';
 
-export interface CategoryTreeNode extends Category {
+export interface CategoryTreeNode {
+  id: string;
+  tenantId: string;
+  name: string;
+  parentId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
   children: CategoryTreeNode[];
 }
 
@@ -65,7 +71,7 @@ export class CategoriesService {
     return this.tenantDb.run(async (em) => {
       const category = await em.findOne(Category, {
         where: { id },
-        relations: ['children'],
+        relations: { children: true },
       });
       if (!category) {
         throw new CodedNotFoundException(
@@ -141,7 +147,7 @@ export class CategoriesService {
     return this.tenantDb.run(async (em) => {
       const category = await em.findOne(Category, {
         where: { id },
-        relations: ['children'],
+        relations: { children: true },
       });
       if (!category) {
         throw new CodedNotFoundException(

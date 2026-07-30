@@ -12,6 +12,7 @@ import { TenantResolutionMiddleware } from '../common/middleware/tenant-resoluti
 import { CustomersAuthModule } from '../customers/customers-auth.module';
 import { OAuthModule } from '../oauth/oauth.module';
 import { MerchantAdminsAuthModule } from '../merchant-admins/merchant-admins-auth.module';
+import { ProductsModule } from '../products/products.module';
 import { validate } from '../config/env.validation';
 
 @Module({
@@ -25,6 +26,7 @@ import { validate } from '../config/env.validation';
     CustomersAuthModule,
     OAuthModule,
     MerchantAdminsAuthModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

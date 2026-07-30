@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { StorefrontProductsController } from '../storefront-products.controller';
 import { StorefrontCategoriesController } from '../storefront-categories.controller';
 import { ProductsService } from '../products.service';
@@ -21,7 +22,9 @@ describe('Storefront Controllers', () => {
     } as unknown as jest.Mocked<CategoriesService>;
 
     productsController = new StorefrontProductsController(productsService);
-    categoriesController = new StorefrontCategoriesController(categoriesService);
+    categoriesController = new StorefrontCategoriesController(
+      categoriesService,
+    );
   });
 
   describe('StorefrontProductsController', () => {
@@ -37,7 +40,11 @@ describe('Storefront Controllers', () => {
     });
 
     it('calls productsService.findById with isStorefront = true', async () => {
-      const mockProduct = { id: 'prod-123', title: 'Test Product', status: 'active' } as any;
+      const mockProduct = {
+        id: 'prod-123',
+        title: 'Test Product',
+        status: 'active',
+      } as any;
       productsService.findById.mockResolvedValue(mockProduct);
 
       const result = await productsController.findOne('prod-123');

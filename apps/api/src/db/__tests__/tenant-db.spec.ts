@@ -68,10 +68,9 @@ describe('withTenant (RLS isolation)', () => {
       entities: Object.values(entities),
     });
     await superuserDataSource.initialize();
-    await superuserDataSource.query(`DELETE FROM "orders"`);
-    await superuserDataSource.query(`DELETE FROM "customers"`);
-    await superuserDataSource.query(`DELETE FROM "tenants"`);
-    await superuserDataSource.query(`DELETE FROM "currencies"`);
+    await superuserDataSource.query(
+      `TRUNCATE TABLE "orders", "customer_refresh_tokens", "customer_identities", "customers", "product_variants", "products", "categories", "product_categories", "merchant_user_refresh_tokens", "merchant_user_identities", "merchant_users", "tenants", "currencies" CASCADE`,
+    );
     await superuserDataSource
       .getRepository(entities.Tenant)
       .save([tenantA, tenantB]);
