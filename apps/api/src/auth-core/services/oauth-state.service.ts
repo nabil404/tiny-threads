@@ -1,6 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { ErrorCode } from '@tiny-threads/shared';
+import { CodedBadRequestException } from '../../common/errors/coded-exceptions';
 import { EnvironmentVariables } from '../../config/env.validation';
 import { AuthPopulation } from '../../common/constants';
 
@@ -30,7 +32,10 @@ export class OAuthStateService {
   decode(token: string): OAuthState {
     const [payload, signature] = token.split('.');
     if (!payload || !signature || !this.isValidSignature(payload, signature)) {
-      throw new BadRequestException('Invalid OAuth state');
+      throw new CodedBadRequestException(
+        ErrorCode.OAUTH_INVALID_STATE,
+        'Invalid OAuth state',
+      );
     }
     return JSON.parse(
       Buffer.from(payload, 'base64url').toString('utf8'),

@@ -1,15 +1,11 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  Query,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Query, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { ClsService } from 'nestjs-cls';
+import { ErrorCode } from '@tiny-threads/shared';
+import { CodedBadRequestException } from '../common/errors/coded-exceptions';
 import { OAuthStateService } from '../auth-core/services/oauth-state.service';
 import { CustomersAuthService } from '../customers/customers-auth.service';
 import { MerchantAdminsAuthService } from '../merchant-admins/merchant-admins-auth.service';
@@ -68,14 +64,20 @@ export class GoogleOAuthController {
     this.cls.set('tenantId', state.tenantId);
     const { tokens } = await this.client.getToken(code);
     if (!tokens.id_token) {
-      throw new BadRequestException('Google did not return an id_token');
+      throw new CodedBadRequestException(
+        ErrorCode.OAUTH_MISSING_ID_TOKEN,
+        'Google did not return an id_token',
+      );
     }
     const ticket = await this.client.verifyIdToken({
       idToken: tokens.id_token,
     });
     const payload = ticket.getPayload();
     if (!payload?.sub || !payload.email) {
-      throw new BadRequestException('Invalid Google id_token payload');
+      throw new CodedBadRequestException(
+        ErrorCode.OAUTH_INVALID_ID_TOKEN_PAYLOAD,
+        'Invalid Google id_token payload',
+      );
     }
 
     if (state.population === 'customer') {
@@ -142,6 +144,9 @@ export class GoogleOAuthController {
       );
     }
 
-    throw new BadRequestException('Unsupported OAuth population');
+    throw new CodedBadRequestException(
+      ErrorCode.OAUTH_UNSUPPORTED_POPULATION,
+      'Unsupported OAuth population',
+    );
   }
 }
