@@ -8,7 +8,7 @@ export interface FieldError {
 
 export interface ErrorResponseBody {
   error: {
-    code: ErrorCode;
+    code: ErrorCode | `HTTP_${number}`;
     message: string;
     params: Record<string, unknown>;
     fields?: Record<string, FieldError[]>;
