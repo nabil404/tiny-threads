@@ -53,6 +53,21 @@ describe('createValidatedLocalAuthGuard', () => {
     expect(passportCanActivate).not.toHaveBeenCalled();
   });
 
+  it('attaches a decoded fields map to the thrown exception', async () => {
+    const guard = new Guard();
+
+    const error = await guard
+      .canActivate(
+        contextWithBody({ email: 'not-an-email', password: 'secret' }),
+      )
+      .catch((caught: unknown) => caught);
+
+    expect((error as BadRequestException).getResponse()).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      fields: { email: [expect.objectContaining({ code: 'IS_EMAIL' })] },
+    });
+  });
+
   it('delegates to the passport strategy for a valid body', async () => {
     const passportCanActivate = jest
       .spyOn(basePrototype, 'canActivate')
