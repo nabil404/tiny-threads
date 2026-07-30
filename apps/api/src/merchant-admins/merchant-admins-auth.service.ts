@@ -1,15 +1,15 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { ClsService } from 'nestjs-cls';
 import { IsNull } from 'typeorm';
 import type { EntityManager } from 'typeorm';
+import { ErrorCode } from '@tiny-threads/shared';
+import {
+  CodedConflictException,
+  CodedForbiddenException,
+  CodedNotFoundException,
+  CodedUnauthorizedException,
+} from '../common/errors/coded-exceptions';
 import {
   MerchantUser,
   MerchantUserIdentity,
@@ -80,7 +80,10 @@ export class MerchantAdminsAuthService {
           where: { tokenHash },
         });
         if (!invite || invite.usedAt || invite.expiresAt < new Date()) {
-          throw new NotFoundException('Invalid or expired invite token');
+          throw new CodedNotFoundException(
+            ErrorCode.MERCHANT_ADMIN_INVITE_TOKEN_INVALID,
+            'Invalid or expired invite token',
+          );
         }
 
         // Atomically claim the invite BEFORE creating anything else —
@@ -97,14 +100,20 @@ export class MerchantAdminsAuthService {
           { usedAt: new Date() },
         );
         if (!claimResult.affected) {
-          throw new NotFoundException('Invalid or expired invite token');
+          throw new CodedNotFoundException(
+            ErrorCode.MERCHANT_ADMIN_INVITE_TOKEN_INVALID,
+            'Invalid or expired invite token',
+          );
         }
 
         const existing = await manager.findOne(MerchantUser, {
           where: { email: invite.email },
         });
         if (existing) {
-          throw new ConflictException('Email already registered');
+          throw new CodedConflictException(
+            ErrorCode.MERCHANT_ADMIN_EMAIL_ALREADY_REGISTERED,
+            'Email already registered',
+          );
         }
 
         const merchantUser = await manager.save(
@@ -181,8 +190,10 @@ export class MerchantAdminsAuthService {
     role: string;
   }): Promise<void> {
     if (roleOutranks(params.role, params.invitedByRole)) {
-      throw new ForbiddenException(
+      throw new CodedForbiddenException(
+        ErrorCode.MERCHANT_ADMIN_ROLE_TOO_HIGH,
         `Cannot invite a member with a role higher than your own (${params.invitedByRole})`,
+        { invitedByRole: params.invitedByRole },
       );
     }
 
@@ -224,7 +235,10 @@ export class MerchantAdminsAuthService {
         !identity.verificationTokenExpiresAt ||
         identity.verificationTokenExpiresAt < new Date()
       ) {
-        throw new NotFoundException('Invalid or expired verification token');
+        throw new CodedNotFoundException(
+          ErrorCode.MERCHANT_ADMIN_VERIFICATION_TOKEN_INVALID,
+          'Invalid or expired verification token',
+        );
       }
 
       identity.emailVerified = true;
@@ -254,7 +268,10 @@ export class MerchantAdminsAuthService {
         !identity?.passwordHash ||
         !(await this.hashing.verify(identity.passwordHash, password))
       ) {
-        throw new UnauthorizedException('Invalid email or password');
+        throw new CodedUnauthorizedException(
+          ErrorCode.AUTH_INVALID_CREDENTIALS,
+          'Invalid email or password',
+        );
       }
 
       return this.issueTokenPair(
@@ -351,7 +368,8 @@ export class MerchantAdminsAuthService {
         }
       }
 
-      throw new NotFoundException(
+      throw new CodedNotFoundException(
+        ErrorCode.MERCHANT_ADMIN_NOT_FOUND,
         'No merchant admin account found for this email',
       );
     });
@@ -368,7 +386,10 @@ export class MerchantAdminsAuthService {
         where: { tokenHash },
       });
       if (!existing) {
-        throw new UnauthorizedException('Invalid refresh token');
+        throw new CodedUnauthorizedException(
+          ErrorCode.AUTH_INVALID_REFRESH_TOKEN,
+          'Invalid refresh token',
+        );
       }
       if (existing.revokedAt) {
         // Reuse of a revoked token in this family is a theft signal: revoke
@@ -378,17 +399,26 @@ export class MerchantAdminsAuthService {
           { familyId: existing.familyId },
           { revokedAt: new Date() },
         );
-        throw new UnauthorizedException('Refresh token reuse detected');
+        throw new CodedUnauthorizedException(
+          ErrorCode.AUTH_REFRESH_TOKEN_REUSE_DETECTED,
+          'Refresh token reuse detected',
+        );
       }
       if (existing.expiresAt < new Date()) {
-        throw new UnauthorizedException('Refresh token expired');
+        throw new CodedUnauthorizedException(
+          ErrorCode.AUTH_REFRESH_TOKEN_EXPIRED,
+          'Refresh token expired',
+        );
       }
 
       const merchantUser = await manager.findOne(MerchantUser, {
         where: { id: existing.merchantUserId },
       });
       if (!merchantUser) {
-        throw new UnauthorizedException('Merchant user no longer exists');
+        throw new CodedUnauthorizedException(
+          ErrorCode.MERCHANT_ADMIN_NO_LONGER_EXISTS,
+          'Merchant user no longer exists',
+        );
       }
 
       // Conditional, atomic revoke: `WHERE id = $1 AND revoked_at IS NULL`
@@ -410,7 +440,10 @@ export class MerchantAdminsAuthService {
           { familyId: existing.familyId },
           { revokedAt: new Date() },
         );
-        throw new UnauthorizedException('Refresh token reuse detected');
+        throw new CodedUnauthorizedException(
+          ErrorCode.AUTH_REFRESH_TOKEN_REUSE_DETECTED,
+          'Refresh token reuse detected',
+        );
       }
 
       return this.issueTokenPair(
@@ -507,7 +540,10 @@ export class MerchantAdminsAuthService {
         !identity.passwordResetTokenExpiresAt ||
         identity.passwordResetTokenExpiresAt < new Date()
       ) {
-        throw new NotFoundException('Invalid or expired password reset token');
+        throw new CodedNotFoundException(
+          ErrorCode.MERCHANT_ADMIN_PASSWORD_RESET_TOKEN_INVALID,
+          'Invalid or expired password reset token',
+        );
       }
 
       identity.passwordHash = await this.hashing.hash(newPassword);
