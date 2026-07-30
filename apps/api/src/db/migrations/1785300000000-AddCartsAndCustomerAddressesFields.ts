@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddCartsAndCustomerAddressesFields1780000000000 implements MigrationInterface {
-  name = 'AddCartsAndCustomerAddressesFields1780000000000';
+export class AddCartsAndCustomerAddressesFields1785300000000 implements MigrationInterface {
+  name = 'AddCartsAndCustomerAddressesFields1785300000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`ALTER TABLE "carts" ALTER COLUMN "customer_id" DROP NOT NULL`);
