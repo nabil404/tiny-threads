@@ -1,4 +1,6 @@
 import { IsString, MinLength } from 'class-validator';
+import { ErrorCode } from '@tiny-threads/shared';
+import { field } from '../../common/errors/validation-field';
 
 // email/role are deliberately NOT part of this DTO — they're derived
 // server-side from the invite record the token resolves to (see
@@ -8,9 +10,9 @@ import { IsString, MinLength } from 'class-validator';
 // MerchantAdminsAuthService.inviteMember()) is the only source of truth for
 // both.
 export class RegisterMerchantUserDto {
-  @IsString()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
   token!: string;
 
-  @MinLength(12)
+  @MinLength(12, { message: field(ErrorCode.MIN_LENGTH) })
   password!: string;
 }
