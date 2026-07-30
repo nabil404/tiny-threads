@@ -1,8 +1,10 @@
-import { Injectable, NestMiddleware, NotFoundException } from '@nestjs/common';
+import { Injectable, NestMiddleware } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { NextFunction, Request, Response } from 'express';
 import { ClsService } from 'nestjs-cls';
 import { DataSource } from 'typeorm';
+import { ErrorCode } from '@tiny-threads/shared';
+import { CodedNotFoundException } from '../errors/coded-exceptions';
 import { Tenant } from '../../db/entities';
 
 // Resolves tenant_id from the request's Host header via an exact match
@@ -37,7 +39,10 @@ export class TenantResolutionMiddleware implements NestMiddleware {
       .getRepository(Tenant)
       .findOne({ where: { host: hostname } });
     if (!tenant) {
-      throw new NotFoundException('Unknown tenant');
+      throw new CodedNotFoundException(
+        ErrorCode.TENANT_NOT_FOUND,
+        'Unknown tenant',
+      );
     }
     this.cls.set('tenantId', tenant.id);
     next();

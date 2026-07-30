@@ -1,5 +1,6 @@
-import { BadRequestException } from '@nestjs/common';
 import type { Request } from 'express';
+import { ErrorCode } from '@tiny-threads/shared';
+import { CodedBadRequestException } from '../errors/coded-exceptions';
 
 // Guards the OAuth `returnUrl` against being used as an open redirect.
 //
@@ -36,10 +37,16 @@ export function assertReturnUrlMatchesRequestHost(
   try {
     parsed = new URL(returnUrl);
   } catch {
-    throw new BadRequestException('returnUrl is not a valid absolute URL');
+    throw new CodedBadRequestException(
+      ErrorCode.INVALID_RETURN_URL,
+      'returnUrl is not a valid absolute URL',
+    );
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new BadRequestException('returnUrl must be an http(s) URL');
+    throw new CodedBadRequestException(
+      ErrorCode.INVALID_RETURN_URL,
+      'returnUrl must be an http(s) URL',
+    );
   }
   // URL.hostname is already lowercased (and punycoded) by the WHATWG parser,
   // but req.hostname is the raw Host header, which RFC 9110 makes
@@ -47,7 +54,8 @@ export function assertReturnUrlMatchesRequestHost(
   // 400s a legitimate same-origin request that happened to send
   // `Host: SHOP.tiny-threads.com`.
   if (parsed.hostname !== req.hostname.toLowerCase()) {
-    throw new BadRequestException(
+    throw new CodedBadRequestException(
+      ErrorCode.INVALID_RETURN_URL,
       'returnUrl must point at the same host as this request',
     );
   }
