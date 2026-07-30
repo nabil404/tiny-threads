@@ -115,8 +115,9 @@ request.
 
 ## 5. The global filter
 
-`AllExceptionsFilter` (`@Catch()`, registered in `main.ts`) is the only
-place that produces a response body for a thrown error:
+`AllExceptionsFilter` (`@Catch()`, registered via `configureApp()` in
+`apps/api/src/bootstrap.ts`, which `main.ts` calls) is the only place
+that produces a response body for a thrown error:
 
 1. A `Coded*Exception` → its body already has `{code, message, params}` (and
    `fields` for validation) → wrapped as `{ error: {...} }`.

@@ -208,7 +208,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
 }
 ```
 
-Registered globally in `main.ts` via `app.useGlobalFilters(new AllExceptionsFilter())`.
+Registered globally via `app.useGlobalFilters(new AllExceptionsFilter())`
+inside `configureApp()` in `apps/api/src/bootstrap.ts`, which `main.ts`
+calls (and which the e2e specs also call directly, so they exercise the
+real wiring).
 
 ## Validation field-level decoding
 
@@ -272,7 +275,8 @@ export class RegisterCustomerDto {
 ```
 
 `buildValidationException`, wired into the global `ValidationPipe`'s
-`exceptionFactory` in `main.ts` (Task 5):
+`exceptionFactory` inside `configureApp()` in `apps/api/src/bootstrap.ts`,
+called from `main.ts` (Task 5):
 
 ```ts
 function decodeConstraintMessage(raw: string, constraintName: string): FieldError {
