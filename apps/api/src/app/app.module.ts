@@ -14,6 +14,7 @@ import { OAuthModule } from '../oauth/oauth.module';
 import { MerchantAdminsAuthModule } from '../merchant-admins/merchant-admins-auth.module';
 import { ProductsModule } from '../products/products.module';
 import { CartsModule } from '../carts/carts.module';
+import { CustomerAddressesModule } from '../customer-addresses/customer-addresses.module';
 import { validate } from '../config/env.validation';
 
 @Module({
@@ -29,6 +30,7 @@ import { validate } from '../config/env.validation';
     MerchantAdminsAuthModule,
     ProductsModule,
     CartsModule,
+    CustomerAddressesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
