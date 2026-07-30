@@ -19,10 +19,26 @@ const FIELD_CODE_META: Partial<Record<ErrorCode, FieldCodeMeta>> = {
     message: 'must be at least {min} characters',
     params: ([min]) => ({ min }),
   },
+  [ErrorCode.MAX_LENGTH]: {
+    message: 'must be at most {max} characters',
+    params: ([max]) => ({ max }),
+  },
   [ErrorCode.IS_IN]: {
     message: 'must be one of: {values}',
     params: ([values]) => ({ values: (values as unknown[]).join(', ') }),
   },
+  [ErrorCode.IS_INT]: { message: 'must be an integer' },
+  [ErrorCode.MIN]: {
+    message: 'must be at least {min}',
+    params: ([min]) => ({ min }),
+  },
+  [ErrorCode.MAX]: {
+    message: 'must be at most {max}',
+    params: ([max]) => ({ max }),
+  },
+  [ErrorCode.IS_BOOLEAN]: { message: 'must be a boolean' },
+  [ErrorCode.IS_ARRAY]: { message: 'must be an array' },
+  [ErrorCode.IS_UUID]: { message: 'must be a valid UUID' },
 };
 
 function interpolate(

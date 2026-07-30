@@ -50,4 +50,11 @@ export enum ErrorCode {
   IS_STRING = 'IS_STRING',
   IS_IN = 'IS_IN',
   MIN_LENGTH = 'MIN_LENGTH',
+  MAX_LENGTH = 'MAX_LENGTH',
+  IS_INT = 'IS_INT',
+  MIN = 'MIN',
+  MAX = 'MAX',
+  IS_BOOLEAN = 'IS_BOOLEAN',
+  IS_ARRAY = 'IS_ARRAY',
+  IS_UUID = 'IS_UUID',
 }

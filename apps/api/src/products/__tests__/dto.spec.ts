@@ -1,18 +1,31 @@
 import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { CreateProductDto } from '../dto/create-product.dto';
+import { CreateProductDto, CreateVariantDto } from '../dto/create-product.dto';
 import { CreateCategoryDto } from '../dto/create-category.dto';
 import { ProductQueryDto } from '../dto/product-query.dto';
 
+function decode(raw: string): {
+  code: string;
+  params: Record<string, unknown>;
+} {
+  return JSON.parse(raw);
+}
+
 describe('Products & Categories DTO Validation', () => {
-  it('fails validation on empty title in CreateProductDto', async () => {
+  it('fails validation on empty title in CreateProductDto and encodes IS_NOT_EMPTY', async () => {
     const dto = plainToInstance(CreateProductDto, {
       title: '',
       status: 'active',
     });
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
+    const byProperty = Object.fromEntries(
+      errors.map((e) => [e.property, e.constraints ?? {}]),
+    );
+    expect(decode(byProperty.title.isNotEmpty)).toMatchObject({
+      code: 'IS_NOT_EMPTY',
+    });
   });
 
   it('passes validation on valid CreateProductDto', async () => {
@@ -27,13 +40,64 @@ describe('Products & Categories DTO Validation', () => {
     expect(errors.length).toBe(0);
   });
 
-  it('fails validation on invalid status in CreateProductDto', async () => {
+  it('fails validation on invalid status in CreateProductDto and encodes IS_IN', async () => {
     const dto = plainToInstance(CreateProductDto, {
       title: 'T-Shirt',
       status: 'invalid_status',
     });
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
+    const byProperty = Object.fromEntries(
+      errors.map((e) => [e.property, e.constraints ?? {}]),
+    );
+    expect(decode(byProperty.status.isIn)).toMatchObject({
+      code: 'IS_IN',
+    });
+  });
+
+  it('encodes error codes for CreateVariantDto fields', async () => {
+    const variant = plainToInstance(CreateVariantDto, {
+      sku: 'a'.repeat(101),
+      priceCents: -5,
+      stock: -1,
+      isDefault: 'not-a-boolean',
+    });
+    const errors = await validate(variant);
+    const byProperty = Object.fromEntries(
+      errors.map((e) => [e.property, e.constraints ?? {}]),
+    );
+    expect(decode(byProperty.sku.maxLength)).toMatchObject({
+      code: 'MAX_LENGTH',
+      params: { max: 100 },
+    });
+    expect(decode(byProperty.priceCents.min)).toMatchObject({
+      code: 'MIN',
+      params: { min: 0 },
+    });
+    expect(decode(byProperty.stock.min)).toMatchObject({
+      code: 'MIN',
+      params: { min: 0 },
+    });
+    expect(decode(byProperty.isDefault.isBoolean)).toMatchObject({
+      code: 'IS_BOOLEAN',
+    });
+  });
+
+  it('encodes error codes for CreateCategoryDto fields', async () => {
+    const dto = plainToInstance(CreateCategoryDto, {
+      name: '',
+      parentId: 'invalid-uuid',
+    });
+    const errors = await validate(dto);
+    const byProperty = Object.fromEntries(
+      errors.map((e) => [e.property, e.constraints ?? {}]),
+    );
+    expect(decode(byProperty.name.isNotEmpty)).toMatchObject({
+      code: 'IS_NOT_EMPTY',
+    });
+    expect(decode(byProperty.parentId.isUuid)).toMatchObject({
+      code: 'IS_UUID',
+    });
   });
 
   it('passes validation on CreateCategoryDto', async () => {
@@ -52,5 +116,33 @@ describe('Products & Categories DTO Validation', () => {
     expect(errors.length).toBe(0);
     expect(dto.page).toBe(2);
     expect(dto.limit).toBe(10);
+  });
+
+  it('encodes error codes for ProductQueryDto validation errors', async () => {
+    const dto = plainToInstance(ProductQueryDto, {
+      page: 0,
+      limit: 150,
+      q: 'a'.repeat(101),
+      categoryId: 'bad-uuid',
+    });
+    const errors = await validate(dto);
+    const byProperty = Object.fromEntries(
+      errors.map((e) => [e.property, e.constraints ?? {}]),
+    );
+    expect(decode(byProperty.page.min)).toMatchObject({
+      code: 'MIN',
+      params: { min: 1 },
+    });
+    expect(decode(byProperty.limit.max)).toMatchObject({
+      code: 'MAX',
+      params: { max: 100 },
+    });
+    expect(decode(byProperty.q.maxLength)).toMatchObject({
+      code: 'MAX_LENGTH',
+      params: { max: 100 },
+    });
+    expect(decode(byProperty.categoryId.isUuid)).toMatchObject({
+      code: 'IS_UUID',
+    });
   });
 });

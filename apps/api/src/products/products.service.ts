@@ -331,18 +331,29 @@ export class ProductsService {
             let existing: ProductVariant | undefined;
             if (vDto.id && currentMapById.has(vDto.id)) {
               existing = currentMapById.get(vDto.id);
-            } else if (currentMapBySku.has(vDto.sku)) {
+            } else if (vDto.sku && currentMapBySku.has(vDto.sku)) {
               existing = currentMapBySku.get(vDto.sku);
             }
 
             if (existing) {
               matchedIds.add(existing.id);
-              existing.sku = vDto.sku;
-              existing.priceCents = vDto.priceCents;
-              existing.stock = vDto.stock;
+              if (vDto.sku !== undefined) existing.sku = vDto.sku;
+              if (vDto.priceCents !== undefined)
+                existing.priceCents = vDto.priceCents;
+              if (vDto.stock !== undefined) existing.stock = vDto.stock;
               existing.isDefault = isDefault;
               variantsToSave.push(existing);
             } else {
+              if (
+                vDto.sku === undefined ||
+                vDto.priceCents === undefined ||
+                vDto.stock === undefined
+              ) {
+                throw new CodedBadRequestException(
+                  ErrorCode.VALIDATION_FAILED,
+                  'New variant requires sku, priceCents, and stock',
+                );
+              }
               const newVar = em.create(ProductVariant, {
                 tenantId,
                 productId: id,
