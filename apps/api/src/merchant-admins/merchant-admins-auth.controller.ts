@@ -1,18 +1,21 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   HttpCode,
   Post,
   Req,
   Res,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
+import { ErrorCode } from '@tiny-threads/shared';
+import {
+  CodedBadRequestException,
+  CodedUnauthorizedException,
+} from '../common/errors/coded-exceptions';
 import { OAuthStateService } from '../auth-core/services/oauth-state.service';
 import { assertReturnUrlMatchesRequestHost } from '../common/utils/return-url';
 import { OneTimeCodeService } from '../oauth/one-time-code.service';
@@ -142,7 +145,10 @@ export class MerchantAdminsAuthController {
       req.cookies as Record<string, string> | undefined
     )?.[REFRESH_COOKIE_NAME];
     if (!rawRefreshToken) {
-      throw new UnauthorizedException('Missing refresh token');
+      throw new CodedUnauthorizedException(
+        ErrorCode.AUTH_MISSING_REFRESH_TOKEN,
+        'Missing refresh token',
+      );
     }
     const result = await this.merchantAdminsAuthService.refresh(
       tenantId,
@@ -265,7 +271,10 @@ export class MerchantAdminsAuthController {
       payload.population !== 'merchant_admin' ||
       payload.tenantId !== tenantId
     ) {
-      throw new BadRequestException('Invalid or expired code');
+      throw new CodedBadRequestException(
+        ErrorCode.OAUTH_INVALID_OR_EXPIRED_CODE,
+        'Invalid or expired code',
+      );
     }
     res.cookie(REFRESH_COOKIE_NAME, payload.refreshToken, {
       ...AUTH_REFRESH_COOKIE_OPTIONS,

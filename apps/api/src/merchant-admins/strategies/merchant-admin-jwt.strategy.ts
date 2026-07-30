@@ -1,8 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { ErrorCode } from '@tiny-threads/shared';
+import { CodedUnauthorizedException } from '../../common/errors/coded-exceptions';
 import { AccessTokenPayload } from '../../auth-core/services/token.service';
 import { EnvironmentVariables } from '../../config/env.validation';
 
@@ -23,7 +25,10 @@ export class MerchantAdminJwtStrategy extends PassportStrategy(
 
   validate(payload: AccessTokenPayload): AccessTokenPayload {
     if (payload.aud !== 'merchant_admin') {
-      throw new UnauthorizedException('Wrong token audience');
+      throw new CodedUnauthorizedException(
+        ErrorCode.AUTH_WRONG_TOKEN_AUDIENCE,
+        'Wrong token audience',
+      );
     }
     // Every tenant shares one JWT signing secret, so a signature alone does
     // not say WHICH tenant a token belongs to. Without this check a token
@@ -33,7 +38,10 @@ export class MerchantAdminJwtStrategy extends PassportStrategy(
     // The CLS tenant is the one TenantResolutionMiddleware resolved from this
     // request's own host, so it is the authority here.
     if (payload.tenantId !== this.cls.get<string>('tenantId')) {
-      throw new UnauthorizedException('Token tenant mismatch');
+      throw new CodedUnauthorizedException(
+        ErrorCode.AUTH_TOKEN_TENANT_MISMATCH,
+        'Token tenant mismatch',
+      );
     }
     return payload;
   }
