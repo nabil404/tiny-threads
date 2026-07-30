@@ -19,25 +19,41 @@ export class CodedBadRequestException extends BadRequestException {
 }
 
 export class CodedUnauthorizedException extends UnauthorizedException {
-  constructor(code: ErrorCode, message: string, params: Record<string, unknown> = {}) {
+  constructor(
+    code: ErrorCode,
+    message: string,
+    params: Record<string, unknown> = {},
+  ) {
     super({ code, message, params });
   }
 }
 
 export class CodedNotFoundException extends NotFoundException {
-  constructor(code: ErrorCode, message: string, params: Record<string, unknown> = {}) {
+  constructor(
+    code: ErrorCode,
+    message: string,
+    params: Record<string, unknown> = {},
+  ) {
     super({ code, message, params });
   }
 }
 
 export class CodedConflictException extends ConflictException {
-  constructor(code: ErrorCode, message: string, params: Record<string, unknown> = {}) {
+  constructor(
+    code: ErrorCode,
+    message: string,
+    params: Record<string, unknown> = {},
+  ) {
     super({ code, message, params });
   }
 }
 
 export class CodedForbiddenException extends ForbiddenException {
-  constructor(code: ErrorCode, message: string, params: Record<string, unknown> = {}) {
+  constructor(
+    code: ErrorCode,
+    message: string,
+    params: Record<string, unknown> = {},
+  ) {
     super({ code, message, params });
   }
 }
