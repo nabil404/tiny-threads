@@ -39,6 +39,8 @@ export enum ErrorCode {
   // tenancy / common
   TENANT_NOT_FOUND = 'TENANT_NOT_FOUND',
   INVALID_RETURN_URL = 'INVALID_RETURN_URL',
+  RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
+  DUPLICATE_RESOURCE = 'DUPLICATE_RESOURCE',
 
   // field-level validation — named after the class-validator constraint
   // they decode, uppercased/snake-cased (see fallbackCodeFor in
