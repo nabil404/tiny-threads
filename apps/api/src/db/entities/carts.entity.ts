@@ -10,18 +10,19 @@ import { TenantEntityBase } from './base';
 import { Customer } from './customers.entity';
 import { CartItem } from './cart-items.entity';
 
-// status values are inferred; not enumerated in the schema doc.
 export type CartStatus = 'active' | 'abandoned' | 'converted';
 
-// Server-side persisted cart, not client-side — enables cross-device carts.
 @Entity({ name: 'carts' })
 @Index('carts_tenant_customer_idx', ['tenantId', 'customerId'])
+@Index('carts_tenant_session_idx', ['tenantId', 'sessionId'])
 @Index('carts_tenant_status_idx', ['tenantId', 'status'])
 export class Cart extends TenantEntityBase {
-  @Column({ name: 'customer_id', type: 'uuid' })
-  customerId!: string;
+  @Column({ name: 'customer_id', type: 'uuid', nullable: true })
+  customerId?: string | null;
 
-  // read-only; set customerId to write the FK
+  @Column({ name: 'session_id', type: 'text', nullable: true })
+  sessionId?: string | null;
+
   @ManyToOne(() => Customer)
   @JoinColumn([
     { name: 'tenant_id', referencedColumnName: 'tenantId' },

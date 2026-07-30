@@ -9,7 +9,6 @@ export class CustomerAddress extends TenantEntityBase {
   @Column({ name: 'customer_id', type: 'uuid' })
   customerId!: string;
 
-  // read-only; set customerId to write the FK
   @ManyToOne(() => Customer)
   @JoinColumn([
     { name: 'tenant_id', referencedColumnName: 'tenantId' },
@@ -17,14 +16,43 @@ export class CustomerAddress extends TenantEntityBase {
   ])
   customer?: Customer;
 
+  @Column({ name: 'first_name', type: 'text' })
+  firstName!: string;
+
+  @Column({ name: 'last_name', type: 'text' })
+  lastName!: string;
+
+  @Column({ type: 'text', nullable: true })
+  company?: string | null;
+
   @Column({ type: 'text' })
   line1!: string;
+
+  @Column({ type: 'text', nullable: true })
+  line2?: string | null;
+
+  @Column({ type: 'text' })
+  city!: string;
+
+  @Column({ name: 'state_province', type: 'text', nullable: true })
+  stateProvince?: string | null;
+
+  @Column({ name: 'postal_code', type: 'text' })
+  postalCode!: string;
 
   @Column({ name: 'country_code', type: 'text' })
   countryCode!: string;
 
-  // Country is global; simple FK, not composite.
   @ManyToOne(() => Country)
   @JoinColumn({ name: 'country_code', referencedColumnName: 'code' })
   country?: Country;
+
+  @Column({ type: 'text', nullable: true })
+  phone?: string | null;
+
+  @Column({ name: 'is_default_shipping', type: 'boolean', default: false })
+  isDefaultShipping!: boolean;
+
+  @Column({ name: 'is_default_billing', type: 'boolean', default: false })
+  isDefaultBilling!: boolean;
 }
