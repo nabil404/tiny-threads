@@ -9,9 +9,8 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
 import { OAuthStateService } from '../auth-core/services/oauth-state.service';
@@ -19,6 +18,8 @@ import { assertReturnUrlMatchesRequestHost } from '../common/utils/return-url';
 import { OneTimeCodeService } from '../oauth/one-time-code.service';
 import { CustomersAuthService } from './customers-auth.service';
 import { CustomerJwtAuthGuard } from './guards/customer-jwt-auth.guard';
+import { CustomerLocalAuthGuard } from './guards/customer-local-auth.guard';
+import { LoginCustomerDto } from './dto/login-customer.dto';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
 import { VerifyCustomerEmailDto } from './dto/verify-customer-email.dto';
 import { CustomerOAuthInitiateDto } from './dto/customer-oauth-initiate.dto';
@@ -68,7 +69,8 @@ export class CustomersAuthController {
     description:
       'Authenticates a customer by email/password, returns an access token, and sets a refresh token cookie.',
   })
-  @UseGuards(AuthGuard('customer-local'))
+  @ApiBody({ type: LoginCustomerDto })
+  @UseGuards(CustomerLocalAuthGuard)
   @Post('login')
   login(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const { accessToken, refreshToken } = req.user as {

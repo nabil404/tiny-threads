@@ -9,15 +9,15 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ClsService } from 'nestjs-cls';
 import type { Request, Response } from 'express';
 import { OAuthStateService } from '../auth-core/services/oauth-state.service';
 import { assertReturnUrlMatchesRequestHost } from '../common/utils/return-url';
 import { OneTimeCodeService } from '../oauth/one-time-code.service';
 import { MerchantAdminsAuthService } from './merchant-admins-auth.service';
+import { LoginMerchantUserDto } from './dto/login-merchant-user.dto';
 import { RegisterMerchantUserDto } from './dto/register-merchant-user.dto';
 import { VerifyMerchantUserEmailDto } from './dto/verify-merchant-user-email.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
@@ -26,6 +26,7 @@ import { ResetMerchantUserPasswordDto } from './dto/reset-merchant-user-password
 import { MerchantAdminOAuthExchangeDto } from './dto/merchant-admin-oauth-exchange.dto';
 import { MerchantAdminOAuthInitiateDto } from './dto/merchant-admin-oauth-initiate.dto';
 import { MerchantAdminJwtAuthGuard } from './guards/merchant-admin-jwt-auth.guard';
+import { MerchantAdminLocalAuthGuard } from './guards/merchant-admin-local-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import type { MerchantAdminAccessTokenPayload } from '../auth-core/services/token.service';
@@ -106,7 +107,8 @@ export class MerchantAdminsAuthController {
     description:
       'Authenticates a merchant admin by email/password, returns an access token, and sets a refresh token cookie.',
   })
-  @UseGuards(AuthGuard('merchant-admin-local'))
+  @ApiBody({ type: LoginMerchantUserDto })
+  @UseGuards(MerchantAdminLocalAuthGuard)
   @Post('login')
   login(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const { accessToken, refreshToken } = req.user as {
