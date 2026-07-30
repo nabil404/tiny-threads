@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -18,42 +19,34 @@ export class CodedBadRequestException extends BadRequestException {
   }
 }
 
-export class CodedUnauthorizedException extends UnauthorizedException {
-  constructor(
-    code: ErrorCode,
-    message: string,
-    params: Record<string, unknown> = {},
-  ) {
-    super({ code, message, params });
-  }
+type CodedExceptionCtor = new (
+  code: ErrorCode,
+  message: string,
+  params?: Record<string, unknown>,
+) => HttpException;
+
+function codedException(
+  Base: new (response: object) => HttpException,
+): CodedExceptionCtor {
+  return class extends Base {
+    constructor(
+      code: ErrorCode,
+      message: string,
+      params: Record<string, unknown> = {},
+    ) {
+      super({ code, message, params });
+    }
+  };
 }
 
-export class CodedNotFoundException extends NotFoundException {
-  constructor(
-    code: ErrorCode,
-    message: string,
-    params: Record<string, unknown> = {},
-  ) {
-    super({ code, message, params });
-  }
-}
+export class CodedUnauthorizedException extends codedException(
+  UnauthorizedException,
+) {}
 
-export class CodedConflictException extends ConflictException {
-  constructor(
-    code: ErrorCode,
-    message: string,
-    params: Record<string, unknown> = {},
-  ) {
-    super({ code, message, params });
-  }
-}
+export class CodedNotFoundException extends codedException(NotFoundException) {}
 
-export class CodedForbiddenException extends ForbiddenException {
-  constructor(
-    code: ErrorCode,
-    message: string,
-    params: Record<string, unknown> = {},
-  ) {
-    super({ code, message, params });
-  }
-}
+export class CodedConflictException extends codedException(ConflictException) {}
+
+export class CodedForbiddenException extends codedException(
+  ForbiddenException,
+) {}

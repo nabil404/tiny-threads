@@ -1,10 +1,12 @@
 import { ErrorCode } from '@tiny-threads/shared';
 import { CodedUnauthorizedException } from '../../common/errors/coded-exceptions';
-import { MerchantAdminJwtAuthGuard } from '../guards/merchant-admin-jwt-auth.guard';
+import { createCodedJwtAuthGuard } from '../guards/coded-jwt-auth.guard';
 
-describe('MerchantAdminJwtAuthGuard', () => {
+describe('createCodedJwtAuthGuard', () => {
+  const Guard = createCodedJwtAuthGuard('test-jwt');
+
   it('throws AUTH_INVALID_ACCESS_TOKEN when there is no user and no explicit error (missing/expired token)', () => {
-    const guard = new MerchantAdminJwtAuthGuard();
+    const guard = new Guard();
     let caught: unknown;
     try {
       guard.handleRequest(null, null);
@@ -19,25 +21,27 @@ describe('MerchantAdminJwtAuthGuard', () => {
   });
 
   it('rethrows a specific coded error from the strategy unchanged (e.g. wrong audience or tenant mismatch)', () => {
-    const guard = new MerchantAdminJwtAuthGuard();
+    const guard = new Guard();
     const strategyError = new CodedUnauthorizedException(
       ErrorCode.AUTH_TOKEN_TENANT_MISMATCH,
       'Token tenant mismatch',
     );
-    expect(() => guard.handleRequest(strategyError, null)).toThrow(
-      strategyError,
-    );
+    expect(() => {
+      guard.handleRequest(strategyError, null);
+    }).toThrow(strategyError);
   });
 
   it('rethrows an unexpected error from the strategy unchanged, rather than masking it as a 401', () => {
-    const guard = new MerchantAdminJwtAuthGuard();
+    const guard = new Guard();
     const unexpected = new Error('database exploded');
-    expect(() => guard.handleRequest(unexpected, null)).toThrow(unexpected);
+    expect(() => {
+      guard.handleRequest(unexpected, null);
+    }).toThrow(unexpected);
   });
 
   it('returns the user when authentication succeeds', () => {
-    const guard = new MerchantAdminJwtAuthGuard();
-    const user = { sub: 'merchant-admin-1' };
+    const guard = new Guard();
+    const user = { sub: 'user-1' };
     expect(guard.handleRequest(null, user)).toBe(user);
   });
 });
