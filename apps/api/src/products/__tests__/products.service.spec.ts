@@ -18,16 +18,17 @@ describe('ProductsService', () => {
   });
 
   describe('create', () => {
-    it('auto-creates default variant if no variants are provided on create', async () => {
-      const mockProduct = { id: 'prod-12345678-abcd', title: 'Basic Tee', status: 'active' };
+    it('auto-creates default variant with full product ID SKU if no variants are provided on create', async () => {
+      let savedVariant: any;
       tenantDbService.run.mockImplementation(async (cb) => {
         const em = {
           save: jest.fn().mockImplementation((entityOrClass, entity) => {
             const item = entity || entityOrClass;
+            if (item.sku) savedVariant = item;
             return Promise.resolve({ id: 'prod-12345678-abcd', ...item });
           }),
           create: jest.fn().mockImplementation((entityClass, entity) => entity),
-          findOne: jest.fn().mockResolvedValue(null),
+          findOne: jest.fn().mockResolvedValue({ id: 'prod-12345678-abcd', status: 'active', variants: [] }),
           find: jest.fn().mockResolvedValue([]),
         };
         return cb(em as any);
@@ -35,6 +36,42 @@ describe('ProductsService', () => {
 
       const result = await service.create({ title: 'Basic Tee', status: 'active' });
       expect(result).toBeDefined();
+      expect(savedVariant).toBeDefined();
+      expect(savedVariant.sku).toEqual('SKU-prod-12345678-abcd');
+      expect(savedVariant.isDefault).toBe(true);
+    });
+
+    it('ensures only the first variant with isDefault=true retains true when custom variants are supplied', async () => {
+      let savedVariants: any[];
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          save: jest.fn().mockImplementation((entityOrClass, entity) => {
+            const item = entity || entityOrClass;
+            if (Array.isArray(item)) savedVariants = item;
+            return Promise.resolve({ id: 'prod-1', ...item });
+          }),
+          create: jest.fn().mockImplementation((entityClass, entity) => entity),
+          findOne: jest.fn().mockImplementation((entityClass, options) => {
+            if (options.where?.sku) return Promise.resolve(null);
+            return Promise.resolve({ id: 'prod-1', status: 'active' });
+          }),
+          find: jest.fn().mockResolvedValue([]),
+        };
+        return cb(em as any);
+      });
+
+      await service.create({
+        title: 'Multi-variant Tee',
+        status: 'active',
+        variants: [
+          { sku: 'SKU-1', priceCents: 1000, stock: 5, isDefault: true },
+          { sku: 'SKU-2', priceCents: 1200, stock: 10, isDefault: true },
+        ],
+      });
+
+      expect(savedVariants).toHaveLength(2);
+      expect(savedVariants[0].isDefault).toBe(true);
+      expect(savedVariants[1].isDefault).toBe(false);
     });
 
     it('throws CodedBadRequestException if one or more provided category IDs do not exist', async () => {
@@ -131,10 +168,11 @@ describe('ProductsService', () => {
   });
 
   describe('findAll', () => {
-    it('returns paginated products list', async () => {
+    it('returns paginated products list with category filter inner join', async () => {
       const mockProducts = [{ id: 'prod-1', title: 'Tee' }];
       const mockQb = {
         leftJoinAndSelect: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
@@ -157,13 +195,37 @@ describe('ProductsService', () => {
         limit: 10,
       });
       expect(mockQb.andWhere).toHaveBeenCalledWith('product.status = :status', { status: 'active' });
-      expect(mockQb.andWhere).toHaveBeenCalledWith('productCategory.categoryId = :categoryId', { categoryId: 'cat-1' });
+      expect(mockQb.innerJoin).toHaveBeenCalledWith('product.productCategories', 'filterCat', 'filterCat.categoryId = :categoryId', { categoryId: 'cat-1' });
       expect(mockQb.andWhere).toHaveBeenCalledWith('product.title ILIKE :search', { search: '%Tee%' });
+    });
+
+    it('uses default pagination values page=1 and limit=20 if query parameters are omitted', async () => {
+      const mockQb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+      };
+
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = { createQueryBuilder: jest.fn().mockReturnValue(mockQb) };
+        return cb(em as any);
+      });
+
+      const result = await service.findAll({});
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(20);
+      expect(mockQb.skip).toHaveBeenCalledWith(0);
+      expect(mockQb.take).toHaveBeenCalledWith(20);
     });
 
     it('filters storefront products to only active ones', async () => {
       const mockQb = {
         leftJoinAndSelect: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
@@ -214,7 +276,7 @@ describe('ProductsService', () => {
   });
 
   describe('update', () => {
-    it('updates product basic details, categories, and variants', async () => {
+    it('updates product basic details, categories, and variants without nested tenantDb.run calls', async () => {
       const existingProduct = { id: 'prod-1', title: 'Old Tee', status: 'draft' };
       const updatedProduct = { id: 'prod-1', title: 'New Tee', status: 'active' };
 
@@ -241,6 +303,7 @@ describe('ProductsService', () => {
       });
 
       expect(result).toBeDefined();
+      expect(tenantDbService.run).toHaveBeenCalledTimes(1);
     });
 
     it('throws CodedNotFoundException when updating non-existent product', async () => {

@@ -13,7 +13,7 @@ import {
   CodedConflictException,
 } from '../common/errors/coded-exceptions';
 import { ErrorCode } from '@tiny-threads/shared';
-import { In, Not } from 'typeorm';
+import { In, Not, EntityManager } from 'typeorm';
 
 export interface PaginatedProducts {
   items: Product[];
@@ -25,6 +25,24 @@ export interface PaginatedProducts {
 @Injectable()
 export class ProductsService {
   constructor(private readonly tenantDb: TenantDbService) {}
+
+  private async findProductById(
+    em: EntityManager,
+    id: string,
+    isStorefront: boolean = false,
+  ): Promise<Product> {
+    const product = await em.findOne(Product, {
+      where: { id },
+      relations: ['variants', 'productCategories', 'productCategories.category'],
+    });
+    if (!product || (isStorefront && product.status !== 'active')) {
+      throw new CodedNotFoundException(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        `Product with ID ${id} not found`,
+      );
+    }
+    return product;
+  }
 
   async create(dto: CreateProductDto): Promise<Product> {
     return this.tenantDb.run(async (em) => {
@@ -70,20 +88,26 @@ export class ProductsService {
           );
         }
 
-        let hasDefault = false;
-        const variantsToSave = dto.variants.map((v, index) => {
-          const isDef = v.isDefault ?? index === 0;
-          if (isDef) hasDefault = true;
+        let defaultSet = false;
+        const variantsToSave = dto.variants.map((v) => {
+          let isDefault = v.isDefault ?? false;
+          if (isDefault) {
+            if (defaultSet) {
+              isDefault = false;
+            } else {
+              defaultSet = true;
+            }
+          }
           return em.create(ProductVariant, {
             productId: savedProduct.id,
             sku: v.sku,
             priceCents: v.priceCents,
             stock: v.stock,
-            isDefault: isDef,
+            isDefault,
           });
         });
 
-        if (!hasDefault && variantsToSave.length > 0) {
+        if (!defaultSet && variantsToSave.length > 0) {
           variantsToSave[0].isDefault = true;
         }
 
@@ -92,7 +116,7 @@ export class ProductsService {
         // Auto-create default variant
         const defaultVariant = em.create(ProductVariant, {
           productId: savedProduct.id,
-          sku: `SKU-${savedProduct.id.substring(0, 8)}`,
+          sku: `SKU-${savedProduct.id}`,
           priceCents: 0,
           stock: 0,
           isDefault: true,
@@ -111,7 +135,7 @@ export class ProductsService {
         await em.save(ProductCategory, productCategories);
       }
 
-      return this.findById(savedProduct.id);
+      return this.findProductById(em, savedProduct.id);
     });
   }
 
@@ -120,6 +144,9 @@ export class ProductsService {
     isStorefront: boolean = false,
   ): Promise<PaginatedProducts> {
     return this.tenantDb.run(async (em) => {
+      const page = query.page ?? 1;
+      const limit = query.limit ?? 20;
+
       const qb = em.createQueryBuilder(Product, 'product')
         .leftJoinAndSelect('product.variants', 'variant')
         .leftJoinAndSelect('product.productCategories', 'productCategory')
@@ -132,7 +159,7 @@ export class ProductsService {
       }
 
       if (query.categoryId) {
-        qb.andWhere('productCategory.categoryId = :categoryId', {
+        qb.innerJoin('product.productCategories', 'filterCat', 'filterCat.categoryId = :categoryId', {
           categoryId: query.categoryId,
         });
       }
@@ -142,35 +169,23 @@ export class ProductsService {
       }
 
       qb.orderBy('product.createdAt', 'DESC');
-      qb.skip((query.page - 1) * query.limit);
-      qb.take(query.limit);
+      qb.skip((page - 1) * limit);
+      qb.take(limit);
 
       const [items, total] = await qb.getManyAndCount();
 
       return {
         items,
         total,
-        page: query.page,
-        limit: query.limit,
+        page,
+        limit,
       };
     });
   }
 
   async findById(id: string, isStorefront: boolean = false): Promise<Product> {
     return this.tenantDb.run(async (em) => {
-      const product = await em.findOne(Product, {
-        where: { id },
-        relations: ['variants', 'productCategories', 'productCategories.category'],
-      });
-
-      if (!product || (isStorefront && product.status !== 'active')) {
-        throw new CodedNotFoundException(
-          ErrorCode.RESOURCE_NOT_FOUND,
-          `Product with ID ${id} not found`,
-        );
-      }
-
-      return product;
+      return this.findProductById(em, id, isStorefront);
     });
   }
 
@@ -239,19 +254,25 @@ export class ProductsService {
         await em.delete(ProductVariant, { productId: id });
 
         if (dto.variants.length > 0) {
-          let hasDefault = false;
-          const newVariants = dto.variants.map((v, index) => {
-            const isDef = v.isDefault ?? index === 0;
-            if (isDef) hasDefault = true;
+          let defaultSet = false;
+          const newVariants = dto.variants.map((v) => {
+            let isDefault = v.isDefault ?? false;
+            if (isDefault) {
+              if (defaultSet) {
+                isDefault = false;
+              } else {
+                defaultSet = true;
+              }
+            }
             return em.create(ProductVariant, {
               productId: id,
               sku: v.sku,
               priceCents: v.priceCents,
               stock: v.stock,
-              isDefault: isDef,
+              isDefault,
             });
           });
-          if (!hasDefault && newVariants.length > 0) {
+          if (!defaultSet && newVariants.length > 0) {
             newVariants[0].isDefault = true;
           }
           await em.save(ProductVariant, newVariants);
@@ -259,7 +280,7 @@ export class ProductsService {
           // If all variants removed, auto-create default variant
           const defaultVariant = em.create(ProductVariant, {
             productId: id,
-            sku: `SKU-${id.substring(0, 8)}`,
+            sku: `SKU-${id}`,
             priceCents: 0,
             stock: 0,
             isDefault: true,
@@ -268,7 +289,7 @@ export class ProductsService {
         }
       }
 
-      return this.findById(id);
+      return this.findProductById(em, id);
     });
   }
 
