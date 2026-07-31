@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { IsNull } from 'typeorm';
 import { CartsService } from '../carts.service';
 import { TenantDbService } from '../../db/tenant-db.service';
 import { ClsService } from 'nestjs-cls';
@@ -50,6 +51,7 @@ describe('CartsService', () => {
       tenantDbService.run.mockImplementation(async (cb) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
+          query: jest.fn().mockResolvedValue(undefined),
           create: jest.fn().mockImplementation((_, entity) => {
             created = entity;
             return entity;
@@ -70,7 +72,30 @@ describe('CartsService', () => {
       );
     });
 
-    it('should look up an existing cart by sessionId for guest carts', async () => {
+    // Regression: clients keep sending x-guest-session-id after login. If that
+    // id lands on the customer's cart row, an anonymous request carrying it
+    // finds and controls the customer's cart.
+    it('should never stamp a guest sessionId onto a customer-owned cart', async () => {
+      let created: any;
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          findOne: jest.fn().mockResolvedValue(null),
+          query: jest.fn().mockResolvedValue(undefined),
+          create: jest.fn().mockImplementation((_, entity) => {
+            created = entity;
+            return entity;
+          }),
+          save: jest.fn().mockImplementation((_, entity) => entity),
+        };
+        return cb(em as any);
+      });
+
+      await service.getOrCreateCart('cust-1', 'leaked-guest-session');
+      expect(created.customerId).toBe('cust-1');
+      expect(created.sessionId).toBeNull();
+    });
+
+    it('should look up an existing cart by sessionId for guest carts, excluding customer-owned carts', async () => {
       const existingCart = {
         id: 'cart-3',
         sessionId: 'sess-1',
@@ -90,13 +115,112 @@ describe('CartsService', () => {
 
       const cart = await service.getOrCreateCart(undefined, 'sess-1');
       expect(cart).toEqual(existingCart);
-      expect(whereUsed).toEqual({ sessionId: 'sess-1', status: 'active' });
+      expect(whereUsed).toEqual({
+        sessionId: 'sess-1',
+        customerId: IsNull(),
+        status: 'active',
+      });
+    });
+
+    it('should re-read the winning cart when a concurrent create loses the unique-index race', async () => {
+      const winnerCart = { id: 'cart-winner', customerId: 'cust-1', items: [] };
+      const uniqueViolation = Object.assign(new Error('duplicate key'), {
+        code: '23505',
+      });
+      const queries: string[] = [];
+
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          findOne: jest
+            .fn()
+            .mockResolvedValueOnce(null) // initial lookup: nothing yet
+            .mockResolvedValueOnce(winnerCart), // re-read after the race
+          query: jest.fn().mockImplementation((sql: string) => {
+            queries.push(sql);
+            return Promise.resolve(undefined);
+          }),
+          create: jest.fn().mockImplementation((_, entity) => entity),
+          save: jest.fn().mockRejectedValue(uniqueViolation),
+        };
+        return cb(em as any);
+      });
+
+      const cart = await service.getOrCreateCart('cust-1', undefined);
+      expect(cart).toEqual(winnerCart);
+      // The rollback is what keeps the surrounding transaction usable.
+      expect(queries).toEqual([
+        'SAVEPOINT create_cart',
+        'ROLLBACK TO SAVEPOINT create_cart',
+      ]);
+    });
+
+    it('should rethrow non-unique-violation errors from the create path', async () => {
+      const boom = Object.assign(new Error('connection lost'), {
+        code: '08006',
+      });
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          findOne: jest.fn().mockResolvedValue(null),
+          query: jest.fn().mockResolvedValue(undefined),
+          create: jest.fn().mockImplementation((_, entity) => entity),
+          save: jest.fn().mockRejectedValue(boom),
+        };
+        return cb(em as any);
+      });
+
+      await expect(
+        service.getOrCreateCart('cust-1', undefined),
+      ).rejects.toThrow('connection lost');
     });
 
     it('should throw CodedBadRequestException when neither customerId nor sessionId is provided', async () => {
       await expect(
         service.getOrCreateCart(undefined, undefined),
       ).rejects.toThrow(CodedBadRequestException);
+      expect(tenantDbService.run).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getActiveCart', () => {
+    it('should throw CART_NOT_FOUND instead of creating a cart when none exists', async () => {
+      const em = {
+        findOne: jest.fn().mockResolvedValue(null),
+        create: jest.fn(),
+        save: jest.fn(),
+      };
+      tenantDbService.run.mockImplementation(async (cb) => cb(em as any));
+
+      await expect(
+        service.getActiveCart(undefined, 'sess-unseen'),
+      ).rejects.toThrow(CodedNotFoundException);
+      expect(em.create).not.toHaveBeenCalled();
+      expect(em.save).not.toHaveBeenCalled();
+    });
+
+    it('should exclude customer-owned carts from session lookups', async () => {
+      let whereUsed: any;
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          findOne: jest.fn().mockImplementation((_, options) => {
+            whereUsed = options.where;
+            return Promise.resolve({ id: 'cart-1', items: [] });
+          }),
+        };
+        return cb(em as any);
+      });
+
+      await service.getActiveCart(undefined, 'sess-1');
+      expect(whereUsed).toEqual({
+        sessionId: 'sess-1',
+        customerId: IsNull(),
+        status: 'active',
+      });
+    });
+
+    it('should throw CodedBadRequestException when neither customerId nor sessionId is provided', async () => {
+      await expect(service.getActiveCart(undefined, undefined)).rejects.toThrow(
+        CodedBadRequestException,
+      );
       expect(tenantDbService.run).not.toHaveBeenCalled();
     });
   });
@@ -308,6 +432,50 @@ describe('CartsService', () => {
       const result = await service.mergeCart('cust-1', 'guest-sess-1');
       expect(result).toEqual(customerCart);
       expect(tenantDbService.run).toHaveBeenCalledTimes(1);
+    });
+
+    it('should exclude customer-owned carts from the guest cart lookup', async () => {
+      const customerCart = { id: 'cart-1', customerId: 'cust-1', items: [] };
+      const wheres: any[] = [];
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          findOne: jest.fn().mockImplementation((_, options) => {
+            wheres.push(options.where);
+            return Promise.resolve(wheres.length === 1 ? customerCart : null);
+          }),
+        };
+        return cb(em as any);
+      });
+
+      await service.mergeCart('cust-1', 'guest-sess-1');
+      expect(wheres[1]).toEqual({
+        sessionId: 'guest-sess-1',
+        customerId: IsNull(),
+        status: 'active',
+      });
+    });
+
+    it('should not merge a cart into itself', async () => {
+      const selfCart = {
+        id: 'cart-1',
+        customerId: 'cust-1',
+        status: 'active',
+        items: [{ id: 'item-1', variantId: 'variant-1', qty: 2 }],
+      };
+      const save = jest.fn();
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          findOne: jest.fn().mockResolvedValue(selfCart),
+          save,
+        };
+        return cb(em as any);
+      });
+
+      const result = await service.mergeCart('cust-1', 'guest-sess-1');
+      expect(result).toEqual(selfCart);
+      expect(selfCart.items[0].qty).toBe(2); // not doubled
+      expect(selfCart.status).toBe('active'); // not abandoned
+      expect(save).not.toHaveBeenCalled();
     });
 
     it('should sum quantities for duplicate variants and mark the guest cart abandoned', async () => {

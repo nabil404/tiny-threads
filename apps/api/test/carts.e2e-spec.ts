@@ -8,13 +8,27 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app/app.module';
 import { configureApp } from '../src/bootstrap';
 import { TenantDbService } from '../src/db/tenant-db.service';
-import { Tenant, Product, ProductVariant } from '../src/db/entities';
+import { Tenant, Product, ProductVariant, Cart } from '../src/db/entities';
 
 describe('Carts (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
+  let tenantDb: TenantDbService;
+  let cls: ClsService;
+  let tenantId: string;
   let tenantHost: string;
   let variantId: string;
+
+  // carts is RLS-protected, so a bare dataSource query would return 0 rows
+  // regardless — counting has to happen inside this tenant's context to mean
+  // anything.
+  const countCartsForSession = (sessionId: string): Promise<number> =>
+    cls.run(() => {
+      cls.set('tenantId', tenantId);
+      return tenantDb.run((manager) =>
+        manager.count(Cart, { where: { sessionId } }),
+      );
+    });
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -25,8 +39,8 @@ describe('Carts (e2e)', () => {
     await app.init();
 
     dataSource = app.get<DataSource>(getDataSourceToken());
-    const tenantDb = app.get(TenantDbService);
-    const cls = app.get(ClsService);
+    tenantDb = app.get(TenantDbService);
+    cls = app.get(ClsService);
 
     tenantHost = `carts-e2e-${randomUUID()}.localhost`;
     const tenant = await dataSource.getRepository(Tenant).save(
@@ -35,6 +49,7 @@ describe('Carts (e2e)', () => {
         host: tenantHost,
       }),
     );
+    tenantId = tenant.id;
 
     // Products/variants are tenant-scoped tables enforced by RLS, so seeding
     // them (unlike the global Tenant row above) must go through
@@ -215,5 +230,122 @@ describe('Carts (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
     expect(customerCartRes.body.itemCount).toEqual(3);
+  });
+
+  // Regression for the cross-account cart leak: real clients keep sending
+  // x-guest-session-id after login. If that id gets stamped onto the
+  // customer's cart row, an anonymous request carrying only that header finds
+  // and fully controls the logged-in customer's cart.
+  it("POST /api/v1/cart/merge - a stale guest session ID must not grant anonymous access to the customer's cart", async () => {
+    const email = `cart-leak-${randomUUID()}@example.com`;
+    const password = 'correct horse battery staple';
+    await request(app.getHttpServer())
+      .post('/api/v1/customers/auth/register')
+      .set('Host', tenantHost)
+      .send({ email, password, name: 'Cart Leak Customer' })
+      .expect(201);
+
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/v1/customers/auth/login')
+      .set('Host', tenantHost)
+      .send({ email, password })
+      .expect(201);
+    const accessToken = loginRes.body.accessToken as string;
+
+    // 1. Guest gets session S and adds 1 item.
+    const guestRes = await request(app.getHttpServer())
+      .get('/api/v1/cart')
+      .set('Host', tenantHost)
+      .expect(200);
+    const guestSessionId = guestRes.headers['x-guest-session-id'];
+    const guestCartId = guestRes.body.id as string;
+
+    await request(app.getHttpServer())
+      .post('/api/v1/cart/items')
+      .set('Host', tenantHost)
+      .set('x-guest-session-id', guestSessionId)
+      .send({ variantId, qty: 1 })
+      .expect(201);
+
+    // 2. Customer logs in but the client keeps sending S alongside the token.
+    //    The customer's cart must NOT pick up that session id.
+    const customerAddRes = await request(app.getHttpServer())
+      .post('/api/v1/cart/items')
+      .set('Host', tenantHost)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('x-guest-session-id', guestSessionId)
+      .send({ variantId, qty: 7 })
+      .expect(201);
+    const customerCartId = customerAddRes.body.id as string;
+    expect(customerCartId).not.toEqual(guestCartId);
+    expect(customerAddRes.body.itemCount).toEqual(7);
+
+    // Only the guest's own cart carries that session id — the customer's cart
+    // row must have session_id NULL.
+    expect(await countCartsForSession(guestSessionId)).toEqual(1);
+
+    // 3. Merge the guest cart in: customer now has 8, guest cart is abandoned.
+    const mergeRes = await request(app.getHttpServer())
+      .post('/api/v1/cart/merge')
+      .set('Host', tenantHost)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ guestSessionId })
+      .expect(201);
+    expect(mergeRes.body.id).toEqual(customerCartId);
+    expect(mergeRes.body.itemCount).toEqual(8);
+
+    // 4. The attack: anonymous request with ONLY the old session header.
+    //    It must get a brand-new empty guest cart, never the customer's.
+    const anonRes = await request(app.getHttpServer())
+      .get('/api/v1/cart')
+      .set('Host', tenantHost)
+      .set('x-guest-session-id', guestSessionId)
+      .expect(200);
+    expect(anonRes.body.id).not.toEqual(customerCartId);
+    expect(anonRes.body.id).not.toEqual(guestCartId);
+    expect(anonRes.body.itemCount).toEqual(0);
+    expect(anonRes.body.items).toEqual([]);
+
+    // And the customer's cart is untouched by all of the above.
+    const customerCartRes = await request(app.getHttpServer())
+      .get('/api/v1/cart')
+      .set('Host', tenantHost)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    expect(customerCartRes.body.id).toEqual(customerCartId);
+    expect(customerCartRes.body.itemCount).toEqual(8);
+  });
+
+  it('rejects a malformed x-guest-session-id header with 400 VALIDATION_FAILED', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/cart')
+      .set('Host', tenantHost)
+      .set('x-guest-session-id', 'not-a-uuid')
+      .expect(400);
+
+    expect(res.body.error.code).toEqual('VALIDATION_FAILED');
+  });
+
+  it('PATCH/DELETE /api/v1/cart/items/:id - do not create a cart for an unseen session', async () => {
+    const unseenSessionId = randomUUID();
+
+    const patchRes = await request(app.getHttpServer())
+      .patch(`/api/v1/cart/items/${randomUUID()}`)
+      .set('Host', tenantHost)
+      .set('x-guest-session-id', unseenSessionId)
+      .send({ qty: 3 })
+      .expect(404);
+    expect(patchRes.body.error.code).toEqual('CART_NOT_FOUND');
+
+    const deleteRes = await request(app.getHttpServer())
+      .delete(`/api/v1/cart/items/${randomUUID()}`)
+      .set('Host', tenantHost)
+      .set('x-guest-session-id', unseenSessionId)
+      .expect(404);
+    expect(deleteRes.body.error.code).toEqual('CART_NOT_FOUND');
+
+    // Nothing was inserted for that session — the whole point of the fix is
+    // that an unseen, attacker-chosen session id can't spawn rows here.
+    expect(await countCartsForSession(unseenSessionId)).toEqual(0);
   });
 });
