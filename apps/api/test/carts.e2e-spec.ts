@@ -326,6 +326,32 @@ describe('Carts (e2e)', () => {
     expect(res.body.error.code).toEqual('VALIDATION_FAILED');
   });
 
+  it('returns a VALIDATION_FAILED envelope with field error codes for invalid add-to-cart body payload', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/cart/items')
+      .set('Host', tenantHost)
+      .send({ variantId: 'not-a-uuid', qty: -5 })
+      .expect(400);
+
+    expect(res.body).toMatchObject({
+      error: {
+        code: 'VALIDATION_FAILED',
+        fields: {
+          variantId: [
+            expect.objectContaining({
+              code: 'IS_UUID',
+            }),
+          ],
+          qty: [
+            expect.objectContaining({
+              code: 'MIN',
+            }),
+          ],
+        },
+      },
+    });
+  });
+
   it('PATCH/DELETE /api/v1/cart/items/:id - do not create a cart for an unseen session', async () => {
     const unseenSessionId = randomUUID();
 

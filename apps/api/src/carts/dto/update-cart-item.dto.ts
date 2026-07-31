@@ -1,7 +1,9 @@
 import { IsInt, Min } from 'class-validator';
+import { ErrorCode } from '@tiny-threads/shared';
+import { field } from '../../common/errors/validation-field';
 
 export class UpdateCartItemDto {
-  @IsInt()
-  @Min(0)
+  @IsInt({ message: field(ErrorCode.IS_INT) })
+  @Min(0, { message: field(ErrorCode.MIN) })
   qty!: number;
 }

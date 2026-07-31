@@ -157,4 +157,36 @@ describe('Customer addresses (e2e)', () => {
       },
     });
   });
+
+  it('returns a VALIDATION_FAILED envelope with field error codes for invalid address body payload', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/customers/me/addresses')
+      .set('Host', tenantHost)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ firstName: '', line1: 123, isDefaultShipping: 'true' })
+      .expect(400);
+
+    expect(res.body).toMatchObject({
+      error: {
+        code: 'VALIDATION_FAILED',
+        fields: {
+          firstName: [
+            expect.objectContaining({
+              code: 'IS_NOT_EMPTY',
+            }),
+          ],
+          line1: [
+            expect.objectContaining({
+              code: 'IS_STRING',
+            }),
+          ],
+          isDefaultShipping: [
+            expect.objectContaining({
+              code: 'IS_BOOLEAN',
+            }),
+          ],
+        },
+      },
+    });
+  });
 });

@@ -1,51 +1,53 @@
 import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
+import { ErrorCode } from '@tiny-threads/shared';
+import { field } from '../../common/errors/validation-field';
 
 export class CreateAddressDto {
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
+  @IsNotEmpty({ message: field(ErrorCode.IS_NOT_EMPTY) })
   firstName!: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
+  @IsNotEmpty({ message: field(ErrorCode.IS_NOT_EMPTY) })
   lastName!: string;
 
-  @IsString()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
   @IsOptional()
   company?: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
+  @IsNotEmpty({ message: field(ErrorCode.IS_NOT_EMPTY) })
   line1!: string;
 
-  @IsString()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
   @IsOptional()
   line2?: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
+  @IsNotEmpty({ message: field(ErrorCode.IS_NOT_EMPTY) })
   city!: string;
 
-  @IsString()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
   @IsOptional()
   stateProvince?: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
+  @IsNotEmpty({ message: field(ErrorCode.IS_NOT_EMPTY) })
   postalCode!: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
+  @IsNotEmpty({ message: field(ErrorCode.IS_NOT_EMPTY) })
   countryCode!: string;
 
-  @IsString()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
   @IsOptional()
   phone?: string;
 
-  @IsBoolean()
+  @IsBoolean({ message: field(ErrorCode.IS_BOOLEAN) })
   @IsOptional()
   isDefaultShipping?: boolean;
 
-  @IsBoolean()
+  @IsBoolean({ message: field(ErrorCode.IS_BOOLEAN) })
   @IsOptional()
   isDefaultBilling?: boolean;
 }
