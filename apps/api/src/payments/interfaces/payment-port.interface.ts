@@ -41,7 +41,9 @@ export interface PaymentPort {
 
   getOnboardingStatus(
     account: MerchantAccountRef,
-  ): Promise<'pending' | 'needs_information' | 'active' | 'rejected' | 'disabled'>;
+  ): Promise<
+    'pending' | 'needs_information' | 'active' | 'rejected' | 'disabled'
+  >;
 
   authorize(i: {
     merchantAccount: MerchantAccountRef;
@@ -61,7 +63,10 @@ export interface PaymentPort {
     payment: PaymentRef;
     amount?: Money;
     idempotencyKey: string;
-  }): Promise<{ state: 'partially_captured' | 'captured'; capturedTotal: Money }>;
+  }): Promise<{
+    state: 'partially_captured' | 'captured';
+    capturedTotal: Money;
+  }>;
 
   void(payment: PaymentRef, idempotencyKey: string): Promise<void>;
 

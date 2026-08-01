@@ -374,4 +374,121 @@ describe('Orders (e2e)', () => {
 
     expect(stockAfterCancel).toBe(stockBeforeCheckout);
   });
+
+  it('5. Merchant Admin Shipments Endpoint & Direct Cancel Endpoint', async () => {
+    // 5a. Create a fresh order via checkout
+    const cartRes = await request(app.getHttpServer())
+      .get('/api/v1/cart')
+      .set('Host', tenantHost)
+      .expect(200);
+
+    const sessionId = cartRes.headers['x-guest-session-id'];
+
+    await request(app.getHttpServer())
+      .post('/api/v1/cart/items')
+      .set('Host', tenantHost)
+      .set('x-guest-session-id', sessionId)
+      .send({ variantId, qty: 2 })
+      .expect(201);
+
+    const checkoutRes = await request(app.getHttpServer())
+      .post('/api/v1/checkout')
+      .set('Host', tenantHost)
+      .set('x-guest-session-id', sessionId)
+      .send({
+        customerEmail: 'shipment-test@example.com',
+        shippingAddress: {
+          street: '101 Maple St',
+          city: 'City',
+          country: 'US',
+        },
+        paymentToken: 'mock_success',
+      })
+      .expect(201);
+
+    const checkoutBody = checkoutRes.body as {
+      order: { id: string; items: Array<{ id: string }> };
+    };
+    const orderId = checkoutBody.order.id;
+    const orderItemId = checkoutBody.order.items[0].id;
+
+    // 5b. Create shipment via POST /api/v1/merchant-admins/orders/:id/shipments
+    const shipmentRes = await request(app.getHttpServer())
+      .post(`/api/v1/merchant-admins/orders/${orderId}/shipments`)
+      .set('Host', tenantHost)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        carrier: 'FedEx',
+        trackingNumber: 'FDX-123456789',
+        trackingUrl: 'https://fedex.com/track/FDX-123456789',
+        items: [{ orderItemId, quantity: 2 }],
+      })
+      .expect(201);
+
+    const shipmentBody = shipmentRes.body as {
+      carrier: string;
+      trackingNumber?: string;
+    };
+    expect(shipmentBody.carrier).toBe('FedEx');
+    expect(shipmentBody.trackingNumber).toBe('FDX-123456789');
+
+    // Verify order fulfillmentStatus updated to fulfilled
+    const checkOrderRes = await request(app.getHttpServer())
+      .get(`/api/v1/merchant-admins/orders/${orderId}`)
+      .set('Host', tenantHost)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    const checkOrderBody = checkOrderRes.body as {
+      fulfillmentStatus: string;
+    };
+    expect(checkOrderBody.fulfillmentStatus).toBe('fulfilled');
+
+    // 5c. Create another order to test POST /api/v1/merchant-admins/orders/:id/cancel
+    const cartRes2 = await request(app.getHttpServer())
+      .get('/api/v1/cart')
+      .set('Host', tenantHost)
+      .expect(200);
+
+    const sessionId2 = String(cartRes2.headers['x-guest-session-id']);
+
+    await request(app.getHttpServer())
+      .post('/api/v1/cart/items')
+      .set('Host', tenantHost)
+      .set('x-guest-session-id', sessionId2)
+      .send({ variantId, qty: 1 })
+      .expect(201);
+
+    const checkoutRes2 = await request(app.getHttpServer())
+      .post('/api/v1/checkout')
+      .set('Host', tenantHost)
+      .set('x-guest-session-id', sessionId2)
+      .send({
+        customerEmail: 'cancel-test@example.com',
+        shippingAddress: {
+          street: '202 Birch St',
+          city: 'City',
+          country: 'US',
+        },
+        paymentToken: 'mock_success',
+      })
+      .expect(201);
+
+    const checkoutBody2 = checkoutRes2.body as { order: { id: string } };
+    const cancelOrderId = checkoutBody2.order.id;
+
+    // Call POST /api/v1/merchant-admins/orders/:id/cancel
+    const cancelRes = await request(app.getHttpServer())
+      .post(`/api/v1/merchant-admins/orders/${cancelOrderId}/cancel`)
+      .set('Host', tenantHost)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(201);
+
+    const cancelBody = cancelRes.body as {
+      status: string;
+      paymentStatus: string;
+    };
+    expect(cancelBody.status).toBe('cancelled');
+    expect(cancelBody.paymentStatus).toBe('refunded');
+  });
 });

@@ -9,8 +9,18 @@ import { Order, OrderStatus } from '../db/entities/order.entity';
 import { OrderEvent } from '../db/entities/order-event.entity';
 import { ProductVariant } from '../db/entities/product-variants.entity';
 import { Refund } from '../db/entities/refund.entity';
+import { Shipment } from '../db/entities/shipment.entity';
+import { ShipmentItem } from '../db/entities/shipment-item.entity';
+import { TenantSettings } from '../db/entities/tenant-settings.entity';
+import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
+import { deriveFulfillmentStatus } from './domain/fulfillment-status-calculator';
+import {
+  transitionLifecycle,
+  transitionPayment,
+  type OrderLifecycleStatus,
+} from './domain/order-state-machine';
 import {
   CodedBadRequestException,
   CodedNotFoundException,
@@ -308,6 +318,252 @@ export class OrdersService {
     });
   }
 
+  async createShipment(
+    orderId: string,
+    dto: CreateShipmentDto,
+    actorId?: string,
+  ): Promise<Shipment> {
+    return this.tenantDb.run(async (manager) => {
+      const order = await manager.findOne(Order, {
+        where: { id: orderId },
+        relations: { items: true },
+      });
+
+      if (!order) {
+        throw new CodedNotFoundException(
+          ErrorCode.ORDER_NOT_FOUND,
+          'Order not found',
+        );
+      }
+
+      if (order.status === 'cancelled') {
+        throw new CodedBadRequestException(
+          ErrorCode.INVALID_ORDER_STATUS_TRANSITION,
+          'Cannot create shipment for a cancelled order',
+        );
+      }
+
+      if (!dto.items || dto.items.length === 0) {
+        throw new CodedBadRequestException(
+          ErrorCode.VALIDATION_FAILED,
+          'Shipment items cannot be empty',
+        );
+      }
+
+      const existingShipments = await manager.find(Shipment, {
+        where: { orderId: order.id },
+        relations: { items: true },
+      });
+
+      const shippedMap = new Map<string, number>();
+      for (const s of existingShipments) {
+        for (const item of s.items || []) {
+          const cur = shippedMap.get(item.orderItemId) ?? 0;
+          shippedMap.set(item.orderItemId, cur + item.quantity);
+        }
+      }
+
+      for (const itemDto of dto.items) {
+        const orderItem = order.items?.find(
+          (i) => i.id === itemDto.orderItemId,
+        );
+        if (!orderItem) {
+          throw new CodedBadRequestException(
+            ErrorCode.VALIDATION_FAILED,
+            `Order item '${itemDto.orderItemId}' not found in order`,
+          );
+        }
+
+        const currentShipped = shippedMap.get(itemDto.orderItemId) ?? 0;
+        if (currentShipped + itemDto.quantity > orderItem.quantity) {
+          throw new CodedBadRequestException(
+            ErrorCode.VALIDATION_FAILED,
+            `Shipment quantity (${currentShipped + itemDto.quantity}) exceeds ordered quantity (${orderItem.quantity}) for order item ${itemDto.orderItemId}`,
+          );
+        }
+      }
+
+      const tenantId = this.cls.get<string>('tenantId') || order.tenantId;
+
+      const shipment = manager.create(Shipment, {
+        tenantId,
+        orderId: order.id,
+        carrier: dto.carrier,
+        trackingNumber: dto.trackingNumber ?? null,
+        trackingUrl: dto.trackingUrl ?? null,
+        status: 'shipped',
+        shippedAt: new Date(),
+      });
+
+      const savedShipment = await manager.save(Shipment, shipment);
+
+      const shipmentItems = dto.items.map((itemDto) =>
+        manager.create(ShipmentItem, {
+          tenantId,
+          shipmentId: savedShipment.id,
+          orderItemId: itemDto.orderItemId,
+          quantity: itemDto.quantity,
+        }),
+      );
+
+      await manager.save(ShipmentItem, shipmentItems);
+      savedShipment.items = shipmentItems;
+
+      const allShipments = [...existingShipments, savedShipment];
+      const orderedItems = (order.items || []).map((i) => ({
+        orderItemId: i.id,
+        orderedQty: i.quantity,
+      }));
+
+      const newFulfillmentStatus = deriveFulfillmentStatus(
+        orderedItems,
+        allShipments,
+      );
+      order.fulfillmentStatus = newFulfillmentStatus;
+
+      if (newFulfillmentStatus === 'fulfilled') {
+        const currentLifecycle: OrderLifecycleStatus =
+          order.status === 'confirmed' ||
+          order.status === 'paid' ||
+          order.status === 'processing' ||
+          order.status === 'shipped'
+            ? 'confirmed'
+            : order.status === 'pending' || order.status === 'pending_payment'
+              ? 'pending'
+              : (order.status as OrderLifecycleStatus);
+
+        const res = transitionLifecycle(
+          currentLifecycle,
+          'FULFILLMENT_COMPLETE',
+        );
+        if (res.success) {
+          order.status = res.nextState as OrderStatus;
+        } else {
+          order.status = 'completed' as OrderStatus;
+        }
+      } else if (newFulfillmentStatus === 'partially_fulfilled') {
+        if (order.status === 'paid' || order.status === 'processing') {
+          order.status = 'shipped';
+        }
+      }
+
+      const tenantSettings = await manager.findOne(TenantSettings, {
+        where: { tenantId },
+      });
+
+      if (
+        tenantSettings?.captureMode === 'authorize_then_capture' &&
+        (order.paymentStatus === 'authorized' ||
+          order.paymentStatus === 'partially_captured')
+      ) {
+        let shipmentCents = 0;
+        for (const itemDto of dto.items) {
+          const orderItem = order.items?.find(
+            (i) => i.id === itemDto.orderItemId,
+          );
+          if (orderItem) {
+            shipmentCents += orderItem.unitPriceCents * itemDto.quantity;
+          }
+        }
+
+        if (shipmentCents > 0) {
+          await this.paymentsService.capturePayment(
+            order.id,
+            shipmentCents,
+            manager,
+          );
+
+          const payRes = transitionPayment(
+            order.paymentStatus,
+            newFulfillmentStatus === 'fulfilled'
+              ? 'CAPTURE'
+              : 'PARTIAL_CAPTURE',
+          );
+          if (payRes.success) {
+            order.paymentStatus = payRes.nextState;
+          } else {
+            order.paymentStatus =
+              newFulfillmentStatus === 'fulfilled'
+                ? 'paid'
+                : 'partially_captured';
+          }
+        }
+      }
+
+      await manager.save(Order, order);
+
+      const event = manager.create(OrderEvent, {
+        tenantId,
+        orderId: order.id,
+        eventType: 'shipment_created',
+        actorType: 'merchant_admin',
+        actorId: actorId ?? undefined,
+        metadata: {
+          shipmentId: savedShipment.id,
+          carrier: savedShipment.carrier,
+          trackingNumber: savedShipment.trackingNumber,
+          fulfillmentStatus: order.fulfillmentStatus,
+        },
+      });
+      await manager.save(OrderEvent, event);
+
+      return savedShipment;
+    });
+  }
+
+  async cancelOrder(orderId: string, actorId?: string): Promise<Order> {
+    return this.tenantDb.run(async (manager) => {
+      const order = await manager.findOne(Order, {
+        where: { id: orderId },
+        relations: { items: true },
+      });
+
+      if (!order) {
+        throw new CodedNotFoundException(
+          ErrorCode.ORDER_NOT_FOUND,
+          'Order not found',
+        );
+      }
+
+      if (order.status === 'cancelled') {
+        throw new CodedBadRequestException(
+          ErrorCode.ORDER_CANNOT_BE_CANCELLED,
+          'Order is already cancelled',
+        );
+      }
+
+      if (order.status === 'completed' || order.status === 'delivered') {
+        throw new CodedBadRequestException(
+          ErrorCode.ORDER_CANNOT_BE_CANCELLED,
+          'Completed orders cannot be cancelled',
+        );
+      }
+
+      await this.cancelOrderSideEffects(
+        manager,
+        order,
+        'merchant_admin',
+        actorId,
+      );
+
+      order.status = 'cancelled';
+      const savedOrder = await manager.save(Order, order);
+
+      const tenantId = this.cls.get<string>('tenantId') || order.tenantId;
+
+      const event = manager.create(OrderEvent, {
+        tenantId,
+        orderId: order.id,
+        eventType: 'cancelled_by_admin',
+        actorType: 'merchant_admin',
+        actorId: actorId ?? undefined,
+      });
+      await manager.save(OrderEvent, event);
+
+      return savedOrder;
+    });
+  }
+
   /**
    * Shared "cancel" side effects used by both the admin/merchant
    * transition path and the customer self-cancel path: restores stock
@@ -323,8 +579,12 @@ export class OrdersService {
   ): Promise<void> {
     await this.restoreStockForOrder(manager, order);
 
-    if (
+    if (order.paymentStatus === 'authorized') {
+      await this.paymentsService.voidPayment(order.id, manager);
+      order.paymentStatus = 'voided';
+    } else if (
       order.paymentStatus === 'captured' ||
+      order.paymentStatus === 'paid' ||
       order.paymentStatus === 'partially_refunded'
     ) {
       // A partially-refunded order (via the manual refundOrder endpoint)

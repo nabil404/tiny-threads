@@ -26,7 +26,8 @@ export class MockPaymentProvider implements PaymentPort, PaymentProvider {
     idempotencyKey: string;
   }): Promise<MerchantAccountRef> {
     void i.idempotencyKey;
-    const externalId = (i.profile && i.profile.externalId) || `acct_mock_${i.tenantId}`;
+    const externalId =
+      (i.profile && i.profile.externalId) || `acct_mock_${i.tenantId}`;
     return { provider: this.providerName, externalId };
   }
 
@@ -43,7 +44,9 @@ export class MockPaymentProvider implements PaymentPort, PaymentProvider {
 
   async getOnboardingStatus(
     account: MerchantAccountRef,
-  ): Promise<'pending' | 'needs_information' | 'active' | 'rejected' | 'disabled'> {
+  ): Promise<
+    'pending' | 'needs_information' | 'active' | 'rejected' | 'disabled'
+  > {
     void account;
     return 'active';
   }
@@ -68,22 +71,34 @@ export class MockPaymentProvider implements PaymentPort, PaymentProvider {
     void i.idempotencyKey;
     const uuid = randomUUID();
 
-    if (i.paymentMethodToken === 'mock_decline' || i.paymentMethodToken === 'tok_decline') {
+    if (
+      i.paymentMethodToken === 'mock_decline' ||
+      i.paymentMethodToken === 'tok_decline'
+    ) {
       return {
-        paymentRef: { provider: this.providerName, externalId: `mock_tx_failed_${uuid}` },
+        paymentRef: {
+          provider: this.providerName,
+          externalId: `mock_tx_failed_${uuid}`,
+        },
         state: 'failed',
       };
     }
 
     if (i.autoCapture) {
       return {
-        paymentRef: { provider: this.providerName, externalId: `mock_tx_${uuid}` },
+        paymentRef: {
+          provider: this.providerName,
+          externalId: `mock_tx_${uuid}`,
+        },
         state: 'captured',
       };
     }
 
     return {
-      paymentRef: { provider: this.providerName, externalId: `mock_tx_${uuid}` },
+      paymentRef: {
+        provider: this.providerName,
+        externalId: `mock_tx_${uuid}`,
+      },
       state: 'authorized',
       authExpiresAt: new Date(Date.now() + 7 * 86400 * 1000),
     };
@@ -93,7 +108,10 @@ export class MockPaymentProvider implements PaymentPort, PaymentProvider {
     payment: PaymentRef;
     amount?: Money;
     idempotencyKey: string;
-  }): Promise<{ state: 'partially_captured' | 'captured'; capturedTotal: Money }> {
+  }): Promise<{
+    state: 'partially_captured' | 'captured';
+    capturedTotal: Money;
+  }> {
     void i.payment;
     void i.idempotencyKey;
     const capturedTotal = i.amount ?? { amount: 0, currency: 'USD' };
@@ -122,7 +140,10 @@ export class MockPaymentProvider implements PaymentPort, PaymentProvider {
     const uuid = randomUUID();
     const refundedTotal = i.amount ?? { amount: 0, currency: 'USD' };
     return {
-      refundRef: { provider: this.providerName, externalId: `mock_ref_${uuid}` },
+      refundRef: {
+        provider: this.providerName,
+        externalId: `mock_ref_${uuid}`,
+      },
       refundedTotal,
     };
   }
@@ -138,11 +159,18 @@ export class MockPaymentProvider implements PaymentPort, PaymentProvider {
       type: body.type ?? 'payment.captured',
       merchantAccount: {
         provider: this.providerName,
-        externalId: body.merchantAccountId || body.merchantAccount?.externalId || 'acct-1',
+        externalId:
+          body.merchantAccountId ||
+          body.merchantAccount?.externalId ||
+          'acct-1',
       },
-      payment: body.paymentId || body.payment?.externalId
-        ? { provider: this.providerName, externalId: body.paymentId || body.payment?.externalId }
-        : undefined,
+      payment:
+        body.paymentId || body.payment?.externalId
+          ? {
+              provider: this.providerName,
+              externalId: body.paymentId || body.payment?.externalId,
+            }
+          : undefined,
       amount: body.amount,
       occurredAt: body.occurredAt ? new Date(body.occurredAt) : new Date(),
     };

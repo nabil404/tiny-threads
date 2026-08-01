@@ -27,6 +27,8 @@ describe('Orders Controllers', () => {
       getMerchantOrderById: jest.fn(),
       transitionStatus: jest.fn(),
       refundOrder: jest.fn(),
+      createShipment: jest.fn(),
+      cancelOrder: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -154,6 +156,43 @@ describe('Orders Controllers', () => {
 
       expect(ordersService.refundOrder).toHaveBeenCalledWith('order-123', dto);
       expect(result).toBe(mockRefund);
+    });
+
+    it('createShipment should pass actorId, orderId, and dto to service', async () => {
+      const mockShipment = { id: 'ship-123', carrier: 'FedEx' } as any;
+      ordersService.createShipment.mockResolvedValue(mockShipment);
+
+      const req = { user: { sub: 'admin-456' } } as any;
+      const dto = {
+        carrier: 'FedEx',
+        items: [{ orderItemId: 'item-1', quantity: 1 }],
+      };
+      const result = await merchantController.createShipment(
+        req,
+        'order-123',
+        dto,
+      );
+
+      expect(ordersService.createShipment).toHaveBeenCalledWith(
+        'order-123',
+        dto,
+        'admin-456',
+      );
+      expect(result).toBe(mockShipment);
+    });
+
+    it('cancelOrder should pass orderId and actorId to service', async () => {
+      const mockOrder = { id: 'order-123', status: 'cancelled' } as Order;
+      ordersService.cancelOrder.mockResolvedValue(mockOrder);
+
+      const req = { user: { sub: 'admin-456' } } as any;
+      const result = await merchantController.cancelOrder(req, 'order-123');
+
+      expect(ordersService.cancelOrder).toHaveBeenCalledWith(
+        'order-123',
+        'admin-456',
+      );
+      expect(result).toBe(mockOrder);
     });
   });
 });

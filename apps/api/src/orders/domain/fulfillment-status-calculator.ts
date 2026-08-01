@@ -11,7 +11,7 @@ export interface ShipmentSummary {
 
 export function deriveFulfillmentStatus(
   orderedItems: OrderLineItemSummary[],
-  shipments: ShipmentSummary[]
+  shipments: ShipmentSummary[],
 ): OrderFulfillmentStatus {
   if (!orderedItems.length) return 'unfulfilled';
 

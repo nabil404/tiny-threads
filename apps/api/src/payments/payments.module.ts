@@ -18,7 +18,11 @@ import { PAYMENT_PROVIDER_TOKEN } from './interfaces/payment-provider.interface'
       useClass: MockPaymentProvider,
     },
   ],
-  exports: [PaymentsService, PAYMENT_PROVIDER_TOKEN, MockPaymentProvider, PaymentPortRegistry],
+  exports: [
+    PaymentsService,
+    PAYMENT_PROVIDER_TOKEN,
+    MockPaymentProvider,
+    PaymentPortRegistry,
+  ],
 })
 export class PaymentsModule {}
-

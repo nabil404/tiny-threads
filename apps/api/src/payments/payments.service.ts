@@ -104,6 +104,82 @@ export class PaymentsService {
       : this.tenantDb.run(executeInContext);
   }
 
+  async capturePayment(
+    orderId: string,
+    amountCents?: number,
+    manager?: EntityManager,
+  ): Promise<Payment> {
+    const executeInContext = async (em: EntityManager) => {
+      const payment = await em.findOne(Payment, {
+        where: { orderId },
+      });
+
+      if (!payment) {
+        throw new CodedNotFoundException(
+          ErrorCode.PAYMENT_NOT_FOUND,
+          'No payment found for order',
+        );
+      }
+
+      const providerName = payment.provider || 'mock';
+      const port = this.registry.get(providerName);
+      const idempotencyKey = `capture_${orderId}_${Date.now()}`;
+      const amount = amountCents
+        ? { amount: amountCents, currency: payment.currencyCode }
+        : undefined;
+
+      await port.capture({
+        payment: {
+          provider: providerName,
+          externalId: payment.providerTransactionId!,
+        },
+        amount,
+        idempotencyKey,
+      });
+
+      payment.status = 'captured';
+      return em.save(Payment, payment);
+    };
+
+    return manager
+      ? executeInContext(manager)
+      : this.tenantDb.run(executeInContext);
+  }
+
+  async voidPayment(
+    orderId: string,
+    manager?: EntityManager,
+  ): Promise<Payment> {
+    const executeInContext = async (em: EntityManager) => {
+      const payment = await em.findOne(Payment, {
+        where: { orderId },
+      });
+
+      if (!payment) {
+        throw new CodedNotFoundException(
+          ErrorCode.PAYMENT_NOT_FOUND,
+          'No payment found for order',
+        );
+      }
+
+      const providerName = payment.provider || 'mock';
+      const port = this.registry.get(providerName);
+      const idempotencyKey = `void_${orderId}_${Date.now()}`;
+
+      await port.void(
+        { provider: providerName, externalId: payment.providerTransactionId! },
+        idempotencyKey,
+      );
+
+      payment.status = 'voided';
+      return em.save(Payment, payment);
+    };
+
+    return manager
+      ? executeInContext(manager)
+      : this.tenantDb.run(executeInContext);
+  }
+
   async refundPayment(
     orderId: string,
     amountCents: number,
@@ -120,7 +196,10 @@ export class PaymentsService {
     const executeInContext = async (em: EntityManager) => {
       const tenantId = this.cls.get<string>('tenantId');
       const payment = await em.findOne(Payment, {
-        where: { orderId, status: 'captured' },
+        where: [
+          { orderId, status: 'captured' },
+          { orderId, status: 'paid' },
+        ],
       });
 
       if (!payment) {
@@ -189,9 +268,7 @@ export class PaymentsService {
     const rawBuffer = Buffer.isBuffer(payload)
       ? payload
       : Buffer.from(
-          typeof payload === 'string'
-            ? payload
-            : JSON.stringify(payload ?? {}),
+          typeof payload === 'string' ? payload : JSON.stringify(payload ?? {}),
         );
 
     const event = await port.parseEvent(rawBuffer, headers);
@@ -272,7 +349,9 @@ export class PaymentsService {
 
     try {
       const config = await this.dataSource.transaction(async (manager) => {
-        await manager.query(`select set_config('app.bypass_rls', 'true', true)`);
+        await manager.query(
+          `select set_config('app.bypass_rls', 'true', true)`,
+        );
         return manager.findOne(PaymentProviderConfig, {
           where: { accountRef: merchantAccount.externalId },
         });
@@ -290,7 +369,11 @@ export class PaymentsService {
           merchantAccount.externalId,
         );
 
-      const whereConditions: Array<{ id?: string; host?: string; name?: string }> = [
+      const whereConditions: Array<{
+        id?: string;
+        host?: string;
+        name?: string;
+      }> = [
         { host: merchantAccount.externalId },
         { name: merchantAccount.externalId },
       ];

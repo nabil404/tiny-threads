@@ -18,7 +18,8 @@ export class MoneyUtil {
 
   static subtract(a: Money, b: Money): Money {
     if (a.currency !== b.currency) throw new Error('Currency mismatch');
-    if (a.amount < b.amount) throw new Error('Insufficient funds for subtraction');
+    if (a.amount < b.amount)
+      throw new Error('Insufficient funds for subtraction');
     return { amount: a.amount - b.amount, currency: a.currency };
   }
 }

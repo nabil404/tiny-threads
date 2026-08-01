@@ -636,4 +636,114 @@ describe('OrdersService', () => {
       );
     });
   });
+
+  describe('createShipment', () => {
+    it('should create shipment, shipment items, update fulfillmentStatus and transition status', async () => {
+      const orderItem = {
+        id: 'item-1',
+        quantity: 2,
+        unitPriceCents: 1000,
+      } as OrderItem;
+      const order = {
+        id: mockOrderId,
+        tenantId: mockTenantId,
+        status: 'confirmed',
+        fulfillmentStatus: 'unfulfilled',
+        paymentStatus: 'paid',
+        items: [orderItem],
+      } as unknown as Order;
+
+      em.findOne.mockImplementation((entityClass: any) => {
+        if (entityClass === Order) return Promise.resolve(order);
+        return Promise.resolve(null);
+      });
+      em.find.mockResolvedValue([]);
+
+      const dto = {
+        carrier: 'DHL',
+        trackingNumber: '12345',
+        items: [{ orderItemId: 'item-1', quantity: 2 }],
+      };
+
+      const shipment = await service.createShipment(
+        mockOrderId,
+        dto,
+        'admin-1',
+      );
+
+      expect(shipment.carrier).toBe('DHL');
+      expect(order.fulfillmentStatus).toBe('fulfilled');
+      expect(order.status).toBe('completed');
+    });
+
+    it('should throw CodedNotFoundException if order does not exist', async () => {
+      em.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.createShipment(mockOrderId, {
+          carrier: 'FedEx',
+          items: [{ orderItemId: 'item-1', quantity: 1 }],
+        }),
+      ).rejects.toThrow(CodedNotFoundException);
+    });
+
+    it('should throw CodedBadRequestException if quantity exceeds ordered amount', async () => {
+      const orderItem = { id: 'item-1', quantity: 2 } as OrderItem;
+      const order = {
+        id: mockOrderId,
+        tenantId: mockTenantId,
+        status: 'confirmed',
+        items: [orderItem],
+      } as unknown as Order;
+
+      em.findOne.mockResolvedValue(order);
+      em.find.mockResolvedValue([]);
+
+      await expect(
+        service.createShipment(mockOrderId, {
+          carrier: 'FedEx',
+          items: [{ orderItemId: 'item-1', quantity: 3 }],
+        }),
+      ).rejects.toThrow(CodedBadRequestException);
+    });
+  });
+
+  describe('cancelOrder', () => {
+    it('should cancel order via merchant admin, restore stock, and refund payment', async () => {
+      const variant = { id: 'var-1', stock: 5 } as ProductVariant;
+      const order = {
+        id: mockOrderId,
+        tenantId: mockTenantId,
+        status: 'confirmed',
+        paymentStatus: 'paid',
+        totalCents: 2000,
+        items: [{ variantId: 'var-1', quantity: 2 } as OrderItem],
+      } as unknown as Order;
+
+      em.findOne.mockImplementation((entityClass: any) => {
+        if (entityClass === Order) return Promise.resolve(order);
+        if (entityClass === ProductVariant) return Promise.resolve(variant);
+        return Promise.resolve(null);
+      });
+
+      const result = await service.cancelOrder(mockOrderId, 'admin-1');
+
+      expect(result.status).toBe('cancelled');
+      expect(variant.stock).toBe(7);
+      expect(paymentsService.refundPayment).toHaveBeenCalled();
+    });
+
+    it('should throw CodedBadRequestException if order is already cancelled', async () => {
+      const order = {
+        id: mockOrderId,
+        status: 'cancelled',
+      } as unknown as Order;
+
+      em.findOne.mockResolvedValue(order);
+
+      await expect(service.cancelOrder(mockOrderId, 'admin-1')).rejects.toThrow(
+        CodedBadRequestException,
+      );
+    });
+  });
 });

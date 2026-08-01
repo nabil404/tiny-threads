@@ -93,7 +93,10 @@ describe('MockPaymentProvider (D7)', () => {
     expect(acct.provider).toBe('mock');
     expect(acct.externalId).toBe('acct_mock_tenant-1');
 
-    const session = await provider.createOnboardingSession(acct, 'https://example.com/return');
+    const session = await provider.createOnboardingSession(
+      acct,
+      'https://example.com/return',
+    );
     expect(session.url).toContain('mock.onboarding.local');
 
     const status = await provider.getOnboardingStatus(acct);
@@ -106,7 +109,7 @@ describe('MockPaymentProvider (D7)', () => {
         id: 'evt-123',
         type: 'payment.captured',
         merchantAccountId: 'acct-1',
-      })
+      }),
     );
     const headers = { 'x-mock-signature': 'test-sig' };
 

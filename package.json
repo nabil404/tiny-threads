@@ -10,8 +10,11 @@
     "db:migrate": "pnpm --filter @tiny-threads/api db:migrate",
     "db:revert": "pnpm --filter @tiny-threads/api db:revert",
     "db:verify-fresh": "pnpm --filter @tiny-threads/api db:verify-fresh",
+    "test": "pnpm --filter @tiny-threads/api test",
+    "test:e2e": "pnpm --filter @tiny-threads/api test:e2e",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
+    "lint:check": "pnpm --filter @tiny-threads/api lint:check",
     "format": "prettier --write \"apps/**/*.{ts,tsx}\" \"packages/**/*.ts\""
   },
   "devDependencies": {
