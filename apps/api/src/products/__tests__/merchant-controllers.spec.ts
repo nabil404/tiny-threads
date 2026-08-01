@@ -1,7 +1,13 @@
-import { MerchantProductsController } from '../merchant-products.controller';
-import { MerchantCategoriesController } from '../merchant-categories.controller';
-import { ProductsService, PaginatedProducts } from '../products.service';
-import { CategoriesService, CategoryTreeNode } from '../categories.service';
+import { MerchantProductsController } from '../controllers/merchant-products.controller';
+import { MerchantCategoriesController } from '../controllers/merchant-categories.controller';
+import {
+  ProductsService,
+  PaginatedProducts,
+} from '../services/products.service';
+import {
+  CategoriesService,
+  CategoryTreeNode,
+} from '../services/categories.service';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { ProductQueryDto } from '../dto/product-query.dto';

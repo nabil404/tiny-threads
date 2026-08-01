@@ -1,4 +1,4 @@
-import { CategoriesService } from '../categories.service';
+import { CategoriesService } from '../services/categories.service';
 import { TenantDbService } from '../../db/tenant-db.service';
 import { ClsService } from 'nestjs-cls';
 import {

@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { ErrorCode } from '@tiny-threads/shared';
-import { TenantDbService } from '../db/tenant-db.service';
-import { Category } from '../db/entities/categories.entity';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import { TenantDbService } from '../../db/tenant-db.service';
+import { Category } from '../../db/entities/categories.entity';
+import { CreateCategoryDto } from '../dto/create-category.dto';
+import { UpdateCategoryDto } from '../dto/update-category.dto';
 import {
   CodedBadRequestException,
   CodedNotFoundException,
-} from '../common/errors/coded-exceptions';
+} from '../../common/errors/coded-exceptions';
 
 export interface CategoryTreeNode {
   id: string;

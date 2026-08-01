@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { ProductsService } from '../products.service';
+import { ProductsService } from '../services/products.service';
 import { TenantDbService } from '../../db/tenant-db.service';
 import { ClsService } from 'nestjs-cls';
 import {

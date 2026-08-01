@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../db/database.module';
-import { ProductsService } from './products.service';
-import { CategoriesService } from './categories.service';
-import { MerchantProductsController } from './merchant-products.controller';
-import { MerchantCategoriesController } from './merchant-categories.controller';
-import { StorefrontProductsController } from './storefront-products.controller';
-import { StorefrontCategoriesController } from './storefront-categories.controller';
+import { ProductsService } from './services/products.service';
+import { CategoriesService } from './services/categories.service';
+import { MerchantProductsController } from './controllers/merchant-products.controller';
+import { MerchantCategoriesController } from './controllers/merchant-categories.controller';
+import { StorefrontProductsController } from './controllers/storefront-products.controller';
+import { StorefrontCategoriesController } from './controllers/storefront-categories.controller';
 
 @Module({
   imports: [DatabaseModule],

@@ -17,13 +17,13 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { MerchantAdminJwtAuthGuard } from '../merchant-admins/guards/merchant-admin-jwt-auth.guard';
-import { RolesGuard } from '../merchant-admins/guards/roles.guard';
-import { Roles } from '../merchant-admins/decorators/roles.decorator';
-import { ProductsService } from './products.service';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
-import { ProductQueryDto } from './dto/product-query.dto';
+import { MerchantAdminJwtAuthGuard } from '../../merchant-admins/guards/merchant-admin-jwt-auth.guard';
+import { RolesGuard } from '../../merchant-admins/guards/roles.guard';
+import { Roles } from '../../merchant-admins/decorators/roles.decorator';
+import { ProductsService } from '../services/products.service';
+import { CreateProductDto } from '../dto/create-product.dto';
+import { UpdateProductDto } from '../dto/update-product.dto';
+import { ProductQueryDto } from '../dto/product-query.dto';
 
 @ApiTags('Merchant Products')
 @ApiBearerAuth()

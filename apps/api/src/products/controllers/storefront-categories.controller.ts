@@ -1,6 +1,6 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { CategoriesService } from './categories.service';
+import { CategoriesService } from '../services/categories.service';
 
 @ApiTags('Storefront Categories')
 @Controller('categories')

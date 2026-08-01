@@ -99,6 +99,8 @@ These are not exported from `entities/index.ts` (that barrel feeds the TypeORM e
 - **Bounded contexts:** Catalog, Inventory, Cart/Checkout, Orders (as an explicit **state machine**), Payments, Customers, Pricing/Promotions, Shipping/Fulfillment, Tax.
 - **Customers belong to a tenant, not the platform** — the same email can be two separate customer records under two merchants.
 - **Staff users are many-to-many with tenants**, a role per membership; a staff user may span multiple tenants. Keep platform/staff users separate from storefront customers (different tables, token audiences, RBAC).
+- **Folder organization for services & controllers:** Always create dedicated `controllers/` and `services/` subdirectories in a module whenever there is more than one controller or service (e.g. `src/<module>/controllers/`, `src/<module>/services/`). Do not leave multiple controllers or services loose in the module root folder.
+- **Always add error codes in DTOs:** Every DTO validation decorator (`class-validator`) MUST include an explicit `ErrorCode` from `@tiny-threads/shared` using `message: field(ErrorCode.<NAME>)` (from `common/errors/validation-field`). Never use default validation error messages without explicit error codes.
 
 ## ⚠️ Vendor-agnostic external providers (ports & adapters)
 
@@ -247,4 +249,7 @@ Run through this on any backend change touching tenant data or providers:
 - [ ] New background jobs carry `tenantId` and set context in the worker.
 - [ ] Cache keys, rate limits, logs/metrics are tenant-scoped.
 - [ ] Order state changes go through the guarded transition function, write an `order_events` row, and set `status` / `payment_status` / (derived) `fulfillment_status` — never a raw status update; provider-driven transitions dedupe on `(tenant_id, provider_event_id)`.
+- [ ] DTO validation decorators explicitly specify error codes via `message: field(ErrorCode.<NAME>)` from `@tiny-threads/shared`.
+- [ ] Subdirectories `controllers/` and `services/` are created whenever a module contains more than one controller or service.
+
 - **Provider port catalogue** (payments first, then shipping, tax, notifications, storage, search) to be specified interface-by-interface.

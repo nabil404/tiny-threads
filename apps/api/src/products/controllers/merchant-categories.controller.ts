@@ -16,12 +16,12 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { MerchantAdminJwtAuthGuard } from '../merchant-admins/guards/merchant-admin-jwt-auth.guard';
-import { RolesGuard } from '../merchant-admins/guards/roles.guard';
-import { Roles } from '../merchant-admins/decorators/roles.decorator';
-import { CategoriesService } from './categories.service';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import { MerchantAdminJwtAuthGuard } from '../../merchant-admins/guards/merchant-admin-jwt-auth.guard';
+import { RolesGuard } from '../../merchant-admins/guards/roles.guard';
+import { Roles } from '../../merchant-admins/decorators/roles.decorator';
+import { CategoriesService } from '../services/categories.service';
+import { CreateCategoryDto } from '../dto/create-category.dto';
+import { UpdateCategoryDto } from '../dto/update-category.dto';
 
 @ApiTags('Merchant Categories')
 @ApiBearerAuth()

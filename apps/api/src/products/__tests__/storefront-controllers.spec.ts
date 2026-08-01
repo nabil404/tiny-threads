@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { StorefrontProductsController } from '../storefront-products.controller';
-import { StorefrontCategoriesController } from '../storefront-categories.controller';
-import { ProductsService } from '../products.service';
-import { CategoriesService } from '../categories.service';
+import { StorefrontProductsController } from '../controllers/storefront-products.controller';
+import { StorefrontCategoriesController } from '../controllers/storefront-categories.controller';
+import { ProductsService } from '../services/products.service';
+import { CategoriesService } from '../services/categories.service';
 
 describe('Storefront Controllers', () => {
   let productsController: StorefrontProductsController;

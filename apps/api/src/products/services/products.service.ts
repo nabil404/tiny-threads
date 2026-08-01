@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
-import { TenantDbService } from '../db/tenant-db.service';
-import { Product } from '../db/entities/products.entity';
-import { ProductVariant } from '../db/entities/product-variants.entity';
-import { Category } from '../db/entities/categories.entity';
-import { ProductCategory } from '../db/entities/product-categories.entity';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
-import { ProductQueryDto } from './dto/product-query.dto';
+import { TenantDbService } from '../../db/tenant-db.service';
+import { Product } from '../../db/entities/products.entity';
+import { ProductVariant } from '../../db/entities/product-variants.entity';
+import { Category } from '../../db/entities/categories.entity';
+import { ProductCategory } from '../../db/entities/product-categories.entity';
+import { CreateProductDto } from '../dto/create-product.dto';
+import { UpdateProductDto } from '../dto/update-product.dto';
+import { ProductQueryDto } from '../dto/product-query.dto';
 import {
   CodedNotFoundException,
   CodedBadRequestException,
   CodedConflictException,
-} from '../common/errors/coded-exceptions';
+} from '../../common/errors/coded-exceptions';
 import { ErrorCode } from '@tiny-threads/shared';
 import { In, Not, EntityManager } from 'typeorm';
 
