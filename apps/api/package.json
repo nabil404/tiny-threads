@@ -25,7 +25,8 @@
     "db:migrate": "sh scripts/db-migrate.sh",
     "db:migrate:test": "NODE_ENV=test typeorm-ts-node-commonjs migration:run -d ./src/db/data-source.ts",
     "db:revert": "typeorm-ts-node-commonjs migration:revert -d ./src/db/data-source.ts",
-    "db:verify-rls": "node -r ts-node/register -r tsconfig-paths/register src/db/verify-rls.ts"
+    "db:verify-rls": "node -r ts-node/register -r tsconfig-paths/register src/db/verify-rls.ts",
+    "db:verify-fresh": "sh scripts/db-verify-fresh.sh"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

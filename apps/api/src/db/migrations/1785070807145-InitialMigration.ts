@@ -81,49 +81,10 @@ export class InitialMigration1785070807145 implements MigrationInterface {
       `CREATE INDEX "carts_tenant_customer_idx" ON "carts"  ("tenant_id", "customer_id") `,
     );
     await queryRunner.query(
-      `CREATE TABLE "order_items" ("tenant_id" uuid NOT NULL, "id" uuid NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "order_id" uuid NOT NULL, "variant_id" uuid NOT NULL, "name_snapshot" text NOT NULL, "price_cents_snapshot" integer NOT NULL, "qty" integer NOT NULL, CONSTRAINT "PK_661da2f11c9f2d00555e41b6a0e" PRIMARY KEY ("tenant_id", "id"))`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "order_items_tenant_order_idx" ON "order_items"  ("tenant_id", "order_id") `,
-    );
-    await queryRunner.query(
-      `CREATE TABLE "order_events" ("tenant_id" uuid NOT NULL, "id" uuid NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "order_id" uuid NOT NULL, "type" text NOT NULL, "provider_event_id" text, "payload" jsonb NOT NULL, CONSTRAINT "order_events_tenant_provider_event_uq" UNIQUE ("tenant_id", "provider_event_id"), CONSTRAINT "PK_33e5f32725ad3f382b4b1362c5d" PRIMARY KEY ("tenant_id", "id"))`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "order_events_tenant_created_idx" ON "order_events"  ("tenant_id", "created_at") `,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "order_events_tenant_order_idx" ON "order_events"  ("tenant_id", "order_id") `,
-    );
-    await queryRunner.query(
       `CREATE TABLE "payment_provider_configs" ("tenant_id" uuid NOT NULL, "id" uuid NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "provider_code" text NOT NULL, "account_ref" text NOT NULL, "enabled" boolean NOT NULL, CONSTRAINT "PK_729dc735a740206978bb9902b97" PRIMARY KEY ("tenant_id", "id"))`,
     );
     await queryRunner.query(
       `CREATE INDEX "payment_provider_configs_tenant_provider_idx" ON "payment_provider_configs"  ("tenant_id", "provider_code") `,
-    );
-    await queryRunner.query(
-      `CREATE TABLE "settlements" ("tenant_id" uuid NOT NULL, "id" uuid NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "payment_id" uuid NOT NULL, "merchant_cents" integer NOT NULL, "platform_fee_cents" integer NOT NULL, "status" text NOT NULL, CONSTRAINT "settlements_tenant_payment_uq" UNIQUE ("tenant_id", "payment_id"), CONSTRAINT "REL_c514bae19e2b3aceb048f7f013" UNIQUE ("tenant_id", "payment_id"), CONSTRAINT "PK_7d0123be74415469a7f67e592c9" PRIMARY KEY ("tenant_id", "id"))`,
-    );
-    await queryRunner.query(
-      `CREATE TABLE "payments" ("tenant_id" uuid NOT NULL, "id" uuid NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "order_id" uuid NOT NULL, "provider_config_id" uuid NOT NULL, "amount_cents" integer NOT NULL, "status" text NOT NULL, CONSTRAINT "PK_bf16bf1d8e3a222bc1131fa3506" PRIMARY KEY ("tenant_id", "id"))`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "payments_tenant_order_idx" ON "payments"  ("tenant_id", "order_id") `,
-    );
-    await queryRunner.query(
-      `CREATE TABLE "orders" ("tenant_id" uuid NOT NULL, "id" uuid NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "number" text NOT NULL, "customer_id" uuid NOT NULL, "currency_code" text NOT NULL, "status" text NOT NULL, "payment_status" text NOT NULL, "total_cents" integer NOT NULL, CONSTRAINT "orders_tenant_number_uq" UNIQUE ("tenant_id", "number"), CONSTRAINT "PK_c218c0315dc545f5b012e4bf391" PRIMARY KEY ("tenant_id", "id"))`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "orders_tenant_created_idx" ON "orders"  ("tenant_id", "created_at") `,
-    );
-    await queryRunner.query(
-      `CREATE TABLE "refunds" ("tenant_id" uuid NOT NULL, "id" uuid NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "payment_id" uuid NOT NULL, "settlement_id" uuid NOT NULL, "amount_cents" integer NOT NULL, CONSTRAINT "PK_07348aec75d60e15d2943d09891" PRIMARY KEY ("tenant_id", "id"))`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "refunds_tenant_settlement_idx" ON "refunds"  ("tenant_id", "settlement_id") `,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "refunds_tenant_payment_idx" ON "refunds"  ("tenant_id", "payment_id") `,
     );
 
     // RLS must be enabled before the FK constraints below are added: FK
@@ -138,13 +99,7 @@ export class InitialMigration1785070807145 implements MigrationInterface {
     await enableRls(queryRunner, 'customer_addresses');
     await enableRls(queryRunner, 'cart_items');
     await enableRls(queryRunner, 'carts');
-    await enableRls(queryRunner, 'order_items');
-    await enableRls(queryRunner, 'order_events');
     await enableRls(queryRunner, 'payment_provider_configs');
-    await enableRls(queryRunner, 'settlements');
-    await enableRls(queryRunner, 'payments');
-    await enableRls(queryRunner, 'orders');
-    await enableRls(queryRunner, 'refunds');
 
     await queryRunner.query(
       `ALTER TABLE "merchant_users" ADD CONSTRAINT "FK_c2a0472c4668424117af722f058" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
@@ -186,79 +141,19 @@ export class InitialMigration1785070807145 implements MigrationInterface {
       `ALTER TABLE "carts" ADD CONSTRAINT "FK_d25e14ac78a3d598d649737b5b8" FOREIGN KEY ("tenant_id", "customer_id") REFERENCES "customers"("tenant_id","id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
     await queryRunner.query(
-      `ALTER TABLE "order_items" ADD CONSTRAINT "FK_130af2b40e6c3d2b7fa6a802547" FOREIGN KEY ("tenant_id", "order_id") REFERENCES "orders"("tenant_id","id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "order_items" ADD CONSTRAINT "FK_c6f0cc5e525f3f813b25f9cd7bf" FOREIGN KEY ("tenant_id", "variant_id") REFERENCES "product_variants"("tenant_id","id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "order_events" ADD CONSTRAINT "FK_178a16ac37812e8f26f40e2f625" FOREIGN KEY ("tenant_id", "order_id") REFERENCES "orders"("tenant_id","id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
-    await queryRunner.query(
       `ALTER TABLE "payment_provider_configs" ADD CONSTRAINT "FK_274361e3ce861e3b2b1f4b8198c" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
     await queryRunner.query(
       `ALTER TABLE "payment_provider_configs" ADD CONSTRAINT "FK_5e368caebde794591c88245381d" FOREIGN KEY ("provider_code") REFERENCES "payment_providers"("code") ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "settlements" ADD CONSTRAINT "FK_c514bae19e2b3aceb048f7f0134" FOREIGN KEY ("tenant_id", "payment_id") REFERENCES "payments"("tenant_id","id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "payments" ADD CONSTRAINT "FK_eb2d3668c3e7744fd4daebbcd06" FOREIGN KEY ("tenant_id", "order_id") REFERENCES "orders"("tenant_id","id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "payments" ADD CONSTRAINT "FK_68f47a2d690a76b1b02fe7638b4" FOREIGN KEY ("tenant_id", "provider_config_id") REFERENCES "payment_provider_configs"("tenant_id","id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "orders" ADD CONSTRAINT "FK_d659290ef65a9ce29de3d437238" FOREIGN KEY ("tenant_id", "customer_id") REFERENCES "customers"("tenant_id","id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "orders" ADD CONSTRAINT "FK_5ad51399a06814ff8c87f0f04d8" FOREIGN KEY ("currency_code") REFERENCES "currencies"("code") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "refunds" ADD CONSTRAINT "FK_990295079ce8691c5edeaa13553" FOREIGN KEY ("tenant_id", "payment_id") REFERENCES "payments"("tenant_id","id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "refunds" ADD CONSTRAINT "FK_f02f0723a9905aae463a800ef61" FOREIGN KEY ("tenant_id", "settlement_id") REFERENCES "settlements"("tenant_id","id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "refunds" DROP CONSTRAINT "FK_f02f0723a9905aae463a800ef61"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "refunds" DROP CONSTRAINT "FK_990295079ce8691c5edeaa13553"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "orders" DROP CONSTRAINT "FK_5ad51399a06814ff8c87f0f04d8"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "orders" DROP CONSTRAINT "FK_d659290ef65a9ce29de3d437238"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "payments" DROP CONSTRAINT "FK_68f47a2d690a76b1b02fe7638b4"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "payments" DROP CONSTRAINT "FK_eb2d3668c3e7744fd4daebbcd06"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "settlements" DROP CONSTRAINT "FK_c514bae19e2b3aceb048f7f0134"`,
-    );
     await queryRunner.query(
       `ALTER TABLE "payment_provider_configs" DROP CONSTRAINT "FK_5e368caebde794591c88245381d"`,
     );
     await queryRunner.query(
       `ALTER TABLE "payment_provider_configs" DROP CONSTRAINT "FK_274361e3ce861e3b2b1f4b8198c"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "order_events" DROP CONSTRAINT "FK_178a16ac37812e8f26f40e2f625"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "order_items" DROP CONSTRAINT "FK_c6f0cc5e525f3f813b25f9cd7bf"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "order_items" DROP CONSTRAINT "FK_130af2b40e6c3d2b7fa6a802547"`,
     );
     await queryRunner.query(
       `ALTER TABLE "carts" DROP CONSTRAINT "FK_d25e14ac78a3d598d649737b5b8"`,
@@ -300,13 +195,7 @@ export class InitialMigration1785070807145 implements MigrationInterface {
       `ALTER TABLE "merchant_users" DROP CONSTRAINT "FK_c2a0472c4668424117af722f058"`,
     );
 
-    await disableRls(queryRunner, 'refunds');
-    await disableRls(queryRunner, 'orders');
-    await disableRls(queryRunner, 'payments');
-    await disableRls(queryRunner, 'settlements');
     await disableRls(queryRunner, 'payment_provider_configs');
-    await disableRls(queryRunner, 'order_events');
-    await disableRls(queryRunner, 'order_items');
     await disableRls(queryRunner, 'carts');
     await disableRls(queryRunner, 'cart_items');
     await disableRls(queryRunner, 'customer_addresses');
@@ -317,31 +206,10 @@ export class InitialMigration1785070807145 implements MigrationInterface {
     await disableRls(queryRunner, 'product_variants');
     await disableRls(queryRunner, 'merchant_users');
 
-    await queryRunner.query(`DROP INDEX "public"."refunds_tenant_payment_idx"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."refunds_tenant_settlement_idx"`,
-    );
-    await queryRunner.query(`DROP TABLE "refunds"`);
-    await queryRunner.query(`DROP INDEX "public"."orders_tenant_created_idx"`);
-    await queryRunner.query(`DROP TABLE "orders"`);
-    await queryRunner.query(`DROP INDEX "public"."payments_tenant_order_idx"`);
-    await queryRunner.query(`DROP TABLE "payments"`);
-    await queryRunner.query(`DROP TABLE "settlements"`);
     await queryRunner.query(
       `DROP INDEX "public"."payment_provider_configs_tenant_provider_idx"`,
     );
     await queryRunner.query(`DROP TABLE "payment_provider_configs"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."order_events_tenant_order_idx"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."order_events_tenant_created_idx"`,
-    );
-    await queryRunner.query(`DROP TABLE "order_events"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."order_items_tenant_order_idx"`,
-    );
-    await queryRunner.query(`DROP TABLE "order_items"`);
     await queryRunner.query(`DROP INDEX "public"."carts_tenant_customer_idx"`);
     await queryRunner.query(`DROP INDEX "public"."carts_tenant_status_idx"`);
     await queryRunner.query(`DROP TABLE "carts"`);
