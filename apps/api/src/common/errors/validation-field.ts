@@ -28,6 +28,7 @@ const FIELD_CODE_META: Partial<Record<ErrorCode, FieldCodeMeta>> = {
     params: ([values]) => ({ values: (values as unknown[]).join(', ') }),
   },
   [ErrorCode.IS_INT]: { message: 'must be an integer' },
+  [ErrorCode.IS_NUMBER]: { message: 'must be a number' },
   [ErrorCode.MIN]: {
     message: 'must be at least {min}',
     params: ([min]) => ({ min }),

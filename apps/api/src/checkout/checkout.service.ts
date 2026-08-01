@@ -7,6 +7,7 @@ import { TenantSettingsService } from '../tenant-settings/tenant-settings.servic
 import { PaymentsService } from '../payments/payments.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { Cart } from '../db/entities/carts.entity';
+import { Product } from '../db/entities/products.entity';
 import { ProductVariant } from '../db/entities/product-variants.entity';
 import { Order } from '../db/entities/order.entity';
 import { OrderItem } from '../db/entities/order-item.entity';
@@ -70,7 +71,6 @@ export class CheckoutService {
         const itemQty = item.qty;
         const variant = await manager.findOne(ProductVariant, {
           where: { id: item.variantId },
-          relations: { product: true },
           lock: { mode: 'pessimistic_write' },
         });
 
@@ -79,6 +79,13 @@ export class CheckoutService {
             ErrorCode.INSUFFICIENT_STOCK,
             `Insufficient stock for product variant ${item.variantId}`,
           );
+        }
+
+        const product = await manager.findOne(Product, {
+          where: { id: variant.productId },
+        });
+        if (product) {
+          variant.product = product;
         }
 
         variant.stock -= itemQty;

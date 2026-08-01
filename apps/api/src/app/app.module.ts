@@ -18,6 +18,7 @@ import { CustomerAddressesModule } from '../customer-addresses/customer-addresse
 import { TenantSettingsModule } from '../tenant-settings/tenant-settings.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { CheckoutModule } from '../checkout/checkout.module';
+import { OrdersModule } from '../orders/orders.module';
 import { validate } from '../config/env.validation';
 
 @Module({
@@ -37,6 +38,7 @@ import { validate } from '../config/env.validation';
     TenantSettingsModule,
     PaymentsModule,
     CheckoutModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

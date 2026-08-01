@@ -71,6 +71,7 @@ export enum ErrorCode {
   MIN_LENGTH = 'MIN_LENGTH',
   MAX_LENGTH = 'MAX_LENGTH',
   IS_INT = 'IS_INT',
+  IS_NUMBER = 'IS_NUMBER',
   MIN = 'MIN',
   MAX = 'MAX',
   IS_BOOLEAN = 'IS_BOOLEAN',
