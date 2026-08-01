@@ -44,7 +44,7 @@ export class CheckoutService {
 
       const cart = await manager.findOne(Cart, {
         where: { id: dto.cartId },
-        relations: ['items'],
+        relations: { items: true },
       });
 
       if (
@@ -70,7 +70,7 @@ export class CheckoutService {
         const itemQty = item.qty;
         const variant = await manager.findOne(ProductVariant, {
           where: { id: item.variantId },
-          relations: ['product'],
+          relations: { product: true },
           lock: { mode: 'pessimistic_write' },
         });
 
