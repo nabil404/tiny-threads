@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
+import { ErrorCode } from '@tiny-threads/shared';
 import { TenantDbService } from '../db/tenant-db.service';
 import { TenantSettings } from '../db/entities/tenant-settings.entity';
+import { Currency } from '../db/entities/currencies.entity';
 import { UpdateTenantSettingsDto } from './dto/update-tenant-settings.dto';
+import { CodedBadRequestException } from '../common/errors/coded-exceptions';
 
 @Injectable()
 export class TenantSettingsService {
@@ -16,19 +19,21 @@ export class TenantSettingsService {
     const work = async (em: EntityManager) => {
       let settings = await em.findOne(TenantSettings, { where: {} });
       if (!settings) {
-        // Relies solely on CLS (no tenantId fallback param) — safe for
-        // every current caller since TenantResolutionMiddleware always
-        // populates it before a request reaches a service. A future
-        // background job calling this outside request context would need
-        // to seed CLS itself, or this creates a row with tenantId: undefined
-        // and fails the NOT NULL constraint.
-        const tId = this.cls.get<string>('tenantId');
-        settings = em.create(TenantSettings, {
-          tenantId: tId,
-          allowGuestCheckout: true,
-          platformFeePercent: 2.5,
-        });
-        settings = await em.save(settings);
+        const tenantId = this.cls.get<string>('tenantId');
+        await em
+          .createQueryBuilder()
+          .insert()
+          .into(TenantSettings)
+          .values({
+            tenantId,
+            allowGuestCheckout: true,
+            platformFeePercent: 2.5,
+            defaultCurrencyCode: 'USD',
+          })
+          .orIgnore()
+          .execute();
+
+        settings = await em.findOneOrFail(TenantSettings, { where: {} });
       }
       return settings;
     };
@@ -41,11 +46,33 @@ export class TenantSettingsService {
       let settings = await em.findOne(TenantSettings, { where: {} });
       if (!settings) {
         const tenantId = this.cls.get<string>('tenantId');
-        settings = em.create(TenantSettings, {
-          tenantId,
-          allowGuestCheckout: true,
-          platformFeePercent: 2.5,
+        await em
+          .createQueryBuilder()
+          .insert()
+          .into(TenantSettings)
+          .values({
+            tenantId,
+            allowGuestCheckout: true,
+            platformFeePercent: 2.5,
+            defaultCurrencyCode: 'USD',
+          })
+          .orIgnore()
+          .execute();
+
+        settings = await em.findOneOrFail(TenantSettings, { where: {} });
+      }
+
+      if (dto.defaultCurrencyCode !== undefined) {
+        const currency = await em.findOne(Currency, {
+          where: { code: dto.defaultCurrencyCode },
         });
+        if (!currency) {
+          throw new CodedBadRequestException(
+            ErrorCode.VALIDATION_FAILED,
+            'Invalid currency code',
+          );
+        }
+        settings.defaultCurrencyCode = dto.defaultCurrencyCode;
       }
 
       if (dto.allowGuestCheckout !== undefined) {

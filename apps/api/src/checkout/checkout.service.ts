@@ -127,7 +127,7 @@ export class CheckoutService {
         customerEmail: dto.customerEmail,
         status: 'pending_payment',
         paymentStatus: 'pending',
-        currencyCode: 'USD',
+        currencyCode: settings.defaultCurrencyCode,
         totalCents,
         shippingAddress: dto.shippingAddress,
         billingAddress: dto.billingAddress ?? dto.shippingAddress,
