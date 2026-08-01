@@ -38,6 +38,7 @@ const FIELD_CODE_META: Partial<Record<ErrorCode, FieldCodeMeta>> = {
   },
   [ErrorCode.IS_BOOLEAN]: { message: 'must be a boolean' },
   [ErrorCode.IS_ARRAY]: { message: 'must be an array' },
+  [ErrorCode.IS_OBJECT]: { message: 'must be an object' },
   [ErrorCode.IS_UUID]: { message: 'must be a valid UUID' },
 };
 

@@ -10,11 +10,6 @@ import {
   CodedBadRequestException,
   CodedForbiddenException,
 } from '../../common/errors/coded-exceptions';
-import { Cart } from '../../db/entities/carts.entity';
-import { ProductVariant } from '../../db/entities/product-variants.entity';
-import { Order } from '../../db/entities/order.entity';
-import { OrderItem } from '../../db/entities/order-item.entity';
-import { OrderEvent } from '../../db/entities/order-event.entity';
 
 describe('CheckoutService', () => {
   let service: CheckoutService;
@@ -206,7 +201,9 @@ describe('CheckoutService', () => {
     expect(paymentsService.processOrderPayment).toHaveBeenCalledTimes(1);
 
     // Verify order and item details saved
-    const savedOrder = savedEntities.find((e) => e.customerEmail === 'test@example.com');
+    const savedOrder = savedEntities.find(
+      (e) => e.customerEmail === 'test@example.com',
+    );
     expect(savedOrder).toBeDefined();
     expect(savedOrder.totalCents).toBe(3000); // 1500 * 2
     expect(savedOrder.status).toBe('paid');

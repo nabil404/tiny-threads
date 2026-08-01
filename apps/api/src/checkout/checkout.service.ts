@@ -62,7 +62,11 @@ export class CheckoutService {
       const itemsWithVariants: { variant: ProductVariant; quantity: number }[] =
         [];
 
-      for (const item of cart.items) {
+      const sortedItems = [...cart.items].sort((a, b) =>
+        a.variantId.localeCompare(b.variantId),
+      );
+
+      for (const item of sortedItems) {
         const itemQty = item.qty;
         const variant = await manager.findOne(ProductVariant, {
           where: { id: item.variantId },

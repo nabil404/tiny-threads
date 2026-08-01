@@ -11,7 +11,7 @@ export class TenantSettings extends TenantEntityBase {
     type: 'numeric',
     precision: 5,
     scale: 2,
-    default: 2.50,
+    default: 2.5,
   })
   platformFeePercent!: number;
 }

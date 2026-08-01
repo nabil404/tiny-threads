@@ -1,9 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { enableRls, disableRls } from './helpers/rls.helper';
 
-export class CreateOrderAndCheckoutTables1722510000000
-  implements MigrationInterface
-{
+export class CreateOrderAndCheckoutTables1722510000000 implements MigrationInterface {
   name = 'CreateOrderAndCheckoutTables1722510000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -32,3 +32,6 @@ apps/web/next-env.d.ts
 
 # typescript
 *.tsbuildinfo
+
+
+.superpowers

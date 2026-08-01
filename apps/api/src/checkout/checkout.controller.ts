@@ -9,7 +9,7 @@ import type { Request } from 'express';
 import { CheckoutService } from './checkout.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { OptionalCustomerJwtAuthGuard } from '../customers/guards/optional-customer-jwt-auth.guard';
-import { CustomerAccessTokenPayload } from '../customers/interfaces/customer-token.interface';
+import { CustomerAccessTokenPayload } from '../auth-core/services/token.service';
 
 @ApiTags('checkout')
 @Controller('checkout')

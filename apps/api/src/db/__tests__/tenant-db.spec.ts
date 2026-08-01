@@ -37,7 +37,11 @@ describe('withTenant (RLS isolation)', () => {
     name: 'Customer B',
   };
 
-  function baseOrder(tenantId: string, customerId: string, email = 'test@example.com') {
+  function baseOrder(
+    tenantId: string,
+    customerId: string,
+    email = 'test@example.com',
+  ) {
     return {
       tenantId,
       customerId,
@@ -111,13 +115,17 @@ describe('withTenant (RLS isolation)', () => {
     await runAs(tenantA.id, (manager) => {
       const repo = manager.getRepository(Order);
       return repo.save(
-        repo.create(baseOrder(tenantA.id, customerA.id, 'customer-a@example.com')),
+        repo.create(
+          baseOrder(tenantA.id, customerA.id, 'customer-a@example.com'),
+        ),
       );
     });
     await runAs(tenantB.id, (manager) => {
       const repo = manager.getRepository(Order);
       return repo.save(
-        repo.create(baseOrder(tenantB.id, customerB.id, 'customer-b@example.com')),
+        repo.create(
+          baseOrder(tenantB.id, customerB.id, 'customer-b@example.com'),
+        ),
       );
     });
 
@@ -139,7 +147,9 @@ describe('withTenant (RLS isolation)', () => {
       runAs(tenantA.id, (manager) => {
         const repo = manager.getRepository(Order);
         return repo.save(
-          repo.create(baseOrder(tenantB.id, customerB.id, 'sneaky@example.com')),
+          repo.create(
+            baseOrder(tenantB.id, customerB.id, 'sneaky@example.com'),
+          ),
         );
       }),
     ).rejects.toThrow();

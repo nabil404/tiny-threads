@@ -75,5 +75,6 @@ export enum ErrorCode {
   MAX = 'MAX',
   IS_BOOLEAN = 'IS_BOOLEAN',
   IS_ARRAY = 'IS_ARRAY',
+  IS_OBJECT = 'IS_OBJECT',
   IS_UUID = 'IS_UUID',
 }
