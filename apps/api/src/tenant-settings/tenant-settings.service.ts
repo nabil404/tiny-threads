@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
+import { uuidv7 } from 'uuidv7';
 import { ErrorCode } from '@tiny-threads/shared';
 import { TenantDbService } from '../db/tenant-db.service';
 import { TenantSettings } from '../db/entities/tenant-settings.entity';
@@ -25,6 +26,7 @@ export class TenantSettingsService {
           .insert()
           .into(TenantSettings)
           .values({
+            id: uuidv7(),
             tenantId,
             allowGuestCheckout: true,
             platformFeePercent: 2.5,
@@ -51,6 +53,7 @@ export class TenantSettingsService {
           .insert()
           .into(TenantSettings)
           .values({
+            id: uuidv7(),
             tenantId,
             allowGuestCheckout: true,
             platformFeePercent: 2.5,

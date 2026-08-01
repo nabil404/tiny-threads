@@ -73,12 +73,14 @@ describe('TenantSettingsService', () => {
       const result = await service.getSettings();
 
       expect(qb.insert).toHaveBeenCalled();
-      expect(qb.values).toHaveBeenCalledWith({
-        tenantId: 'tenant-123',
-        allowGuestCheckout: true,
-        platformFeePercent: 2.5,
-        defaultCurrencyCode: 'USD',
-      });
+      expect(qb.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: 'tenant-123',
+          allowGuestCheckout: true,
+          platformFeePercent: 2.5,
+          defaultCurrencyCode: 'USD',
+        }),
+      );
       expect(result).toEqual(savedEntity);
       expect(tenantDbService.run).toHaveBeenCalledTimes(1);
     });
