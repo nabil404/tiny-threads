@@ -1,30 +1,60 @@
+import { randomUUID } from 'crypto';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { setupE2eTestModule } from './utils/e2e-test-setup';
+import { Tenant, PaymentProviderConfig } from '../src/db/entities';
 
 describe('Payments Webhook (E2E)', () => {
   let app: any;
+  let dataSource: DataSource;
+  let tenantId: string;
 
   beforeAll(async () => {
     const fixture = await setupE2eTestModule();
     app = fixture.app;
-    const dataSource = app.get(DataSource);
-    const qr = dataSource.createQueryRunner();
-    await qr.connect();
-    await qr.startTransaction();
-    const hash = require('crypto')
-      .createHash('md5')
-      .update('acct-mock-tenant')
-      .digest('hex');
-    const tenantId = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
-    await qr.query(`SELECT set_config('app.current_tenant', $1, true)`, [
-      tenantId,
-    ]);
-    await qr.query(
-      `DELETE FROM order_events WHERE provider_event_id = 'evt-unique-101'`,
+    dataSource = app.get<DataSource>(DataSource);
+
+    // Clean up test rows if they exist from a previous run
+    await dataSource.transaction(async (manager) => {
+      await manager.query(`select set_config('app.bypass_rls', 'true', true)`);
+      await manager.query(
+        `DELETE FROM order_events WHERE provider_event_id = 'evt-unique-101'`,
+      );
+      await manager.query(
+        `DELETE FROM payment_provider_configs WHERE account_ref = 'acct-mock-tenant'`,
+      );
+    });
+
+    // Create a real test tenant
+    const tenant = await dataSource.getRepository(Tenant).save(
+      dataSource.getRepository(Tenant).create({
+        name: 'Webhook Test Tenant',
+        host: `webhook-test-${randomUUID()}.localhost`,
+      }),
     );
-    await qr.commitTransaction();
-    await qr.release();
+    tenantId = tenant.id;
+
+    // Ensure payment_providers row exists
+    await dataSource.query(`
+      INSERT INTO payment_providers (code, name, supports_split)
+      VALUES ('mock', 'Mock Provider', true)
+      ON CONFLICT (code) DO NOTHING;
+    `);
+
+    // Create PaymentProviderConfig mapping 'acct-mock-tenant' to tenantId
+    await dataSource.transaction(async (manager) => {
+      await manager.query(`select set_config('app.current_tenant', $1, true)`, [
+        tenantId,
+      ]);
+      await manager.save(
+        manager.create(PaymentProviderConfig, {
+          tenantId,
+          providerCode: 'mock',
+          accountRef: 'acct-mock-tenant',
+          enabled: true,
+        }),
+      );
+    });
   });
 
   afterAll(async () => {

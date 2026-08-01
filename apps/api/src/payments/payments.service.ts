@@ -1,6 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { createHash } from 'crypto';
 import { DataSource, EntityManager } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
 import { TenantDbService } from '../db/tenant-db.service';
@@ -267,60 +266,48 @@ export class PaymentsService {
   private async resolveTenantId(
     merchantAccount: MerchantAccountRef,
   ): Promise<string | null> {
-    if (!merchantAccount.externalId) {
+    if (!merchantAccount.externalId || !this.dataSource) {
       return null;
     }
 
-    if (this.dataSource) {
-      try {
-        const config = await this.dataSource
-          .getRepository(PaymentProviderConfig)
-          .findOne({ where: { accountRef: merchantAccount.externalId } });
-        if (config) {
-          return config.tenantId;
-        }
-      } catch {
-        // Safe fallback if RLS or query fails before context is set
+    try {
+      const config = await this.dataSource.transaction(async (manager) => {
+        await manager.query(`select set_config('app.bypass_rls', 'true', true)`);
+        return manager.findOne(PaymentProviderConfig, {
+          where: { accountRef: merchantAccount.externalId },
+        });
+      });
+      if (config) {
+        return config.tenantId;
       }
-
-      try {
-        const isUuid =
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-            merchantAccount.externalId,
-          );
-
-        const whereConditions: Array<{ id?: string; host?: string; name?: string }> = [
-          { host: merchantAccount.externalId },
-          { name: merchantAccount.externalId },
-        ];
-        if (isUuid) {
-          whereConditions.push({ id: merchantAccount.externalId });
-        }
-
-        const tenant = await this.dataSource
-          .getRepository(Tenant)
-          .findOne({ where: whereConditions });
-        if (tenant) {
-          return tenant.id;
-        }
-      } catch {
-        // Safe fallback if tenant query fails
-      }
+    } catch {
+      // Ignore query errors
     }
 
-    return this.toValidUuid(merchantAccount.externalId);
-  }
+    try {
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          merchantAccount.externalId,
+        );
 
-  private toValidUuid(input: string): string {
-    const isUuid =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        input,
-      );
-    if (isUuid) {
-      return input;
+      const whereConditions: Array<{ id?: string; host?: string; name?: string }> = [
+        { host: merchantAccount.externalId },
+        { name: merchantAccount.externalId },
+      ];
+      if (isUuid) {
+        whereConditions.push({ id: merchantAccount.externalId });
+      }
+
+      const tenant = await this.dataSource
+        .getRepository(Tenant)
+        .findOne({ where: whereConditions });
+      if (tenant) {
+        return tenant.id;
+      }
+    } catch {
+      // Ignore query errors
     }
 
-    const hash = createHash('md5').update(input).digest('hex');
-    return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
+    return null;
   }
 }

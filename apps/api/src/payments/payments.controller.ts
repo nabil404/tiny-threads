@@ -19,7 +19,7 @@ export class PaymentsController {
   @ApiOperation({ summary: 'Handle global payment webhooks' })
   @ApiResponse({ status: 200, description: 'Webhook received successfully' })
   async handleGlobalWebhook(
-    @Body() payload: any,
+    @Body() payload: unknown,
     @Headers() headers: Record<string, string>,
   ): Promise<{ received: boolean; status: string }> {
     return this.paymentsService.handleWebhookEvent(payload, headers);
@@ -29,7 +29,7 @@ export class PaymentsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Handle mock payment webhook notifications' })
   @ApiResponse({ status: 200, description: 'Webhook received successfully' })
-  handleWebhook(@Body() payload: any): { received: boolean } {
+  handleWebhook(@Body() payload: unknown): { received: boolean } {
     return this.paymentsService.handleWebhook(payload);
   }
 }
