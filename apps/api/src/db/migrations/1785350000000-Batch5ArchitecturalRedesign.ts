@@ -4,10 +4,28 @@ export class Batch5ArchitecturalRedesign1785350000000 implements MigrationInterf
   name = 'Batch5ArchitecturalRedesign1785350000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // 0. Ensure uuid_generate_v7() function exists
+    await queryRunner.query(`
+      CREATE OR REPLACE FUNCTION uuid_generate_v7()
+      RETURNS uuid AS $$
+      DECLARE
+        unix_ts_ms bytea;
+        uuid_bytes bytea;
+      BEGIN
+        unix_ts_ms := substring(int8send(floor(extract(epoch from clock_timestamp()) * 1000)::bigint) from 3);
+        uuid_bytes := unix_ts_ms || decode(md5(random()::text || clock_timestamp()::text), 'hex');
+        uuid_bytes := substring(uuid_bytes from 1 for 16);
+        uuid_bytes := set_byte(uuid_bytes, 6, (get_byte(uuid_bytes, 6) & 15) | 112);
+        uuid_bytes := set_byte(uuid_bytes, 8, (get_byte(uuid_bytes, 8) & 63) | 128);
+        RETURN encode(uuid_bytes, 'hex')::uuid;
+      END;
+      $$ LANGUAGE plpgsql VOLATILE;
+    `);
+
     // 1. Create shipments and shipment_items tables
     await queryRunner.query(`
       CREATE TABLE "shipments" (
-        "id" uuid NOT NULL,
+        "id" uuid NOT NULL DEFAULT uuid_generate_v7(),
         "tenant_id" uuid NOT NULL,
         "order_id" uuid NOT NULL,
         "carrier" varchar(100) NOT NULL,
@@ -32,7 +50,7 @@ export class Batch5ArchitecturalRedesign1785350000000 implements MigrationInterf
 
     await queryRunner.query(`
       CREATE TABLE "shipment_items" (
-        "id" uuid NOT NULL,
+        "id" uuid NOT NULL DEFAULT uuid_generate_v7(),
         "tenant_id" uuid NOT NULL,
         "shipment_id" uuid NOT NULL,
         "order_item_id" uuid NOT NULL,
