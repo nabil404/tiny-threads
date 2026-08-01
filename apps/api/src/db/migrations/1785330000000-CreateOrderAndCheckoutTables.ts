@@ -1,15 +1,10 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { enableRls, disableRls } from './helpers/rls.helper';
 
-export class CreateOrderAndCheckoutTables1722510000000 implements MigrationInterface {
-  name = 'CreateOrderAndCheckoutTables1722510000000';
+export class CreateOrderAndCheckoutTables1785330000000 implements MigrationInterface {
+  name = 'CreateOrderAndCheckoutTables1785330000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Safely drop old initial placeholder tables if they exist
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS "refunds", "settlements", "payments", "order_events", "order_items", "orders", "tenant_settings" CASCADE;`,
-    );
-
     await queryRunner.query(`
       CREATE TABLE "tenant_settings" (
         "tenant_id" uuid NOT NULL,
