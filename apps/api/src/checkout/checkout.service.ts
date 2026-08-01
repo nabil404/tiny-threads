@@ -32,6 +32,13 @@ export class CheckoutService {
     customerId?: string,
     sessionId?: string,
   ): Promise<{ order: Order; guestAccessToken: string | null }> {
+    if (!customerId && !sessionId) {
+      throw new CodedBadRequestException(
+        ErrorCode.VALIDATION_FAILED,
+        'Either customerId or sessionId must be provided',
+      );
+    }
+
     const settings = await this.tenantSettingsService.getSettings();
 
     if (!customerId && !settings.allowGuestCheckout) {

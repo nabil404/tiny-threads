@@ -63,15 +63,30 @@ describe('CheckoutService', () => {
       platformFeePercent: 2.5,
     } as any);
 
-    await expect(service.checkout(dto, undefined)).rejects.toThrow(
-      CodedForbiddenException,
-    );
+    await expect(
+      service.checkout(dto, undefined, 'guest-session-1'),
+    ).rejects.toThrow(CodedForbiddenException);
 
     try {
-      await service.checkout(dto, undefined);
+      await service.checkout(dto, undefined, 'guest-session-1');
     } catch (err: any) {
       expect(err.getResponse().code).toBe(ErrorCode.GUEST_CHECKOUT_DISABLED);
     }
+  });
+
+  it('1b. should reject with a coded VALIDATION_FAILED error when neither customerId nor sessionId is provided, instead of crashing on activeCartWhere(undefined, undefined)', async () => {
+    await expect(service.checkout(dto, undefined, undefined)).rejects.toThrow(
+      CodedBadRequestException,
+    );
+
+    try {
+      await service.checkout(dto, undefined, undefined);
+    } catch (err: any) {
+      expect(err.getResponse().code).toBe(ErrorCode.VALIDATION_FAILED);
+    }
+
+    // Must fail before ever touching the DB (no cart lookup attempted).
+    expect(tenantDbService.run).not.toHaveBeenCalled();
   });
 
   it('2. should reject when cart is empty or not found for this caller (CART_EMPTY)', async () => {
