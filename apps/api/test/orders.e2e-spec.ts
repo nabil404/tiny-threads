@@ -205,8 +205,11 @@ describe('Orders (e2e)', () => {
       .set('Authorization', `Bearer ${customerToken}`)
       .expect(200);
 
-    expect(Array.isArray(listRes.body)).toBe(true);
-    expect(listRes.body.some((o: any) => o.id === customerOrderId)).toBe(true);
+    expect(Array.isArray(listRes.body.items)).toBe(true);
+    expect(listRes.body.items.some((o: any) => o.id === customerOrderId)).toBe(
+      true,
+    );
+    expect(listRes.body.total).toBeGreaterThan(0);
 
     // 2b. Get customer order by ID
     const detailRes = await request(app.getHttpServer())
@@ -242,8 +245,9 @@ describe('Orders (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
 
-    expect(Array.isArray(listRes.body)).toBe(true);
-    expect(listRes.body.length).toBeGreaterThan(0);
+    expect(Array.isArray(listRes.body.items)).toBe(true);
+    expect(listRes.body.items.length).toBeGreaterThan(0);
+    expect(listRes.body.total).toBeGreaterThan(0);
 
     // 3b. Get merchant order by ID
     const detailRes = await request(app.getHttpServer())

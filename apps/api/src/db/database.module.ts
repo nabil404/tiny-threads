@@ -6,7 +6,9 @@ import { TenantDbService } from './tenant-db.service';
 import * as entities from './entities';
 import { EnvironmentVariables } from '../config/env.validation';
 
-export const DATABASE_ENTITIES = Object.values(entities);
+export const DATABASE_ENTITIES = (Object.values(entities) as unknown[]).filter(
+  (item): item is new (...args: any[]) => any => typeof item === 'function',
+);
 
 // The app connects as app_runtime ONLY — a non-owner role subject to RLS.
 // Migrations (as app_owner) run separately via the TypeORM CLI against

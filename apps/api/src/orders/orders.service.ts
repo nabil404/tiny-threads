@@ -1,21 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { EntityManager } from 'typeorm';
+import { EntityManager, FindOptionsWhere } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
 import { ErrorCode } from '@tiny-threads/shared';
 import { TenantDbService } from '../db/tenant-db.service';
 import { PaymentsService } from '../payments/payments.service';
-import { Order } from '../db/entities/order.entity';
+import { Order, OrderStatus } from '../db/entities/order.entity';
 import { OrderEvent } from '../db/entities/order-event.entity';
 import { ProductVariant } from '../db/entities/product-variants.entity';
 import { Refund } from '../db/entities/refund.entity';
 import { RefundOrderDto } from './dto/refund-order.dto';
+import { OrderQueryDto } from './dto/order-query.dto';
 import {
   CodedBadRequestException,
   CodedNotFoundException,
 } from '../common/errors/coded-exceptions';
 
-const VALID_TRANSITIONS: Record<string, string[]> = {
+const VALID_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
   pending_payment: ['paid', 'cancelled'],
   paid: ['processing', 'cancelled'],
   processing: ['shipped', 'cancelled'],
@@ -32,7 +33,7 @@ export class OrdersService {
 
   async transitionStatus(
     orderId: string,
-    newStatus: string,
+    newStatus: OrderStatus,
     actorType: string,
     actorId?: string,
   ): Promise<Order> {
@@ -214,13 +215,28 @@ export class OrdersService {
     });
   }
 
-  async getCustomerOrders(customerId: string): Promise<Order[]> {
+  async getCustomerOrders(
+    customerId: string,
+    query: OrderQueryDto,
+  ): Promise<{ items: Order[]; total: number; page: number; limit: number }> {
     return this.tenantDb.run(async (manager) => {
-      return manager.find(Order, {
-        where: { customerId },
+      const page = query.page ?? 1;
+      const limit = query.limit ?? 20;
+
+      const where: FindOptionsWhere<Order> = { customerId };
+      if (query.status) {
+        where.status = query.status;
+      }
+
+      const [items, total] = await manager.findAndCount(Order, {
+        where,
         relations: { items: true },
         order: { createdAt: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
       });
+
+      return { items, total, page, limit };
     });
   }
 
@@ -245,18 +261,27 @@ export class OrdersService {
     });
   }
 
-  async getMerchantOrders(query?: { status?: string }): Promise<Order[]> {
+  async getMerchantOrders(
+    query: OrderQueryDto,
+  ): Promise<{ items: Order[]; total: number; page: number; limit: number }> {
     return this.tenantDb.run(async (manager) => {
-      const where: any = {};
-      if (query?.status) {
+      const page = query.page ?? 1;
+      const limit = query.limit ?? 20;
+
+      const where: FindOptionsWhere<Order> = {};
+      if (query.status) {
         where.status = query.status;
       }
 
-      return manager.find(Order, {
+      const [items, total] = await manager.findAndCount(Order, {
         where,
         relations: { items: true },
         order: { createdAt: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
       });
+
+      return { items, total, page, limit };
     });
   }
 
@@ -285,7 +310,7 @@ export class OrdersService {
    * refunds it and records a `refunded` OrderEvent. Keeping this in one
    * place means the two cancellation paths can't drift apart.
    */
-  private async cancelOrderSideEffects(
+  async cancelOrderSideEffects(
     manager: EntityManager,
     order: Order,
     actorType: string,

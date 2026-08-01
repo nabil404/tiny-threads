@@ -1,4 +1,12 @@
-import { Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -7,6 +15,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { OrdersService } from '../orders.service';
+import { OrderQueryDto } from '../dto/order-query.dto';
 import { CustomerJwtAuthGuard } from '../../customers/guards/customer-jwt-auth.guard';
 import { CustomerAccessTokenPayload } from '../../auth-core/services/token.service';
 
@@ -23,9 +32,9 @@ export class CustomersOrdersController {
   })
   @ApiResponse({ status: 200, description: 'List of customer orders.' })
   @Get()
-  async getCustomerOrders(@Req() req: Request) {
+  async getCustomerOrders(@Req() req: Request, @Query() query: OrderQueryDto) {
     const { sub: customerId } = req.user as CustomerAccessTokenPayload;
-    return this.ordersService.getCustomerOrders(customerId);
+    return this.ordersService.getCustomerOrders(customerId, query);
   }
 
   @ApiOperation({

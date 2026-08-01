@@ -19,6 +19,7 @@ import type { Request } from 'express';
 import { OrdersService } from '../orders.service';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto';
 import { RefundOrderDto } from '../dto/refund-order.dto';
+import { OrderQueryDto } from '../dto/order-query.dto';
 import { MerchantAdminJwtAuthGuard } from '../../merchant-admins/guards/merchant-admin-jwt-auth.guard';
 import { RolesGuard } from '../../merchant-admins/guards/roles.guard';
 import { Roles } from '../../merchant-admins/decorators/roles.decorator';
@@ -38,10 +39,8 @@ export class MerchantAdminsOrdersController {
   })
   @ApiResponse({ status: 200, description: 'List of merchant orders.' })
   @Get()
-  async getMerchantOrders(@Query('status') status?: string) {
-    return this.ordersService.getMerchantOrders(
-      status ? { status } : undefined,
-    );
+  async getMerchantOrders(@Query() query: OrderQueryDto) {
+    return this.ordersService.getMerchantOrders(query);
   }
 
   @ApiOperation({

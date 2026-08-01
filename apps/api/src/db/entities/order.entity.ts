@@ -2,6 +2,16 @@ import { Entity, Column, OneToMany } from 'typeorm';
 import { TenantEntityBase } from './base';
 import { OrderItem } from './order-item.entity';
 
+export const ORDER_STATUSES = [
+  'pending_payment',
+  'paid',
+  'processing',
+  'shipped',
+  'delivered',
+  'cancelled',
+] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
 @Entity({ name: 'orders' })
 export class Order extends TenantEntityBase {
   @Column({ name: 'customer_id', type: 'uuid', nullable: true })
@@ -11,7 +21,7 @@ export class Order extends TenantEntityBase {
   customerEmail!: string;
 
   @Column({ name: 'status', type: 'varchar', default: 'pending_payment' })
-  status!: string;
+  status!: OrderStatus;
 
   @Column({ name: 'payment_status', type: 'varchar', default: 'pending' })
   paymentStatus!: string;
@@ -32,7 +42,7 @@ export class Order extends TenantEntityBase {
   guestAccessTokenHash?: string;
 
   @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
-  expiresAt?: Date;
+  expiresAt?: Date | null;
 
   @OneToMany(() => OrderItem, (item) => item.order)
   items?: OrderItem[];

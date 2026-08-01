@@ -16,7 +16,9 @@ const env = validate(process.env);
 export const typeOrmConfig: DataSourceOptions = {
   type: 'postgres',
   url: env.DATABASE_URL_MIGRATIONS,
-  entities: Object.values(entities),
+  entities: (Object.values(entities) as unknown[]).filter(
+    (item): item is new (...args: any[]) => any => typeof item === 'function',
+  ),
   migrations: [process.cwd() + '/src/db/migrations/*.ts'],
   migrationsTableName: 'migrations',
   synchronize: false,

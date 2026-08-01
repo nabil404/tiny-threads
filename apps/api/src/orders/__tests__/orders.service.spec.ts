@@ -55,6 +55,7 @@ describe('OrdersService', () => {
     em = {
       findOne: jest.fn(),
       find: jest.fn().mockResolvedValue([]),
+      findAndCount: jest.fn().mockResolvedValue([[], 0]),
       save: jest.fn((entityOrClass: any, entity?: any) => {
         const target = entity ?? entityOrClass;
         savedEntities.push(target);
@@ -548,6 +549,88 @@ describe('OrdersService', () => {
       });
 
       expect(order.paymentStatus).toBe('refunded');
+    });
+  });
+
+  describe('getCustomerOrders', () => {
+    it('should return paginated list of customer orders', async () => {
+      const orders = [{ id: 'order-1', customerId: mockCustomerId }] as Order[];
+      em.findAndCount.mockResolvedValue([orders, 1]);
+
+      const result = await service.getCustomerOrders(mockCustomerId, {
+        page: 1,
+        limit: 10,
+      });
+
+      expect(result).toEqual({
+        items: orders,
+        total: 1,
+        page: 1,
+        limit: 10,
+      });
+      expect(em.findAndCount).toHaveBeenCalledWith(
+        Order,
+        expect.objectContaining({
+          where: { customerId: mockCustomerId },
+          skip: 0,
+          take: 10,
+        }),
+      );
+    });
+
+    it('should filter customer orders by status when provided', async () => {
+      em.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.getCustomerOrders(mockCustomerId, {
+        page: 2,
+        limit: 5,
+        status: 'shipped',
+      });
+
+      expect(em.findAndCount).toHaveBeenCalledWith(
+        Order,
+        expect.objectContaining({
+          where: { customerId: mockCustomerId, status: 'shipped' },
+          skip: 5,
+          take: 5,
+        }),
+      );
+    });
+  });
+
+  describe('getMerchantOrders', () => {
+    it('should return paginated list of merchant orders', async () => {
+      const orders = [{ id: 'order-1' }] as Order[];
+      em.findAndCount.mockResolvedValue([orders, 1]);
+
+      const result = await service.getMerchantOrders({
+        page: 1,
+        limit: 20,
+      });
+
+      expect(result).toEqual({
+        items: orders,
+        total: 1,
+        page: 1,
+        limit: 20,
+      });
+    });
+
+    it('should filter merchant orders by status when provided', async () => {
+      em.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.getMerchantOrders({
+        page: 1,
+        limit: 20,
+        status: 'delivered',
+      });
+
+      expect(em.findAndCount).toHaveBeenCalledWith(
+        Order,
+        expect.objectContaining({
+          where: { status: 'delivered' },
+        }),
+      );
     });
   });
 });
