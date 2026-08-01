@@ -33,7 +33,12 @@ export class Order extends TenantEntityBase {
   @Column({ name: 'payment_status', type: 'varchar', default: 'pending' })
   paymentStatus!: string;
 
-  @Column({ name: 'fulfillment_status', type: 'varchar', length: 50, default: 'unfulfilled' })
+  @Column({
+    name: 'fulfillment_status',
+    type: 'varchar',
+    length: 50,
+    default: 'unfulfilled',
+  })
   fulfillmentStatus!: string;
 
   @Column({ name: 'currency_code', type: 'varchar', default: 'USD' })

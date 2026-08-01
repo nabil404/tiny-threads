@@ -1,4 +1,11 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 import { TenantEntityBase } from './base';
 import { Order } from './order.entity';
 import { ShipmentItem } from './shipment-item.entity';
@@ -19,7 +26,12 @@ export class Shipment extends TenantEntityBase {
   @Column({ type: 'varchar', length: 100 })
   carrier!: string;
 
-  @Column({ name: 'tracking_number', type: 'varchar', length: 200, nullable: true })
+  @Column({
+    name: 'tracking_number',
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+  })
   trackingNumber!: string | null;
 
   @Column({ name: 'tracking_url', type: 'text', nullable: true })
@@ -28,7 +40,11 @@ export class Shipment extends TenantEntityBase {
   @Column({ type: 'varchar', length: 50, default: 'shipped' })
   status!: string;
 
-  @Column({ name: 'shipped_at', type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    name: 'shipped_at',
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   shippedAt!: Date;
 
   @OneToMany(() => ShipmentItem, (item) => item.shipment, { cascade: true })

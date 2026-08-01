@@ -24,7 +24,12 @@ export class OrderEvent extends ImmutableTenantEntityBase {
   @Column({ name: 'metadata', type: 'jsonb', nullable: true })
   metadata?: Record<string, any>;
 
-  @Column({ name: 'provider_event_id', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'provider_event_id',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   providerEventId!: string | null;
 
   @ManyToOne(() => Order)

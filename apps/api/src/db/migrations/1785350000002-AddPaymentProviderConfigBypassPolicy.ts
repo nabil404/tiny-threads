@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPaymentProviderConfigBypassPolicy1785350000002
-  implements MigrationInterface
-{
+export class AddPaymentProviderConfigBypassPolicy1785350000002 implements MigrationInterface {
   name = 'AddPaymentProviderConfigBypassPolicy1785350000002';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

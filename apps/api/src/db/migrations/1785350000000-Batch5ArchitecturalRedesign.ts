@@ -41,8 +41,12 @@ export class Batch5ArchitecturalRedesign1785350000000 implements MigrationInterf
       );
     `);
 
-    await queryRunner.query(`ALTER TABLE "shipments" ENABLE ROW LEVEL SECURITY;`);
-    await queryRunner.query(`ALTER TABLE "shipments" FORCE ROW LEVEL SECURITY;`);
+    await queryRunner.query(
+      `ALTER TABLE "shipments" ENABLE ROW LEVEL SECURITY;`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "shipments" FORCE ROW LEVEL SECURITY;`,
+    );
     await queryRunner.query(`
       CREATE POLICY tenant_isolation_policy ON "shipments"
       USING ("tenant_id" = current_setting('app.current_tenant', true)::uuid);
@@ -64,22 +68,40 @@ export class Batch5ArchitecturalRedesign1785350000000 implements MigrationInterf
       );
     `);
 
-    await queryRunner.query(`ALTER TABLE "shipment_items" ENABLE ROW LEVEL SECURITY;`);
-    await queryRunner.query(`ALTER TABLE "shipment_items" FORCE ROW LEVEL SECURITY;`);
+    await queryRunner.query(
+      `ALTER TABLE "shipment_items" ENABLE ROW LEVEL SECURITY;`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "shipment_items" FORCE ROW LEVEL SECURITY;`,
+    );
     await queryRunner.query(`
       CREATE POLICY tenant_isolation_policy ON "shipment_items"
       USING ("tenant_id" = current_setting('app.current_tenant', true)::uuid);
     `);
 
-    await queryRunner.query(`CREATE INDEX "shipments_tenant_order_idx" ON "shipments" ("tenant_id", "order_id");`);
-    await queryRunner.query(`CREATE INDEX "shipment_items_tenant_shipment_idx" ON "shipment_items" ("tenant_id", "shipment_id");`);
+    await queryRunner.query(
+      `CREATE INDEX "shipments_tenant_order_idx" ON "shipments" ("tenant_id", "order_id");`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "shipment_items_tenant_shipment_idx" ON "shipment_items" ("tenant_id", "shipment_id");`,
+    );
 
     // 2. Add columns to orders, tenant_settings, order_events
-    await queryRunner.query(`ALTER TABLE "orders" ADD COLUMN "fulfillment_status" varchar(50) NOT NULL DEFAULT 'unfulfilled';`);
-    await queryRunner.query(`ALTER TABLE "tenant_settings" ADD COLUMN "capture_mode" varchar(50) NOT NULL DEFAULT 'immediate';`);
-    await queryRunner.query(`ALTER TABLE "tenant_settings" ADD CONSTRAINT "CK_tenant_settings_capture_mode" CHECK ("capture_mode" IN ('immediate', 'authorize_then_capture'));`);
-    await queryRunner.query(`ALTER TABLE "order_events" ADD COLUMN "provider_event_id" varchar(255);`);
-    await queryRunner.query(`CREATE UNIQUE INDEX "order_events_tenant_provider_event_uidx" ON "order_events" ("tenant_id", "provider_event_id") WHERE "provider_event_id" IS NOT NULL;`);
+    await queryRunner.query(
+      `ALTER TABLE "orders" ADD COLUMN "fulfillment_status" varchar(50) NOT NULL DEFAULT 'unfulfilled';`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "tenant_settings" ADD COLUMN "capture_mode" varchar(50) NOT NULL DEFAULT 'immediate';`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "tenant_settings" ADD CONSTRAINT "CK_tenant_settings_capture_mode" CHECK ("capture_mode" IN ('immediate', 'authorize_then_capture'));`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "order_events" ADD COLUMN "provider_event_id" varchar(255);`,
+    );
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX "order_events_tenant_provider_event_uidx" ON "order_events" ("tenant_id", "provider_event_id") WHERE "provider_event_id" IS NOT NULL;`,
+    );
 
     // 3. Migrate existing order rows to new sub-machine statuses
     await queryRunner.query(`
@@ -97,11 +119,21 @@ export class Batch5ArchitecturalRedesign1785350000000 implements MigrationInterf
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "order_events_tenant_provider_event_uidx";`);
-    await queryRunner.query(`ALTER TABLE "order_events" DROP COLUMN IF EXISTS "provider_event_id";`);
-    await queryRunner.query(`ALTER TABLE "tenant_settings" DROP CONSTRAINT IF EXISTS "CK_tenant_settings_capture_mode";`);
-    await queryRunner.query(`ALTER TABLE "tenant_settings" DROP COLUMN IF EXISTS "capture_mode";`);
-    await queryRunner.query(`ALTER TABLE "orders" DROP COLUMN IF EXISTS "fulfillment_status";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "order_events_tenant_provider_event_uidx";`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "order_events" DROP COLUMN IF EXISTS "provider_event_id";`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "tenant_settings" DROP CONSTRAINT IF EXISTS "CK_tenant_settings_capture_mode";`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "tenant_settings" DROP COLUMN IF EXISTS "capture_mode";`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "orders" DROP COLUMN IF EXISTS "fulfillment_status";`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "shipment_items";`);
     await queryRunner.query(`DROP TABLE IF EXISTS "shipments";`);
   }
