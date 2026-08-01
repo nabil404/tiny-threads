@@ -15,6 +15,7 @@ import { MerchantAdminsAuthModule } from '../merchant-admins/merchant-admins-aut
 import { ProductsModule } from '../products/products.module';
 import { CartsModule } from '../carts/carts.module';
 import { CustomerAddressesModule } from '../customer-addresses/customer-addresses.module';
+import { TenantSettingsModule } from '../tenant-settings/tenant-settings.module';
 import { validate } from '../config/env.validation';
 
 @Module({
@@ -31,6 +32,7 @@ import { validate } from '../config/env.validation';
     ProductsModule,
     CartsModule,
     CustomerAddressesModule,
+    TenantSettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
