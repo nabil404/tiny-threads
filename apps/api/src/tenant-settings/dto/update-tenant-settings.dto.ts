@@ -1,5 +1,7 @@
 import { IsBoolean, IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ErrorCode } from '@tiny-threads/shared';
+import { field } from '../../common/errors/validation-field';
 
 export class UpdateTenantSettingsDto {
   @ApiPropertyOptional({
@@ -7,6 +9,7 @@ export class UpdateTenantSettingsDto {
     example: true,
   })
   @IsOptional()
-  @IsBoolean()
+  @IsBoolean({ message: field(ErrorCode.IS_BOOLEAN) })
   allowGuestCheckout?: boolean;
 }
+
