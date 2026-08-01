@@ -2,22 +2,20 @@
 import { EntityManager } from 'typeorm';
 import { TenantSettingsService } from '../tenant-settings.service';
 import { TenantDbService } from '../../db/tenant-db.service';
-import { ClsService } from 'nestjs-cls';
-import { CodedBadRequestException } from '../../common/errors/coded-exceptions';
+import {
+  CodedBadRequestException,
+  CodedNotFoundException,
+} from '../../common/errors/coded-exceptions';
 
 describe('TenantSettingsService', () => {
   let service: TenantSettingsService;
   let tenantDbService: jest.Mocked<TenantDbService>;
-  let clsService: jest.Mocked<ClsService>;
 
   beforeEach(() => {
     tenantDbService = {
       run: jest.fn(),
     } as unknown as jest.Mocked<TenantDbService>;
-    clsService = {
-      get: jest.fn().mockReturnValue('tenant-123'),
-    } as unknown as jest.Mocked<ClsService>;
-    service = new TenantSettingsService(tenantDbService, clsService);
+    service = new TenantSettingsService(tenantDbService);
   });
 
   describe('getSettings', () => {
@@ -42,47 +40,17 @@ describe('TenantSettingsService', () => {
       expect(tenantDbService.run).toHaveBeenCalledTimes(1);
     });
 
-    it('should create and return default settings when no row exists', async () => {
-      const savedEntity = {
-        tenantId: 'tenant-123',
-        id: 'settings-new',
-        allowGuestCheckout: true,
-        platformFeePercent: 2.5,
-        defaultCurrencyCode: 'USD',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const qb = {
-        insert: jest.fn().mockReturnThis(),
-        into: jest.fn().mockReturnThis(),
-        values: jest.fn().mockReturnThis(),
-        orIgnore: jest.fn().mockReturnThis(),
-        execute: jest.fn().mockResolvedValue({}),
-      };
-
+    it('should throw CodedNotFoundException when no row exists', async () => {
       tenantDbService.run.mockImplementation(async (cb) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
-          createQueryBuilder: jest.fn().mockReturnValue(qb),
-          findOneOrFail: jest.fn().mockResolvedValue(savedEntity),
         };
         return cb(em as any);
       });
 
-      const result = await service.getSettings();
-
-      expect(qb.insert).toHaveBeenCalled();
-      expect(qb.values).toHaveBeenCalledWith(
-        expect.objectContaining({
-          tenantId: 'tenant-123',
-          allowGuestCheckout: true,
-          platformFeePercent: 2.5,
-          defaultCurrencyCode: 'USD',
-        }),
+      await expect(service.getSettings()).rejects.toThrow(
+        CodedNotFoundException,
       );
-      expect(result).toEqual(savedEntity);
-      expect(tenantDbService.run).toHaveBeenCalledTimes(1);
     });
 
     it('should use the provided manager directly and never open a new tenantDb.run transaction (R3)', async () => {
@@ -211,33 +179,10 @@ describe('TenantSettingsService', () => {
       );
     });
 
-    it('should create default settings first if no row exists when updating', async () => {
-      const savedEntity = {
-        tenantId: 'tenant-123',
-        id: 'settings-new',
-        allowGuestCheckout: true,
-        platformFeePercent: 2.5,
-        defaultCurrencyCode: 'USD',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const qb = {
-        insert: jest.fn().mockReturnThis(),
-        into: jest.fn().mockReturnThis(),
-        values: jest.fn().mockReturnThis(),
-        orIgnore: jest.fn().mockReturnThis(),
-        execute: jest.fn().mockResolvedValue({}),
-      };
-
+    it('should throw CodedNotFoundException when no row exists when updating', async () => {
       tenantDbService.run.mockImplementation(async (cb) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
-          createQueryBuilder: jest.fn().mockReturnValue(qb),
-          findOneOrFail: jest.fn().mockResolvedValue(savedEntity),
-          save: jest
-            .fn()
-            .mockImplementation((entity) => Promise.resolve(entity)),
         };
         return cb(em as any);
       });
@@ -246,10 +191,9 @@ describe('TenantSettingsService', () => {
         allowGuestCheckout: false,
       };
 
-      const result = await service.updateSettings(dto);
-
-      expect(result.allowGuestCheckout).toBe(false);
-      expect(result.platformFeePercent).toBe(2.5);
+      await expect(service.updateSettings(dto)).rejects.toThrow(
+        CodedNotFoundException,
+      );
     });
   });
 });

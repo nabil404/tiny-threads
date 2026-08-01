@@ -20,8 +20,7 @@ export class TenantSettingsController {
 
   @ApiOperation({
     summary: 'Get tenant settings',
-    description:
-      'Retrieves the current tenant settings, creating default settings if none exist.',
+    description: 'Retrieves the current tenant settings.',
   })
   @ApiResponse({
     status: 200,
