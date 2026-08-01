@@ -35,8 +35,7 @@ export class TenantSettingsController {
 
   @ApiOperation({
     summary: 'Update tenant settings',
-    description:
-      'Updates tenant settings such as guest checkout permission or platform fee.',
+    description: 'Updates tenant settings such as guest checkout permission.',
   })
   @ApiResponse({
     status: 200,

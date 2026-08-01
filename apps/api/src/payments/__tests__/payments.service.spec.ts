@@ -105,6 +105,16 @@ describe('PaymentsService', () => {
       }
     });
 
+    it('should throw CodedBadRequestException if platformFeePercent is negative or > 100', async () => {
+      await expect(
+        service.processOrderPayment(dummyOrder, 'token', -5),
+      ).rejects.toThrow(CodedBadRequestException);
+
+      await expect(
+        service.processOrderPayment(dummyOrder, 'token', 150),
+      ).rejects.toThrow(CodedBadRequestException);
+    });
+
     it('should use provided EntityManager when passed', async () => {
       const mockEm = {
         create: jest.fn().mockImplementation((entityClass, data) => ({

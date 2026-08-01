@@ -29,6 +29,14 @@ export class PaymentsService {
     platformFeePercent: number,
     manager?: EntityManager,
   ): Promise<{ payment: Payment; settlement?: Settlement }> {
+    const pct = Number(platformFeePercent);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      throw new CodedBadRequestException(
+        ErrorCode.VALIDATION_FAILED,
+        'Platform fee percentage is out of range',
+      );
+    }
+
     const executeInContext = async (em: EntityManager) => {
       const tenantId = this.cls.get<string>('tenantId') || order.tenantId;
 

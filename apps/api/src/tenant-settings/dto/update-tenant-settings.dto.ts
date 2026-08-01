@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateTenantSettingsDto {
@@ -9,12 +9,4 @@ export class UpdateTenantSettingsDto {
   @IsOptional()
   @IsBoolean()
   allowGuestCheckout?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Platform fee percentage charged on transactions.',
-    example: 2.5,
-  })
-  @IsOptional()
-  @IsNumber()
-  platformFeePercent?: number;
 }

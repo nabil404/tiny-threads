@@ -98,7 +98,7 @@ describe('TenantSettingsService', () => {
   });
 
   describe('updateSettings', () => {
-    it('should update allowGuestCheckout and platformFeePercent on existing settings', async () => {
+    it('should update allowGuestCheckout on existing settings and leave platformFeePercent untouched', async () => {
       const existingSettings = {
         tenantId: 'tenant-123',
         id: 'settings-1',
@@ -120,13 +120,12 @@ describe('TenantSettingsService', () => {
 
       const dto = {
         allowGuestCheckout: false,
-        platformFeePercent: 3.5,
       };
 
       const result = await service.updateSettings(dto);
 
       expect(result.allowGuestCheckout).toBe(false);
-      expect(result.platformFeePercent).toBe(3.5);
+      expect(result.platformFeePercent).toBe(2.5);
       expect(tenantDbService.run).toHaveBeenCalledTimes(1);
     });
 

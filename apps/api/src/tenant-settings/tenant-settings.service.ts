@@ -45,9 +45,6 @@ export class TenantSettingsService {
       if (dto.allowGuestCheckout !== undefined) {
         settings.allowGuestCheckout = dto.allowGuestCheckout;
       }
-      if (dto.platformFeePercent !== undefined) {
-        settings.platformFeePercent = dto.platformFeePercent;
-      }
 
       return em.save(settings);
     });
