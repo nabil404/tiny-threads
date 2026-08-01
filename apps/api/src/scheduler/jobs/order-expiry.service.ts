@@ -61,6 +61,7 @@ export class OrderExpiryService {
             expiresAt: LessThanOrEqual(now),
           },
           relations: { items: true },
+          lock: { mode: 'pessimistic_write' },
         });
 
         if (expiredOrders.length === 0) return;
