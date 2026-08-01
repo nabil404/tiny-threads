@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddBatch4IndexesAndTenantSettings1785340000000
-  implements MigrationInterface
-{
+export class AddBatch4IndexesAndTenantSettings1785340000000 implements MigrationInterface {
   name = 'AddBatch4IndexesAndTenantSettings1785340000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -63,16 +61,34 @@ export class AddBatch4IndexesAndTenantSettings1785340000000
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX IF EXISTS "refunds_tenant_order_idx"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "refunds_tenant_payment_idx"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "settlements_tenant_order_idx"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "settlements_tenant_payment_idx"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "payments_tenant_order_status_idx"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "order_events_tenant_order_created_idx"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "order_items_tenant_order_idx"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "refunds_tenant_payment_idx"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "settlements_tenant_order_idx"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "settlements_tenant_payment_idx"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "payments_tenant_order_status_idx"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "order_events_tenant_order_created_idx"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "order_items_tenant_order_idx"`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "orders_tenant_created_idx"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "orders_tenant_status_created_idx"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "orders_tenant_customer_created_idx"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "tenant_settings_tenant_uidx"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "orders_tenant_status_created_idx"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "orders_tenant_customer_created_idx"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "tenant_settings_tenant_uidx"`,
+    );
     await queryRunner.query(
       `ALTER TABLE "tenant_settings" DROP CONSTRAINT IF EXISTS "FK_tenant_settings_default_currency_code"`,
     );

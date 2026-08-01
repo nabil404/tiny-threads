@@ -85,6 +85,29 @@ function isTargetOrAncestor(
   return false;
 }
 
+function indicesFor(target: EntityClass) {
+  return getMetadataArgsStorage().indices.filter((i) =>
+    isTargetOrAncestor(i.target, target),
+  );
+}
+
+function indexColumnNames(
+  indexArgs: ReturnType<typeof getMetadataArgsStorage>['indices'][number],
+): string[] {
+  if (Array.isArray(indexArgs.columns)) {
+    return indexArgs.columns;
+  }
+  if (typeof indexArgs.columns === 'function') {
+    const res = indexArgs.columns();
+    if (Array.isArray(res)) return res as string[];
+    if (res && typeof res === 'object') return Object.keys(res);
+  }
+  if (indexArgs.propertyName) {
+    return [indexArgs.propertyName];
+  }
+  return [];
+}
+
 const entityClasses = Object.values(entities).filter(
   (value): value is new () => object => typeof value === 'function',
 );
@@ -108,6 +131,29 @@ describe('entity metadata (tenancy shape)', () => {
         );
       } else {
         expect(primaryColumns).toEqual(['id', 'tenant_id'].sort());
+      }
+    },
+  );
+
+  it.each(TENANT_SCOPED_TABLES)(
+    'tenant-scoped table %s defines at least one index beyond its primary key',
+    (tableName) => {
+      const entity = entityByTableName(tableName);
+      const indices = indicesFor(entity);
+      expect(indices.length).toBeGreaterThan(0);
+    },
+  );
+
+  it.each(TENANT_SCOPED_TABLES)(
+    'tenant-scoped table %s has tenant_id / tenantId as the leading column in all composite indices',
+    (tableName) => {
+      const entity = entityByTableName(tableName);
+      const indices = indicesFor(entity);
+      for (const index of indices) {
+        const cols = indexColumnNames(index);
+        if (cols.length > 1) {
+          expect(['tenant_id', 'tenantId']).toContain(cols[0]);
+        }
       }
     },
   );

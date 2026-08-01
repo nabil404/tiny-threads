@@ -12,7 +12,11 @@ export const ORDER_STATUSES = [
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-@Index('orders_tenant_customer_created_idx', ['tenantId', 'customerId', 'createdAt'])
+@Index('orders_tenant_customer_created_idx', [
+  'tenantId',
+  'customerId',
+  'createdAt',
+])
 @Index('orders_tenant_status_created_idx', ['tenantId', 'status', 'createdAt'])
 @Index('orders_tenant_created_idx', ['tenantId', 'createdAt'])
 @Entity({ name: 'orders' })
