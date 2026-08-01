@@ -79,6 +79,7 @@ export class Batch5ArchitecturalRedesign1785350000000 implements MigrationInterf
     await queryRunner.query(`ALTER TABLE "tenant_settings" ADD COLUMN "capture_mode" varchar(50) NOT NULL DEFAULT 'immediate';`);
     await queryRunner.query(`ALTER TABLE "tenant_settings" ADD CONSTRAINT "CK_tenant_settings_capture_mode" CHECK ("capture_mode" IN ('immediate', 'authorize_then_capture'));`);
     await queryRunner.query(`ALTER TABLE "order_events" ADD COLUMN "provider_event_id" varchar(255);`);
+    await queryRunner.query(`ALTER TABLE "order_events" ALTER COLUMN "order_id" DROP NOT NULL;`);
     await queryRunner.query(`CREATE UNIQUE INDEX "order_events_tenant_provider_event_uidx" ON "order_events" ("tenant_id", "provider_event_id") WHERE "provider_event_id" IS NOT NULL;`);
 
     // 3. Migrate existing order rows to new sub-machine statuses

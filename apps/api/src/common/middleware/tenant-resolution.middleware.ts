@@ -21,8 +21,9 @@ import { Tenant } from '../../db/entities';
 // returnUrl origin check (common/utils/return-url.ts) compares against this same
 // value, and depends on this lookup having already run.
 //
-// Consequence: any route excluded from this middleware in AppModule has an
-// UNVALIDATED req.hostname, and must not use it as a security input.
+// Consequence: any route excluded from this middleware in AppModule (e.g.
+// auth/google/callback or /api/v1/payments/webhook) has an UNVALIDATED req.hostname,
+// and must not use it as a security input.
 @Injectable()
 export class TenantResolutionMiddleware implements NestMiddleware {
   constructor(

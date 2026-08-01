@@ -9,8 +9,8 @@ import { Order } from './order.entity';
 ])
 @Entity({ name: 'order_events' })
 export class OrderEvent extends ImmutableTenantEntityBase {
-  @Column({ name: 'order_id', type: 'uuid' })
-  orderId!: string;
+  @Column({ name: 'order_id', type: 'uuid', nullable: true })
+  orderId?: string | null;
 
   @Column({ name: 'event_type', type: 'varchar' })
   eventType!: string;

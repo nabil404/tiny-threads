@@ -1,4 +1,11 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Headers,
+  HttpCode,
+  HttpStatus,
+  Post,
+} from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 
@@ -6,6 +13,17 @@ import { PaymentsService } from './payments.service';
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
+
+  @Post('webhook')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Handle global payment webhooks' })
+  @ApiResponse({ status: 200, description: 'Webhook received successfully' })
+  async handleGlobalWebhook(
+    @Body() payload: any,
+    @Headers() headers: Record<string, string>,
+  ): Promise<{ received: boolean; status: string }> {
+    return this.paymentsService.handleWebhookEvent(payload, headers);
+  }
 
   @Post('webhooks/mock')
   @HttpCode(HttpStatus.OK)

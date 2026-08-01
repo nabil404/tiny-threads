@@ -54,6 +54,10 @@ export class AppModule implements NestModule {
         // given one callback URL, so this one resolves its tenant from the
         // signed OAuth state instead (see GoogleOAuthController#callback).
         { path: 'auth/google/callback', method: RequestMethod.GET },
+        // Global payment webhook route. Resolves tenancy from incoming signature/
+        // merchant account ref and runs inside tenantDb.run(tenantId, ...).
+        { path: 'v1/payments/webhook', method: RequestMethod.POST },
+        { path: 'api/v1/payments/webhook', method: RequestMethod.POST },
         // Root/liveness route. It touches no tenant data, and load-balancer
         // and container health probes hit it by IP or internal DNS name,
         // which resolves to no registered tenant host — leaving it behind

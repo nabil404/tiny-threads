@@ -11,6 +11,7 @@ import { TenantDbService } from '../src/db/tenant-db.service';
 import { TokenService } from '../src/auth-core/services/token.service';
 import {
   Tenant,
+  TenantSettings,
   Product,
   ProductVariant,
   Order,
@@ -61,6 +62,15 @@ describe('Orders (e2e)', () => {
     await cls.run(async () => {
       cls.set('tenantId', tenantId);
       await tenantDb.run(async (manager) => {
+        await manager.save(
+          manager.create(TenantSettings, {
+            tenantId,
+            allowGuestCheckout: true,
+            platformFeePercent: 2.5,
+            defaultCurrencyCode: 'USD',
+            captureMode: 'immediate',
+          }),
+        );
         // Create product & variant
         const product = await manager.save(
           manager.create(Product, {
