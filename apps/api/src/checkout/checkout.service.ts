@@ -132,6 +132,7 @@ export class CheckoutService {
         shippingAddress: dto.shippingAddress,
         billingAddress: dto.billingAddress ?? dto.shippingAddress,
         guestAccessTokenHash: guestTokenHash ?? undefined,
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000),
       });
 
       const savedOrder = await manager.save(Order, order);
@@ -177,6 +178,7 @@ export class CheckoutService {
       if (paymentResult.payment.status === 'captured') {
         savedOrder.status = 'paid';
         savedOrder.paymentStatus = 'captured';
+        savedOrder.expiresAt = null;
         await manager.save(Order, savedOrder);
 
         const paymentCapturedEvent = manager.create(OrderEvent, {

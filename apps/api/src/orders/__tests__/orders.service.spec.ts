@@ -69,11 +69,12 @@ describe('OrdersService', () => {
   });
 
   describe('transitionStatus', () => {
-    it('should successfully transition pending_payment -> paid', async () => {
+    it('should successfully transition pending_payment -> paid and clear expiresAt', async () => {
       const order = {
         id: mockOrderId,
         tenantId: mockTenantId,
         status: 'pending_payment',
+        expiresAt: new Date(Date.now() + 1800000),
         items: [],
       } as unknown as Order;
 
@@ -89,10 +90,12 @@ describe('OrdersService', () => {
       );
 
       expect(updated.status).toBe('paid');
+      expect(updated.expiresAt).toBeNull();
       expect(savedEntities).toContainEqual(
         expect.objectContaining({
           id: mockOrderId,
           status: 'paid',
+          expiresAt: null,
         }),
       );
       expect(savedEntities).toContainEqual(

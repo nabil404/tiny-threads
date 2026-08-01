@@ -223,6 +223,7 @@ describe('CheckoutService', () => {
     expect(savedOrder.totalCents).toBe(3000); // 1500 * 2
     expect(savedOrder.status).toBe('paid');
     expect(savedOrder.paymentStatus).toBe('captured');
+    expect(savedOrder.expiresAt).toBeNull();
 
     const savedOrderItems = savedEntities.find(
       (e) => Array.isArray(e) && e[0]?.unitPriceCents === 1500,
@@ -231,6 +232,57 @@ describe('CheckoutService', () => {
     expect(savedOrderItems[0].totalPriceCents).toBe(3000);
     expect(savedOrderItems[0].productName).toBe('Test Product');
     expect(savedOrderItems[0].sku).toBe('TEST-SKU-1');
+  });
+
+  it('4b. should set expiresAt to ~30 minutes in future on creation and preserve it if payment remains pending', async () => {
+    const mockCart = {
+      id: 'cart-uuid-1',
+      tenantId: 'tenant-1',
+      status: 'active',
+      items: [{ variantId: 'variant-1', qty: 1 }],
+    };
+
+    const mockVariant = {
+      id: 'variant-1',
+      productId: 'product-1',
+      stock: 10,
+      priceCents: 1000,
+      sku: 'SKU-1',
+      product: { title: 'Product' },
+    };
+
+    let createdOrder: any;
+    tenantDbService.run.mockImplementation(async (cb) => {
+      const em = {
+        findOne: jest
+          .fn()
+          .mockResolvedValueOnce(mockCart)
+          .mockResolvedValueOnce(mockVariant),
+        create: jest.fn().mockImplementation((entityClass, data) => {
+          const res = { ...data, id: `${entityClass.name.toLowerCase()}-id` };
+          if (data.customerEmail === 'test@example.com') {
+            createdOrder = res;
+          }
+          return res;
+        }),
+        save: jest.fn().mockImplementation((_entityClassOrObj, obj) => Promise.resolve(obj)),
+      };
+      return cb(em as any);
+    });
+
+    paymentsService.processOrderPayment.mockResolvedValueOnce({
+      payment: { status: 'pending' },
+    } as any);
+
+    const now = Date.now();
+    await service.checkout(dto, undefined, 'guest-session-1');
+
+    expect(createdOrder).toBeDefined();
+    expect(createdOrder.expiresAt).toBeInstanceOf(Date);
+    const expiresMs = createdOrder.expiresAt.getTime();
+    const expectedMs = now + 30 * 60 * 1000;
+    // Allow +/- 5 seconds window
+    expect(Math.abs(expiresMs - expectedMs)).toBeLessThan(5000);
   });
 
   it('5. should open exactly one tenantDb.run per checkout call and fetch tenant settings exactly once, never nested (R3)', async () => {

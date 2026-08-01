@@ -62,6 +62,11 @@ export class OrdersService {
         await this.cancelOrderSideEffects(manager, order, actorType, actorId);
       }
 
+      // A paid order must never be expired by the scheduler.
+      if (newStatus === 'paid') {
+        order.expiresAt = null;
+      }
+
       order.status = newStatus;
       const savedOrder = await manager.save(Order, order);
 
