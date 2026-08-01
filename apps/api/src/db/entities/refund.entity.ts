@@ -1,8 +1,10 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { TenantEntityBase } from './base';
 import { Payment } from './payment.entity';
 import { Order } from './order.entity';
 
+@Index('refunds_tenant_payment_idx', ['tenantId', 'paymentId'])
+@Index('refunds_tenant_order_idx', ['tenantId', 'orderId'])
 @Entity({ name: 'refunds' })
 export class Refund extends TenantEntityBase {
   @Column({ name: 'payment_id', type: 'uuid' })

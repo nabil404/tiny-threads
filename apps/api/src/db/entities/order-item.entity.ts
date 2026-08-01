@@ -1,7 +1,8 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { TenantEntityBase } from './base';
 import { Order } from './order.entity';
 
+@Index('order_items_tenant_order_idx', ['tenantId', 'orderId'])
 @Entity({ name: 'order_items' })
 export class OrderItem extends TenantEntityBase {
   @Column({ name: 'order_id', type: 'uuid' })

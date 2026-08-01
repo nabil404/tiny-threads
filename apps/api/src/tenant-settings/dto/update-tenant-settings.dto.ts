@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ErrorCode } from '@tiny-threads/shared';
 import { field } from '../../common/errors/validation-field';
@@ -11,4 +11,12 @@ export class UpdateTenantSettingsDto {
   @IsOptional()
   @IsBoolean({ message: field(ErrorCode.IS_BOOLEAN) })
   allowGuestCheckout?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Default currency code for the tenant store.',
+    example: 'USD',
+  })
+  @IsOptional()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
+  defaultCurrencyCode?: string;
 }

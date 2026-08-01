@@ -1,7 +1,8 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { ImmutableTenantEntityBase } from './base';
 import { Order } from './order.entity';
 
+@Index('order_events_tenant_order_created_idx', ['tenantId', 'orderId', 'createdAt'])
 @Entity({ name: 'order_events' })
 export class OrderEvent extends ImmutableTenantEntityBase {
   @Column({ name: 'order_id', type: 'uuid' })

@@ -1,4 +1,4 @@
-import { Entity, Column, OneToMany } from 'typeorm';
+import { Entity, Column, OneToMany, Index } from 'typeorm';
 import { TenantEntityBase } from './base';
 import { OrderItem } from './order-item.entity';
 
@@ -12,6 +12,9 @@ export const ORDER_STATUSES = [
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
+@Index('orders_tenant_customer_created_idx', ['tenantId', 'customerId', 'createdAt'])
+@Index('orders_tenant_status_created_idx', ['tenantId', 'status', 'createdAt'])
+@Index('orders_tenant_created_idx', ['tenantId', 'createdAt'])
 @Entity({ name: 'orders' })
 export class Order extends TenantEntityBase {
   @Column({ name: 'customer_id', type: 'uuid', nullable: true })
