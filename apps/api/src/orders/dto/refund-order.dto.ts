@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ErrorCode } from '@tiny-threads/shared';
 import { field } from '../../common/errors/validation-field';
@@ -8,7 +8,8 @@ export class RefundOrderDto {
     description: 'Amount in minor units (cents) to refund',
     example: 2500,
   })
-  @IsNumber({}, { message: field(ErrorCode.IS_NUMBER) })
+  @IsInt({ message: field(ErrorCode.IS_INT) })
+  @Min(1, { message: field(ErrorCode.MIN) })
   amountCents!: number;
 
   @ApiPropertyOptional({

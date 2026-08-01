@@ -98,6 +98,13 @@ export class PaymentsService {
     reason?: string,
     manager?: EntityManager,
   ): Promise<Refund> {
+    if (!Number.isInteger(amountCents) || amountCents <= 0) {
+      throw new CodedBadRequestException(
+        ErrorCode.VALIDATION_FAILED,
+        'Refund amount must be a positive integer number of minor units',
+      );
+    }
+
     const executeInContext = async (em: EntityManager) => {
       const tenantId = this.cls.get<string>('tenantId');
       const payment = await em.findOne(Payment, {
