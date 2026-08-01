@@ -25,6 +25,7 @@ export const DATABASE_ENTITIES = Object.values(entities);
         entities: DATABASE_ENTITIES,
         synchronize: false, // never — synchronize can't express RLS and would fight migrations
         migrationsRun: false, // migrations run as app_owner via CLI, never at app boot as app_runtime
+        extra: { max: 20, connectionTimeoutMillis: 5_000 },
       }),
     }),
   ],

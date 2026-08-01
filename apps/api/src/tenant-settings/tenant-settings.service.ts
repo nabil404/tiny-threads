@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EntityManager } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
 import { TenantDbService } from '../db/tenant-db.service';
 import { TenantSettings } from '../db/entities/tenant-settings.entity';
@@ -11,11 +12,11 @@ export class TenantSettingsService {
     private readonly cls: ClsService,
   ) {}
 
-  async getSettings(tenantId?: string): Promise<TenantSettings> {
-    return this.tenantDb.run(async (em) => {
+  async getSettings(manager?: EntityManager): Promise<TenantSettings> {
+    const work = async (em: EntityManager) => {
       let settings = await em.findOne(TenantSettings, { where: {} });
       if (!settings) {
-        const tId = tenantId || this.cls.get<string>('tenantId');
+        const tId = this.cls.get<string>('tenantId');
         settings = em.create(TenantSettings, {
           tenantId: tId,
           allowGuestCheckout: true,
@@ -24,7 +25,9 @@ export class TenantSettingsService {
         settings = await em.save(settings);
       }
       return settings;
-    });
+    };
+
+    return manager ? work(manager) : this.tenantDb.run(work);
   }
 
   async updateSettings(dto: UpdateTenantSettingsDto): Promise<TenantSettings> {

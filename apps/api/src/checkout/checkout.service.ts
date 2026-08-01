@@ -30,14 +30,13 @@ export class CheckoutService {
     dto: CheckoutDto,
     customerId?: string,
   ): Promise<{ order: Order; guestAccessToken: string | null }> {
-    if (!customerId) {
-      const settings = await this.tenantSettingsService.getSettings();
-      if (!settings.allowGuestCheckout) {
-        throw new CodedForbiddenException(
-          ErrorCode.GUEST_CHECKOUT_DISABLED,
-          'Guest checkout is disabled for this store',
-        );
-      }
+    const settings = await this.tenantSettingsService.getSettings();
+
+    if (!customerId && !settings.allowGuestCheckout) {
+      throw new CodedForbiddenException(
+        ErrorCode.GUEST_CHECKOUT_DISABLED,
+        'Guest checkout is disabled for this store',
+      );
     }
 
     return this.tenantDb.run(async (manager) => {
@@ -157,8 +156,6 @@ export class CheckoutService {
       });
       await manager.save(OrderEvent, createdEvent);
 
-      const settings =
-        await this.tenantSettingsService.getSettings(effectiveTenantId);
       const paymentToken = dto.paymentToken || 'mock_success';
       const paymentResult = await this.paymentsService.processOrderPayment(
         savedOrder,

@@ -217,4 +217,47 @@ describe('CheckoutService', () => {
     expect(savedOrderItems[0].productName).toBe('Test Product');
     expect(savedOrderItems[0].sku).toBe('TEST-SKU-1');
   });
+
+  it('5. should open exactly one tenantDb.run per checkout call and fetch tenant settings exactly once, never nested (R3)', async () => {
+    const mockCart = {
+      id: 'cart-uuid-1',
+      tenantId: 'tenant-1',
+      status: 'active',
+      items: [{ variantId: 'variant-1', qty: 1 }],
+    };
+
+    const mockVariant = {
+      id: 'variant-1',
+      productId: 'product-1',
+      stock: 10,
+      priceCents: 1000,
+      sku: 'SKU-1',
+      product: { title: 'Product' },
+    };
+
+    tenantDbService.run.mockImplementation(async (cb) => {
+      const em = {
+        findOne: jest
+          .fn()
+          .mockResolvedValueOnce(mockCart)
+          .mockResolvedValueOnce(mockVariant),
+        create: jest.fn().mockImplementation((_, data: any) => data),
+        save: jest
+          .fn()
+          .mockImplementation((entityClassOrObject: any, obj: any) =>
+            Promise.resolve(obj ?? entityClassOrObject),
+          ),
+      };
+      return cb(em as any);
+    });
+
+    // Guest checkout exercises both the pre-refactor call sites (guest-check
+    // + inside-transaction re-fetch), so it's the scenario that actually
+    // distinguishes the nested-transaction bug from the fix.
+    await service.checkout(dto, undefined);
+
+    const runSpy = tenantDbService.run;
+    expect(runSpy).toHaveBeenCalledTimes(1);
+    expect(tenantSettingsService.getSettings).toHaveBeenCalledTimes(1);
+  });
 });

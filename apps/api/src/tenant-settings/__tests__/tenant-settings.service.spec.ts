@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { EntityManager } from 'typeorm';
 import { TenantSettingsService } from '../tenant-settings.service';
 import { TenantDbService } from '../../db/tenant-db.service';
 import { ClsService } from 'nestjs-cls';
@@ -73,6 +74,26 @@ describe('TenantSettingsService', () => {
       );
       expect(result).toEqual(savedEntity);
       expect(tenantDbService.run).toHaveBeenCalledTimes(1);
+    });
+
+    it('should use the provided manager directly and never open a new tenantDb.run transaction (R3)', async () => {
+      const existingSettings = {
+        tenantId: 'tenant-123',
+        id: 'settings-1',
+        allowGuestCheckout: true,
+        platformFeePercent: 2.5,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const em = {
+        findOne: jest.fn().mockResolvedValue(existingSettings),
+      } as unknown as EntityManager;
+
+      const result = await service.getSettings(em);
+
+      expect(result).toEqual(existingSettings);
+      expect(tenantDbService.run).not.toHaveBeenCalled();
     });
   });
 
