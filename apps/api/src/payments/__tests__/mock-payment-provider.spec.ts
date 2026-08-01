@@ -1,5 +1,7 @@
 import { MockPaymentProvider } from '../providers/mock-payment.provider';
 import { PaymentPortRegistry } from '../providers/payment-port.registry';
+import { CodedNotFoundException } from '../../common/errors/coded-exceptions';
+import { ErrorCode } from '@tiny-threads/shared';
 
 describe('MockPaymentProvider (D7)', () => {
   let provider: MockPaymentProvider;
@@ -125,10 +127,20 @@ describe('PaymentPortRegistry', () => {
     expect(registry.getByProviderName('mock')).toBe(mockProvider);
   });
 
-  it('throws NotFoundException for unregistered provider', () => {
+  it('throws CodedNotFoundException for unregistered provider', () => {
     const mockProvider = new MockPaymentProvider();
     const registry = new PaymentPortRegistry(mockProvider);
 
-    expect(() => registry.get('stripe')).toThrow('Payment port not found for provider: stripe');
+    try {
+      registry.get('stripe');
+      fail('Expected CodedNotFoundException');
+    } catch (err: any) {
+      expect(err).toBeInstanceOf(CodedNotFoundException);
+      expect(err.getResponse()).toEqual({
+        code: ErrorCode.RESOURCE_NOT_FOUND,
+        message: 'Payment port not found for provider: stripe',
+        params: {},
+      });
+    }
   });
 });
