@@ -19,6 +19,7 @@ import { TenantSettingsModule } from '../tenant-settings/tenant-settings.module'
 import { PaymentsModule } from '../payments/payments.module';
 import { CheckoutModule } from '../checkout/checkout.module';
 import { OrdersModule } from '../orders/orders.module';
+import { SchedulerModule } from '../scheduler/scheduler.module';
 import { validate } from '../config/env.validation';
 
 @Module({
@@ -39,6 +40,7 @@ import { validate } from '../config/env.validation';
     PaymentsModule,
     CheckoutModule,
     OrdersModule,
+    SchedulerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
