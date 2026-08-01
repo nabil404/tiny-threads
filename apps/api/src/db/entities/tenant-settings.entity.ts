@@ -22,4 +22,7 @@ export class TenantSettings extends TenantEntityBase {
 
   @Column({ name: 'default_currency_code', type: 'text', default: 'USD' })
   defaultCurrencyCode!: string;
+
+  @Column({ name: 'capture_mode', type: 'varchar', length: 50, default: 'immediate' })
+  captureMode!: string;
 }

@@ -28,3 +28,5 @@ export * from './payment.entity';
 export * from './settlement.entity';
 export * from './refund.entity';
 export * from './payment-provider-configs.entity';
+export * from './shipment.entity';
+export * from './shipment-item.entity';

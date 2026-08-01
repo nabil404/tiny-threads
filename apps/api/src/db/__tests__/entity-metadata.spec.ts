@@ -26,6 +26,8 @@ const TENANT_SCOPED_TABLES = [
   'settlements',
   'refunds',
   'payment_provider_configs',
+  'shipments',
+  'shipment_items',
 ];
 
 const GLOBAL_TABLES = [
