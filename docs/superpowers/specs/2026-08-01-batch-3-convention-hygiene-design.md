@@ -155,8 +155,8 @@ and the existing `lint` script uses `--fix` which hides errors from developers.
 1. **Prettier errors (10):** Resolved by running `--fix` once, or naturally when
    we format the files touched by R18.
 2. **`where: any` (2):** Resolved by R18's typed `FindOptionsWhere<Order>`.
-3. **Unnecessary type assertions (2):** Drop the assertions at
-   `merchant-admins-auth-error-format.e2e-spec.ts` lines 135 and 305.
+3. **Unnecessary type assertions (2):** Drop the `as string` assertions at
+   `orders.e2e-spec.ts` lines 135 and 305.
 4. **New `lint:check` script** in `apps/api/package.json`:
 
    ```json
