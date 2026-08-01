@@ -6,7 +6,6 @@ import { TenantDbService } from '../../db/tenant-db.service';
 import { PaymentsService } from '../../payments/payments.service';
 import { Order } from '../../db/entities/order.entity';
 import { OrderItem } from '../../db/entities/order-item.entity';
-import { OrderEvent } from '../../db/entities/order-event.entity';
 import { ProductVariant } from '../../db/entities/product-variants.entity';
 import { Refund } from '../../db/entities/refund.entity';
 import {
@@ -155,12 +154,10 @@ describe('OrdersService', () => {
         id: mockOrderId,
         tenantId: mockTenantId,
         status: 'processing',
-        items: [
-          { variantId: 'var-1', quantity: 3 } as OrderItem,
-        ],
+        items: [{ variantId: 'var-1', quantity: 3 } as OrderItem],
       } as unknown as Order;
 
-      em.findOne.mockImplementation((entityClass: any, opts: any) => {
+      em.findOne.mockImplementation((entityClass: any) => {
         if (entityClass === Order) return Promise.resolve(order);
         if (entityClass === ProductVariant) return Promise.resolve(variant);
         return Promise.resolve(null);
@@ -172,6 +169,115 @@ describe('OrdersService', () => {
       expect(variant.stock).toBe(13);
       expect(savedEntities).toContainEqual(variant);
     });
+
+    it('should automatically refund captured payment when cancelling a paid order', async () => {
+      const variant = { id: 'var-1', stock: 10 } as ProductVariant;
+      const mockOrder = {
+        id: 'order-paid-1',
+        tenantId: mockTenantId,
+        status: 'processing',
+        paymentStatus: 'captured',
+        totalCents: 5000,
+        items: [{ variantId: 'var-1', quantity: 3 } as OrderItem],
+      } as unknown as Order;
+
+      em.findOne.mockImplementation((entityClass: any) => {
+        if (entityClass === Order) return Promise.resolve(mockOrder);
+        if (entityClass === ProductVariant) return Promise.resolve(variant);
+        return Promise.resolve(null);
+      });
+
+      const refundSpy = paymentsService.refundPayment;
+
+      const result = await service.transitionStatus(
+        'order-paid-1',
+        'cancelled',
+        'admin',
+      );
+
+      expect(refundSpy).toHaveBeenCalledWith(
+        'order-paid-1',
+        mockOrder.totalCents,
+        'Order cancelled',
+        expect.anything(),
+      );
+      expect(result.paymentStatus).toBe('refunded');
+    });
+
+    it('should not refund when cancelling an order whose payment was never captured', async () => {
+      const order = {
+        id: mockOrderId,
+        tenantId: mockTenantId,
+        status: 'pending_payment',
+        paymentStatus: 'pending',
+        totalCents: 5000,
+        items: [],
+      } as unknown as Order;
+
+      em.findOne.mockImplementation((entityClass: any) => {
+        if (entityClass === Order) return Promise.resolve(order);
+        return Promise.resolve(null);
+      });
+
+      const result = await service.transitionStatus(
+        mockOrderId,
+        'cancelled',
+        'admin',
+      );
+
+      expect(paymentsService.refundPayment).not.toHaveBeenCalled();
+      expect(result.paymentStatus).toBe('pending');
+    });
+
+    it('should lock variants pessimistically and restore stock in variantId order regardless of item order', async () => {
+      const variantB = { id: 'var-b', stock: 10 };
+      const variantA = { id: 'var-a', stock: 20 };
+      const order = {
+        id: mockOrderId,
+        tenantId: mockTenantId,
+        status: 'processing',
+        items: [
+          { variantId: 'var-b', quantity: 1 } as OrderItem,
+          { variantId: 'var-a', quantity: 2 } as OrderItem,
+        ],
+      } as unknown as Order;
+
+      em.findOne.mockImplementation((entityClass: any, opts: any) => {
+        if (entityClass === Order) return Promise.resolve(order);
+        if (entityClass === ProductVariant) {
+          if (opts.where.id === 'var-a') return Promise.resolve(variantA);
+          if (opts.where.id === 'var-b') return Promise.resolve(variantB);
+        }
+        return Promise.resolve(null);
+      });
+
+      await service.transitionStatus(mockOrderId, 'cancelled', 'admin');
+
+      const variantFindCalls = em.findOne.mock.calls.filter(
+        ([entityClass]: any[]) => entityClass === ProductVariant,
+      );
+
+      // Locked, and processed in variantId order (var-a before var-b),
+      // not the order items appear in on the order.
+      expect(variantFindCalls).toEqual([
+        [
+          ProductVariant,
+          expect.objectContaining({
+            where: { id: 'var-a' },
+            lock: { mode: 'pessimistic_write' },
+          }),
+        ],
+        [
+          ProductVariant,
+          expect.objectContaining({
+            where: { id: 'var-b' },
+            lock: { mode: 'pessimistic_write' },
+          }),
+        ],
+      ]);
+      expect(variantA.stock).toBe(22);
+      expect(variantB.stock).toBe(11);
+    });
   });
 
   describe('customerCancelOrder', () => {
@@ -182,9 +288,7 @@ describe('OrdersService', () => {
         customerId: mockCustomerId,
         tenantId: mockTenantId,
         status: 'pending_payment',
-        items: [
-          { variantId: 'var-1', quantity: 2 } as OrderItem,
-        ],
+        items: [{ variantId: 'var-1', quantity: 2 } as OrderItem],
       } as unknown as Order;
 
       em.findOne.mockImplementation((entityClass: any) => {

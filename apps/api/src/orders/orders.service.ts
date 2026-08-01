@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { EntityManager } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
 import { ErrorCode } from '@tiny-threads/shared';
 import { TenantDbService } from '../db/tenant-db.service';
@@ -58,6 +59,16 @@ export class OrdersService {
 
       if (newStatus === 'cancelled') {
         await this.restoreStockForOrder(manager, order);
+
+        if (order.paymentStatus === 'captured') {
+          await this.paymentsService.refundPayment(
+            order.id,
+            order.totalCents,
+            'Order cancelled',
+            manager,
+          );
+          order.paymentStatus = 'refunded';
+        }
       }
 
       order.status = newStatus;
@@ -271,13 +282,20 @@ export class OrdersService {
     });
   }
 
-  private async restoreStockForOrder(manager: any, order: Order): Promise<void> {
+  private async restoreStockForOrder(
+    manager: EntityManager,
+    order: Order,
+  ): Promise<void> {
     if (!order.items || order.items.length === 0) return;
 
-    for (const item of order.items) {
-      if (!item.variantId) continue;
+    const items = [...order.items]
+      .filter((i) => i.variantId)
+      .sort((a, b) => a.variantId.localeCompare(b.variantId));
+
+    for (const item of items) {
       const variant = await manager.findOne(ProductVariant, {
         where: { id: item.variantId },
+        lock: { mode: 'pessimistic_write' },
       });
       if (variant) {
         variant.stock += item.quantity;
