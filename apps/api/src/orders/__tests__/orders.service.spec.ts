@@ -380,6 +380,43 @@ describe('OrdersService', () => {
         service.getGuestOrder(mockOrderId, wrongToken),
       ).rejects.toThrow(CodedNotFoundException);
     });
+
+    it('should correctly verify guest order token using timing-safe comparison', async () => {
+      const rawToken = 'raw_valid_token';
+      const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+
+      const order = {
+        id: 'order-guest-1',
+        guestAccessTokenHash: tokenHash,
+        items: [],
+      } as unknown as Order;
+
+      em.findOne.mockImplementation(() => Promise.resolve(order));
+
+      const valid = await service.getGuestOrder('order-guest-1', 'raw_valid_token');
+      expect(valid.id).toBe('order-guest-1');
+
+      await expect(
+        service.getGuestOrder('order-guest-1', 'invalid_token'),
+      ).rejects.toThrow(CodedNotFoundException);
+    });
+
+    it('should safely handle token hash length mismatch without throwing RangeError', async () => {
+      const rawToken = 'raw_valid_token';
+      const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+
+      const order = {
+        id: 'order-guest-2',
+        guestAccessTokenHash: 'ff', // Different length hash
+        items: [],
+      } as unknown as Order;
+
+      em.findOne.mockImplementation(() => Promise.resolve(order));
+
+      await expect(
+        service.getGuestOrder('order-guest-2', rawToken),
+      ).rejects.toThrow(CodedNotFoundException);
+    });
   });
 
   describe('refundOrder', () => {

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { EntityManager } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
 import { ErrorCode } from '@tiny-threads/shared';
@@ -149,10 +150,16 @@ export class OrdersService {
         relations: { items: true },
       });
 
+      const supplied = Buffer.from(tokenHash, 'hex');
+      const stored = order?.guestAccessTokenHash
+        ? Buffer.from(order.guestAccessTokenHash, 'hex')
+        : null;
+
       if (
         !order ||
-        !order.guestAccessTokenHash ||
-        order.guestAccessTokenHash !== tokenHash
+        !stored ||
+        stored.length !== supplied.length ||
+        !timingSafeEqual(stored, supplied)
       ) {
         throw new CodedNotFoundException(
           ErrorCode.ORDER_NOT_FOUND,
