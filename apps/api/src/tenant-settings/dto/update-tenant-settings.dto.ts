@@ -12,4 +12,3 @@ export class UpdateTenantSettingsDto {
   @IsBoolean({ message: field(ErrorCode.IS_BOOLEAN) })
   allowGuestCheckout?: boolean;
 }
-

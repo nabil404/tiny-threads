@@ -132,7 +132,7 @@ describe('Orders (e2e)', () => {
       .set('Host', tenantHost)
       .expect(200);
 
-    const sessionId = cartRes.headers['x-guest-session-id'] as string;
+    const sessionId = cartRes.headers['x-guest-session-id'];
 
     await request(app.getHttpServer())
       .post('/api/v1/cart/items')
@@ -302,7 +302,7 @@ describe('Orders (e2e)', () => {
       .set('Host', tenantHost)
       .expect(200);
 
-    const sessionId = cartRes.headers['x-guest-session-id'] as string;
+    const sessionId = cartRes.headers['x-guest-session-id'];
 
     await request(app.getHttpServer())
       .post('/api/v1/cart/items')

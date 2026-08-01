@@ -23,10 +23,7 @@ export class GuestOrdersController {
     description: 'Order not found or invalid token.',
   })
   @Get(':id')
-  async getGuestOrder(
-    @Param('id') id: string,
-    @Query('token') token: string,
-  ) {
+  async getGuestOrder(@Param('id') id: string, @Query('token') token: string) {
     return this.ordersService.getGuestOrder(id, token);
   }
 }

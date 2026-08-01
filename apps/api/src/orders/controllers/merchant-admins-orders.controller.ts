@@ -39,7 +39,9 @@ export class MerchantAdminsOrdersController {
   @ApiResponse({ status: 200, description: 'List of merchant orders.' })
   @Get()
   async getMerchantOrders(@Query('status') status?: string) {
-    return this.ordersService.getMerchantOrders(status ? { status } : undefined);
+    return this.ordersService.getMerchantOrders(
+      status ? { status } : undefined,
+    );
   }
 
   @ApiOperation({
@@ -58,7 +60,10 @@ export class MerchantAdminsOrdersController {
     description:
       'Transitions order status following valid state machine rules.',
   })
-  @ApiResponse({ status: 200, description: 'Order status updated successfully.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Order status updated successfully.',
+  })
   @ApiResponse({
     status: 400,
     description: 'Invalid order status transition.',
@@ -70,7 +75,8 @@ export class MerchantAdminsOrdersController {
     @Param('id') id: string,
     @Body() dto: UpdateOrderStatusDto,
   ) {
-    const actorId = (req.user as MerchantAdminAccessTokenPayload | undefined)?.sub;
+    const actorId = (req.user as MerchantAdminAccessTokenPayload | undefined)
+      ?.sub;
     return this.ordersService.transitionStatus(
       id,
       dto.status,
@@ -90,10 +96,7 @@ export class MerchantAdminsOrdersController {
   })
   @ApiResponse({ status: 404, description: 'Order or payment not found.' })
   @Post(':id/refund')
-  async refundOrder(
-    @Param('id') id: string,
-    @Body() dto: RefundOrderDto,
-  ) {
+  async refundOrder(@Param('id') id: string, @Body() dto: RefundOrderDto) {
     return this.ordersService.refundOrder(id, dto);
   }
 }

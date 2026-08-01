@@ -51,12 +51,16 @@ describe('Migration Order & Safety Guard', () => {
       const content = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
 
       // Extract up() method block
-      const upMatch = content.match(/public async up\([\s\S]*?\): Promise<void> \{([\s\S]*?)\n  \}/);
+      const upMatch = content.match(
+        /public async up\([\s\S]*?\): Promise<void> \{([\s\S]*?)\n {2}\}/,
+      );
       if (!upMatch) continue;
       const upBody = upMatch[1];
 
       // Find all DROP TABLE instances
-      const dropMatches = Array.from(upBody.matchAll(/DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([^\s;]+)/gi));
+      const dropMatches = Array.from(
+        upBody.matchAll(/DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([^\s;]+)/gi),
+      );
 
       for (const dropMatch of dropMatches) {
         const droppedTablesStr = dropMatch[1];
@@ -68,7 +72,10 @@ describe('Migration Order & Safety Guard', () => {
 
         for (const table of droppedTables) {
           // Check if table is created in upBody
-          const createRegex = new RegExp(`CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?"?${table}"?`, 'i');
+          const createRegex = new RegExp(
+            `CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?"?${table}"?`,
+            'i',
+          );
           expect(upBody).toMatch(createRegex);
         }
       }

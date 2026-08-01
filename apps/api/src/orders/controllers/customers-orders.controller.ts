@@ -30,7 +30,8 @@ export class CustomersOrdersController {
 
   @ApiOperation({
     summary: 'Get customer order by ID',
-    description: 'Retrieves a single order by ID for the authenticated customer.',
+    description:
+      'Retrieves a single order by ID for the authenticated customer.',
   })
   @ApiResponse({ status: 200, description: 'Order details found.' })
   @ApiResponse({ status: 404, description: 'Order not found.' })
