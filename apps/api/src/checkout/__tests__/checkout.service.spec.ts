@@ -265,7 +265,9 @@ describe('CheckoutService', () => {
           }
           return res;
         }),
-        save: jest.fn().mockImplementation((_entityClassOrObj, obj) => Promise.resolve(obj)),
+        save: jest
+          .fn()
+          .mockImplementation((_entityClassOrObj, obj) => Promise.resolve(obj)),
       };
       return cb(em as any);
     });
