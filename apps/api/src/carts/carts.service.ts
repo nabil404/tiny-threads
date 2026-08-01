@@ -31,7 +31,7 @@ function isUniqueViolation(error: unknown): boolean {
 // `customerId: IsNull()` below, a guest session id that had been stamped onto
 // a logged-in customer's cart would let any anonymous request carrying that
 // session id read and mutate the customer's cart.
-function activeCartWhere(
+export function activeCartWhere(
   customerId?: string,
   sessionId?: string,
 ): FindOptionsWhere<Cart> {

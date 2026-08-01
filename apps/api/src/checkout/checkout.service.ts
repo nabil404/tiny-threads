@@ -6,6 +6,7 @@ import { TenantDbService } from '../db/tenant-db.service';
 import { TenantSettingsService } from '../tenant-settings/tenant-settings.service';
 import { PaymentsService } from '../payments/payments.service';
 import { CheckoutDto } from './dto/checkout.dto';
+import { activeCartWhere } from '../carts/carts.service';
 import { Cart } from '../db/entities/carts.entity';
 import { Product } from '../db/entities/products.entity';
 import { ProductVariant } from '../db/entities/product-variants.entity';
@@ -29,6 +30,7 @@ export class CheckoutService {
   async checkout(
     dto: CheckoutDto,
     customerId?: string,
+    sessionId?: string,
   ): Promise<{ order: Order; guestAccessToken: string | null }> {
     const settings = await this.tenantSettingsService.getSettings();
 
@@ -42,20 +44,21 @@ export class CheckoutService {
     return this.tenantDb.run(async (manager) => {
       const tenantId = this.cls.get<string>('tenantId');
 
+      // Cart identity is derived from the caller's own credentials (JWT
+      // customerId or guest sessionId), never from a client-supplied cart
+      // id — otherwise any caller could pass another customer's/guest's
+      // cart UUID and check it out (IDOR). activeCartWhere also constrains
+      // the match to status: 'active', so an already-converted cart is
+      // indistinguishable here from "no cart" and falls into CART_EMPTY.
       const cart = await manager.findOne(Cart, {
-        where: { id: dto.cartId },
+        where: activeCartWhere(customerId, sessionId),
         relations: { items: true },
       });
 
-      if (
-        !cart ||
-        !cart.items ||
-        cart.items.length === 0 ||
-        cart.status === 'converted'
-      ) {
+      if (!cart || !cart.items || cart.items.length === 0) {
         throw new CodedBadRequestException(
           ErrorCode.CART_EMPTY,
-          'Cart is empty or already converted',
+          'Cart is empty',
         );
       }
 

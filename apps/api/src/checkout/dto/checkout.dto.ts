@@ -1,19 +1,9 @@
-import {
-  IsEmail,
-  IsObject,
-  IsOptional,
-  IsString,
-  IsUUID,
-} from 'class-validator';
+import { IsEmail, IsObject, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { field } from '../../common/errors/validation-field';
 import { ErrorCode } from '@tiny-threads/shared';
 
 export class CheckoutDto {
-  @ApiProperty({ description: 'Cart ID to check out' })
-  @IsUUID(undefined, { message: field(ErrorCode.IS_UUID) })
-  cartId!: string;
-
   @ApiProperty({ description: 'Customer email address' })
   @IsEmail(undefined, { message: field(ErrorCode.IS_EMAIL) })
   customerEmail!: string;

@@ -50,7 +50,6 @@ describe('CheckoutService', () => {
   });
 
   const dto: CheckoutDto = {
-    cartId: 'cart-uuid-1',
     customerEmail: 'test@example.com',
     shippingAddress: { street: '123 Main St', city: 'City', country: 'US' },
     billingAddress: { street: '123 Main St', city: 'City', country: 'US' },
@@ -75,7 +74,7 @@ describe('CheckoutService', () => {
     }
   });
 
-  it('2. should reject when cart is empty or converted (CART_EMPTY)', async () => {
+  it('2. should reject when cart is empty or not found for this caller (CART_EMPTY)', async () => {
     tenantDbService.run.mockImplementation(async (cb) => {
       const em = {
         findOne: jest.fn().mockResolvedValue(null), // Cart not found
@@ -83,30 +82,30 @@ describe('CheckoutService', () => {
       return cb(em as any);
     });
 
-    await expect(service.checkout(dto, 'customer-1')).rejects.toThrow(
-      CodedBadRequestException,
-    );
+    await expect(
+      service.checkout(dto, 'customer-1', undefined),
+    ).rejects.toThrow(CodedBadRequestException);
 
     try {
-      await service.checkout(dto, 'customer-1');
+      await service.checkout(dto, 'customer-1', undefined);
     } catch (err: any) {
       expect(err.getResponse().code).toBe(ErrorCode.CART_EMPTY);
     }
 
-    // Also test converted cart
+    // Also reject when the found cart has no items.
     tenantDbService.run.mockImplementation(async (cb) => {
       const em = {
         findOne: jest.fn().mockResolvedValue({
           id: 'cart-uuid-1',
-          status: 'converted',
-          items: [{ variantId: 'v1', qty: 1 }],
+          status: 'active',
+          items: [],
         }),
       };
       return cb(em as any);
     });
 
     try {
-      await service.checkout(dto, 'customer-1');
+      await service.checkout(dto, 'customer-1', undefined);
     } catch (err: any) {
       expect(err.getResponse().code).toBe(ErrorCode.CART_EMPTY);
     }
@@ -136,12 +135,12 @@ describe('CheckoutService', () => {
       return cb(em as any);
     });
 
-    await expect(service.checkout(dto, 'customer-1')).rejects.toThrow(
-      CodedBadRequestException,
-    );
+    await expect(
+      service.checkout(dto, 'customer-1', undefined),
+    ).rejects.toThrow(CodedBadRequestException);
 
     try {
-      await service.checkout(dto, 'customer-1');
+      await service.checkout(dto, 'customer-1', undefined);
     } catch (err: any) {
       expect(err.getResponse().code).toBe(ErrorCode.INSUFFICIENT_STOCK);
     }
@@ -184,7 +183,7 @@ describe('CheckoutService', () => {
       return cb(em as any);
     });
 
-    const result = await service.checkout(dto, undefined);
+    const result = await service.checkout(dto, undefined, 'guest-session-1');
 
     // Verify raw guest token returned for guest checkout
     expect(result.guestAccessToken).toBeDefined();
@@ -254,10 +253,244 @@ describe('CheckoutService', () => {
     // Guest checkout exercises both the pre-refactor call sites (guest-check
     // + inside-transaction re-fetch), so it's the scenario that actually
     // distinguishes the nested-transaction bug from the fix.
-    await service.checkout(dto, undefined);
+    await service.checkout(dto, undefined, 'guest-session-1');
 
     const runSpy = tenantDbService.run;
     expect(runSpy).toHaveBeenCalledTimes(1);
     expect(tenantSettingsService.getSettings).toHaveBeenCalledTimes(1);
+  });
+
+  describe('IDOR protection (R4): cart identity is derived, never client-supplied', () => {
+    it('6. does not accept a cartId on the DTO at all', () => {
+      expect((dto as any).cartId).toBeUndefined();
+    });
+
+    it("7. looks up the cart using activeCartWhere(customerId, sessionId), scoped to the caller's own identity — not any client-supplied id", async () => {
+      const mockCart = {
+        id: 'cart-uuid-1',
+        status: 'active',
+        items: [{ variantId: 'variant-1', qty: 1 }],
+      };
+      const mockVariant = {
+        id: 'variant-1',
+        productId: 'product-1',
+        stock: 10,
+        priceCents: 1000,
+        sku: 'SKU-1',
+        product: { title: 'Product' },
+      };
+
+      let capturedWhere: any;
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          findOne: jest.fn().mockImplementation((_entity, opts: any) => {
+            if (capturedWhere === undefined) {
+              capturedWhere = opts.where;
+              return Promise.resolve(mockCart);
+            }
+            return Promise.resolve(mockVariant);
+          }),
+          create: jest.fn().mockImplementation((_, data: any) => data),
+          save: jest
+            .fn()
+            .mockImplementation((entityClassOrObject: any, obj: any) =>
+              Promise.resolve(obj ?? entityClassOrObject),
+            ),
+        };
+        return cb(em as any);
+      });
+
+      await service.checkout(dto, 'customer-owner', undefined);
+
+      // Derived from the caller's own customerId, scoped to active carts —
+      // this is exactly what activeCartWhere('customer-owner', undefined)
+      // produces, and critically contains no attacker-suppliable cart id.
+      expect(capturedWhere).toEqual({
+        customerId: 'customer-owner',
+        status: 'active',
+      });
+    });
+
+    // Tests 8 & 9 model a fake "database" holding TWO real, non-empty carts
+    // at once — one belonging to the caller ("attacker") and one belonging
+    // to someone else ("victim") — and have findOne filter by the actual
+    // `where` clause fields the same way Postgres would. This is a
+    // stronger regression guard than asserting "returns null": if a future
+    // change accidentally widened the where clause (e.g. dropped the
+    // customerId/sessionId filter, or matched on the wrong field), this
+    // fake DB would incorrectly hand back the victim's cart and the order
+    // total would reveal it (99 vs 1), not silently pass by both carts
+    // failing to match.
+    it("8. a customer checking out only ever resolves their OWN cart, never a different customer's cart present in the same store", async () => {
+      const attackerCart = {
+        id: 'attacker-cart',
+        customerId: 'attacker-customer',
+        sessionId: null,
+        status: 'active',
+        items: [{ variantId: 'attacker-variant', qty: 1 }],
+      };
+      const victimCart = {
+        id: 'victim-cart',
+        customerId: 'victim-customer',
+        sessionId: null,
+        status: 'active',
+        items: [{ variantId: 'victim-variant', qty: 99 }],
+      };
+      const fakeCarts = [attackerCart, victimCart];
+      const variantsById: Record<string, any> = {
+        'attacker-variant': {
+          id: 'attacker-variant',
+          productId: 'p-attacker',
+          stock: 10,
+          priceCents: 500,
+          sku: 'ATTACKER-SKU',
+          product: { title: 'Attacker Product' },
+        },
+        'victim-variant': {
+          id: 'victim-variant',
+          productId: 'p-victim',
+          stock: 10,
+          priceCents: 999900,
+          sku: 'VICTIM-SKU',
+          product: { title: 'Victim Product' },
+        },
+      };
+
+      tenantDbService.run.mockImplementation(async (cb) => {
+        let cartLookupDone = false;
+        const em = {
+          findOne: jest.fn().mockImplementation((_entity, opts: any) => {
+            if (!cartLookupDone) {
+              cartLookupDone = true;
+              const where = opts.where;
+              const match = fakeCarts.find(
+                (c) =>
+                  c.customerId === where.customerId &&
+                  c.status === where.status,
+              );
+              return Promise.resolve(match ?? null);
+            }
+            return Promise.resolve(variantsById[opts.where.id] ?? null);
+          }),
+          create: jest.fn().mockImplementation((_, data: any) => data),
+          save: jest
+            .fn()
+            .mockImplementation((_entityClass: any, obj: any) =>
+              Promise.resolve(obj),
+            ),
+        };
+        return cb(em as any);
+      });
+
+      const result = await service.checkout(
+        dto,
+        'attacker-customer',
+        undefined,
+      );
+
+      // Only the attacker's own single $5.00 item — never the victim's
+      // 99-unit, $9,999.00 line item.
+      expect(result.order.totalCents).toBe(500);
+      expect(attackerCart.status).toBe('converted');
+      expect(victimCart.status).toBe('active'); // untouched
+    });
+
+    it("9. a guest checking out only ever resolves their OWN session's cart, never a different session's cart present in the same store", async () => {
+      const attackerCart = {
+        id: 'attacker-cart',
+        customerId: null,
+        sessionId: 'attacker-session',
+        status: 'active',
+        items: [{ variantId: 'attacker-variant', qty: 1 }],
+      };
+      const victimCart = {
+        id: 'victim-cart',
+        customerId: null,
+        sessionId: 'victim-session',
+        status: 'active',
+        items: [{ variantId: 'victim-variant', qty: 99 }],
+      };
+      const fakeCarts = [attackerCart, victimCart];
+      const variantsById: Record<string, any> = {
+        'attacker-variant': {
+          id: 'attacker-variant',
+          productId: 'p-attacker',
+          stock: 10,
+          priceCents: 500,
+          sku: 'ATTACKER-SKU',
+          product: { title: 'Attacker Product' },
+        },
+        'victim-variant': {
+          id: 'victim-variant',
+          productId: 'p-victim',
+          stock: 10,
+          priceCents: 999900,
+          sku: 'VICTIM-SKU',
+          product: { title: 'Victim Product' },
+        },
+      };
+
+      tenantDbService.run.mockImplementation(async (cb) => {
+        let cartLookupDone = false;
+        const em = {
+          findOne: jest.fn().mockImplementation((_entity, opts: any) => {
+            if (!cartLookupDone) {
+              cartLookupDone = true;
+              const where = opts.where;
+              const match = fakeCarts.find(
+                (c) =>
+                  c.sessionId === where.sessionId &&
+                  c.customerId === null && // where.customerId is IsNull()
+                  c.status === where.status,
+              );
+              return Promise.resolve(match ?? null);
+            }
+            return Promise.resolve(variantsById[opts.where.id] ?? null);
+          }),
+          create: jest.fn().mockImplementation((_, data: any) => data),
+          save: jest
+            .fn()
+            .mockImplementation((_entityClass: any, obj: any) =>
+              Promise.resolve(obj),
+            ),
+        };
+        return cb(em as any);
+      });
+
+      const result = await service.checkout(dto, undefined, 'attacker-session');
+
+      expect(result.order.totalCents).toBe(500);
+      expect(attackerCart.status).toBe('converted');
+      expect(victimCart.status).toBe('active'); // untouched
+    });
+
+    it('10. a guest session id cannot be used to check out a cart owned by a logged-in customer (activeCartWhere excludes customer-owned carts for session lookups)', async () => {
+      // Mirrors the one-owner invariant documented in carts.service.ts:
+      // activeCartWhere(undefined, sessionId) always adds
+      // customerId: IsNull(), so even if a guest somehow knew/guessed a
+      // session id that had been associated with a customer cart, the
+      // where clause itself excludes customer-owned rows.
+      let capturedWhere: any;
+      tenantDbService.run.mockImplementation(async (cb) => {
+        const em = {
+          findOne: jest.fn().mockImplementation((_entity, opts: any) => {
+            capturedWhere = opts.where;
+            return Promise.resolve(null);
+          }),
+        };
+        return cb(em as any);
+      });
+
+      try {
+        await service.checkout(dto, undefined, 'some-session-id');
+      } catch {
+        // expected: CART_EMPTY since findOne resolves null
+      }
+
+      expect(capturedWhere).toMatchObject({
+        sessionId: 'some-session-id',
+      });
+      expect(capturedWhere.customerId).toBeDefined(); // IsNull() FindOperator, not a raw client value
+    });
   });
 });

@@ -141,12 +141,13 @@ describe('Orders (e2e)', () => {
       .send({ variantId, qty: 2 })
       .expect(201);
 
-    // 1b. Checkout guest cart
+    // 1b. Checkout guest cart. Cart identity is derived from the
+    // x-guest-session-id header (not a client-supplied cartId — see R4).
     const checkoutRes = await request(app.getHttpServer())
       .post('/api/v1/checkout')
       .set('Host', tenantHost)
+      .set('x-guest-session-id', sessionId)
       .send({
-        cartId: cartRes.body.id,
         customerEmail: 'guest@example.com',
         shippingAddress: { street: '123 Main St', city: 'City', country: 'US' },
         paymentToken: 'mock_success',
