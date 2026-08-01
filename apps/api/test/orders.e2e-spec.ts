@@ -294,4 +294,70 @@ describe('Orders (e2e)', () => {
 
     expect(checkOrderRes.body.paymentStatus).toBe('partially_refunded');
   });
+
+  it('4. Cancelling a paid (captured) order auto-refunds and restores stock', async () => {
+    // 4a. Fresh guest checkout to reach a paid/captured order
+    const cartRes = await request(app.getHttpServer())
+      .get('/api/v1/cart')
+      .set('Host', tenantHost)
+      .expect(200);
+
+    const sessionId = cartRes.headers['x-guest-session-id'] as string;
+
+    await request(app.getHttpServer())
+      .post('/api/v1/cart/items')
+      .set('Host', tenantHost)
+      .set('x-guest-session-id', sessionId)
+      .send({ variantId, qty: 2 })
+      .expect(201);
+
+    const stockBeforeCheckout = await cls.run(async () => {
+      cls.set('tenantId', tenantId);
+      return tenantDb.run(async (manager) => {
+        const variant = await manager.findOne(ProductVariant, {
+          where: { id: variantId },
+        });
+        return variant!.stock;
+      });
+    });
+
+    const checkoutRes = await request(app.getHttpServer())
+      .post('/api/v1/checkout')
+      .set('Host', tenantHost)
+      .set('x-guest-session-id', sessionId)
+      .send({
+        customerEmail: 'guest-cancel@example.com',
+        shippingAddress: { street: '789 Pine St', city: 'City', country: 'US' },
+        paymentToken: 'mock_success',
+      })
+      .expect(201);
+
+    const cancelOrderId = checkoutRes.body.order.id;
+    expect(checkoutRes.body.order.status).toBe('paid');
+    expect(checkoutRes.body.order.paymentStatus).toBe('captured');
+
+    // 4b. Cancel the paid (captured) order via the admin transition endpoint
+    const cancelRes = await request(app.getHttpServer())
+      .patch(`/api/v1/merchant-admins/orders/${cancelOrderId}/status`)
+      .set('Host', tenantHost)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ status: 'cancelled' })
+      .expect(200);
+
+    expect(cancelRes.body.status).toBe('cancelled');
+    expect(cancelRes.body.paymentStatus).toBe('refunded');
+
+    // 4c. Stock should be restored to its pre-checkout level
+    const stockAfterCancel = await cls.run(async () => {
+      cls.set('tenantId', tenantId);
+      return tenantDb.run(async (manager) => {
+        const variant = await manager.findOne(ProductVariant, {
+          where: { id: variantId },
+        });
+        return variant!.stock;
+      });
+    });
+
+    expect(stockAfterCancel).toBe(stockBeforeCheckout);
+  });
 });

@@ -204,6 +204,44 @@ describe('OrdersService', () => {
       expect(result.paymentStatus).toBe('refunded');
     });
 
+    it('should propagate a refundPayment rejection and leave the order unsaved when auto-refunding a cancelled order fails', async () => {
+      const variant = { id: 'var-1', stock: 10 } as ProductVariant;
+      const mockOrder = {
+        id: 'order-paid-2',
+        tenantId: mockTenantId,
+        status: 'processing',
+        paymentStatus: 'captured',
+        totalCents: 5000,
+        items: [{ variantId: 'var-1', quantity: 3 } as OrderItem],
+      } as unknown as Order;
+
+      em.findOne.mockImplementation((entityClass: any) => {
+        if (entityClass === Order) return Promise.resolve(mockOrder);
+        if (entityClass === ProductVariant) return Promise.resolve(variant);
+        return Promise.resolve(null);
+      });
+
+      const refundError = new CodedNotFoundException(
+        ErrorCode.PAYMENT_NOT_FOUND,
+        'No captured payment found',
+      );
+      paymentsService.refundPayment.mockRejectedValueOnce(refundError);
+
+      await expect(
+        service.transitionStatus('order-paid-2', 'cancelled', 'admin'),
+      ).rejects.toThrow(refundError);
+
+      // The order was never transitioned/saved as cancelled: the throw
+      // happens before `order.status = newStatus` and before the
+      // subsequent `manager.save(Order, ...)` call.
+      expect(mockOrder.status).toBe('processing');
+      expect(mockOrder.paymentStatus).toBe('captured');
+      const orderSaveCalls = em.save.mock.calls.filter(
+        ([entityClass]: any[]) => entityClass === Order,
+      );
+      expect(orderSaveCalls).toHaveLength(0);
+    });
+
     it('should not refund when cancelling an order whose payment was never captured', async () => {
       const order = {
         id: mockOrderId,
@@ -393,7 +431,10 @@ describe('OrdersService', () => {
 
       em.findOne.mockImplementation(() => Promise.resolve(order));
 
-      const valid = await service.getGuestOrder('order-guest-1', 'raw_valid_token');
+      const valid = await service.getGuestOrder(
+        'order-guest-1',
+        'raw_valid_token',
+      );
       expect(valid.id).toBe('order-guest-1');
 
       await expect(
@@ -403,7 +444,6 @@ describe('OrdersService', () => {
 
     it('should safely handle token hash length mismatch without throwing RangeError', async () => {
       const rawToken = 'raw_valid_token';
-      const tokenHash = createHash('sha256').update(rawToken).digest('hex');
 
       const order = {
         id: 'order-guest-2',

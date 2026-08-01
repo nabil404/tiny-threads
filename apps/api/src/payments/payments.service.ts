@@ -62,9 +62,7 @@ export class PaymentsService {
       let settlement: Settlement | undefined;
 
       if (result.status === 'captured') {
-        const platformFeeCents = Math.round(
-          order.totalCents * (platformFeePercent / 100),
-        );
+        const platformFeeCents = Math.round(order.totalCents * (pct / 100));
         const merchantNetAmountCents = order.totalCents - platformFeeCents;
 
         settlement = em.create(Settlement, {
@@ -113,7 +111,7 @@ export class PaymentsService {
 
       if (!payment) {
         throw new CodedNotFoundException(
-          ErrorCode.ORDER_NOT_FOUND,
+          ErrorCode.PAYMENT_NOT_FOUND,
           'No captured payment found',
         );
       }

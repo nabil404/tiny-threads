@@ -59,17 +59,7 @@ export class OrdersService {
       }
 
       if (newStatus === 'cancelled') {
-        await this.restoreStockForOrder(manager, order);
-
-        if (order.paymentStatus === 'captured') {
-          await this.paymentsService.refundPayment(
-            order.id,
-            order.totalCents,
-            'Order cancelled',
-            manager,
-          );
-          order.paymentStatus = 'refunded';
-        }
+        await this.cancelOrderSideEffects(manager, order, actorType, actorId);
       }
 
       order.status = newStatus;
@@ -114,7 +104,7 @@ export class OrdersService {
         );
       }
 
-      await this.restoreStockForOrder(manager, order);
+      await this.cancelOrderSideEffects(manager, order, 'customer', customerId);
 
       order.status = 'cancelled';
       const savedOrder = await manager.save(Order, order);
@@ -287,6 +277,47 @@ export class OrdersService {
 
       return order;
     });
+  }
+
+  /**
+   * Shared "cancel" side effects used by both the admin/merchant
+   * transition path and the customer self-cancel path: restores stock
+   * for the order, and — if the order's payment was already captured —
+   * refunds it and records a `refunded` OrderEvent. Keeping this in one
+   * place means the two cancellation paths can't drift apart.
+   */
+  private async cancelOrderSideEffects(
+    manager: EntityManager,
+    order: Order,
+    actorType: string,
+    actorId?: string,
+  ): Promise<void> {
+    await this.restoreStockForOrder(manager, order);
+
+    if (order.paymentStatus === 'captured') {
+      await this.paymentsService.refundPayment(
+        order.id,
+        order.totalCents,
+        'Order cancelled',
+        manager,
+      );
+      order.paymentStatus = 'refunded';
+
+      const tenantId = this.cls.get<string>('tenantId') || order.tenantId;
+
+      const refundEvent = manager.create(OrderEvent, {
+        tenantId,
+        orderId: order.id,
+        eventType: 'refunded',
+        actorType,
+        actorId: actorId ?? undefined,
+        metadata: {
+          amountCents: order.totalCents,
+          reason: 'Order cancelled',
+        },
+      });
+      await manager.save(OrderEvent, refundEvent);
+    }
   }
 
   private async restoreStockForOrder(
