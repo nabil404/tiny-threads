@@ -37,13 +37,15 @@ describe('withTenant (RLS isolation)', () => {
     name: 'Customer B',
   };
 
-  function baseOrder(tenantId: string, customerId: string) {
+  function baseOrder(tenantId: string, customerId: string, email = 'test@example.com') {
     return {
       tenantId,
       customerId,
+      customerEmail: email,
+      shippingAddress: { line1: '123 Main St', countryCode: 'US' },
       currencyCode: currency.code,
-      status: 'pending' as const,
-      paymentStatus: 'pending' as const,
+      status: 'pending_payment',
+      paymentStatus: 'pending',
       totalCents: 1000,
     };
   }
@@ -109,19 +111,13 @@ describe('withTenant (RLS isolation)', () => {
     await runAs(tenantA.id, (manager) => {
       const repo = manager.getRepository(Order);
       return repo.save(
-        repo.create({
-          ...baseOrder(tenantA.id, customerA.id),
-          number: 'A-1',
-        }),
+        repo.create(baseOrder(tenantA.id, customerA.id, 'customer-a@example.com')),
       );
     });
     await runAs(tenantB.id, (manager) => {
       const repo = manager.getRepository(Order);
       return repo.save(
-        repo.create({
-          ...baseOrder(tenantB.id, customerB.id),
-          number: 'B-1',
-        }),
+        repo.create(baseOrder(tenantB.id, customerB.id, 'customer-b@example.com')),
       );
     });
 
@@ -133,9 +129,9 @@ describe('withTenant (RLS isolation)', () => {
     );
 
     expect(ordersForA).toHaveLength(1);
-    expect(ordersForA[0].number).toBe('A-1');
+    expect(ordersForA[0].customerEmail).toBe('customer-a@example.com');
     expect(ordersForB).toHaveLength(1);
-    expect(ordersForB[0].number).toBe('B-1');
+    expect(ordersForB[0].customerEmail).toBe('customer-b@example.com');
   });
 
   it('cannot write a row into another tenant (WITH CHECK rejects it)', async () => {
@@ -143,10 +139,7 @@ describe('withTenant (RLS isolation)', () => {
       runAs(tenantA.id, (manager) => {
         const repo = manager.getRepository(Order);
         return repo.save(
-          repo.create({
-            ...baseOrder(tenantB.id, customerB.id),
-            number: 'SNEAKY',
-          }),
+          repo.create(baseOrder(tenantB.id, customerB.id, 'sneaky@example.com')),
         );
       }),
     ).rejects.toThrow();

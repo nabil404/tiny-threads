@@ -18,6 +18,7 @@ const TENANT_SCOPED_TABLES = [
   'customer_refresh_tokens',
   'carts',
   'cart_items',
+  'tenant_settings',
   'orders',
   'order_items',
   'order_events',

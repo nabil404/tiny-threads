@@ -1,0 +1,28 @@
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { ImmutableTenantEntityBase } from './base';
+import { Order } from './order.entity';
+
+@Entity({ name: 'order_events' })
+export class OrderEvent extends ImmutableTenantEntityBase {
+  @Column({ name: 'order_id', type: 'uuid' })
+  orderId!: string;
+
+  @Column({ name: 'event_type', type: 'varchar' })
+  eventType!: string;
+
+  @Column({ name: 'actor_type', type: 'varchar' })
+  actorType!: string;
+
+  @Column({ name: 'actor_id', type: 'varchar', nullable: true })
+  actorId?: string;
+
+  @Column({ name: 'metadata', type: 'jsonb', nullable: true })
+  metadata?: Record<string, any>;
+
+  @ManyToOne(() => Order)
+  @JoinColumn([
+    { name: 'tenant_id', referencedColumnName: 'tenantId' },
+    { name: 'order_id', referencedColumnName: 'id' },
+  ])
+  order?: Order;
+}
