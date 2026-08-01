@@ -16,6 +16,7 @@ import { ProductsModule } from '../products/products.module';
 import { CartsModule } from '../carts/carts.module';
 import { CustomerAddressesModule } from '../customer-addresses/customer-addresses.module';
 import { TenantSettingsModule } from '../tenant-settings/tenant-settings.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { validate } from '../config/env.validation';
 
 @Module({
@@ -33,6 +34,7 @@ import { validate } from '../config/env.validation';
     CartsModule,
     CustomerAddressesModule,
     TenantSettingsModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
