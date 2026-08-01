@@ -20,9 +20,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { randomUUID } from 'crypto';
-import { isUUID } from 'class-validator';
-import { CodedBadRequestException } from '../common/errors/coded-exceptions';
-import { ErrorCode } from '@tiny-threads/shared';
+import { resolveGuestSessionId } from '../common/utils/guest-session';
 import { CartsService } from './carts.service';
 import { Cart } from '../db/entities/carts.entity';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
@@ -61,7 +59,7 @@ export class CartsController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const customerId = this.getCustomerId(req);
-    let sessionId = this.resolveGuestSessionId(guestSessionId);
+    let sessionId = resolveGuestSessionId(guestSessionId);
 
     if (!customerId && !sessionId) {
       sessionId = randomUUID();
@@ -92,7 +90,7 @@ export class CartsController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const customerId = this.getCustomerId(req);
-    let sessionId = this.resolveGuestSessionId(guestSessionId);
+    let sessionId = resolveGuestSessionId(guestSessionId);
 
     if (!customerId && !sessionId) {
       sessionId = randomUUID();
@@ -130,7 +128,7 @@ export class CartsController {
     const customerId = this.getCustomerId(req);
     const cart = await this.cartsService.getActiveCart(
       customerId,
-      this.resolveGuestSessionId(guestSessionId),
+      resolveGuestSessionId(guestSessionId),
     );
     const updatedCart = await this.cartsService.updateItemQty(
       cart.id,
@@ -161,7 +159,7 @@ export class CartsController {
     const customerId = this.getCustomerId(req);
     const cart = await this.cartsService.getActiveCart(
       customerId,
-      this.resolveGuestSessionId(guestSessionId),
+      resolveGuestSessionId(guestSessionId),
     );
     const updatedCart = await this.cartsService.removeItem(cart.id, itemId);
     return this.formatCartResponse(updatedCart);
@@ -192,24 +190,6 @@ export class CartsController {
   // JWT payload's customer id lives in `sub`, not `id`.
   private getCustomerId(req: Request): string | undefined {
     return (req.user as CustomerAccessTokenPayload | undefined)?.sub;
-  }
-
-  // The session id is an attacker-controlled header that ends up as a lookup
-  // key (and, on GET/POST, a new row). Constraining it to the UUID shape we
-  // hand out ourselves keeps it from being used to spray arbitrary keys.
-  // A blank header is treated as absent rather than rejected.
-  private resolveGuestSessionId(raw: string | undefined): string | undefined {
-    const sessionId = raw?.trim();
-    if (!sessionId) {
-      return undefined;
-    }
-    if (!isUUID(sessionId)) {
-      throw new CodedBadRequestException(
-        ErrorCode.VALIDATION_FAILED,
-        'x-guest-session-id must be a valid UUID',
-      );
-    }
-    return sessionId;
   }
 
   private formatCartResponse(cart: Cart) {

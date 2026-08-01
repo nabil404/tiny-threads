@@ -54,7 +54,7 @@ describe('OrdersService', () => {
     savedEntities = [];
     em = {
       findOne: jest.fn(),
-      find: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
       save: jest.fn((entityOrClass: any, entity?: any) => {
         const target = entity ?? entityOrClass;
         savedEntities.push(target);
@@ -265,6 +265,40 @@ describe('OrdersService', () => {
 
       expect(paymentsService.refundPayment).not.toHaveBeenCalled();
       expect(result.paymentStatus).toBe('pending');
+    });
+
+    it('should refund only the remaining balance when cancelling a partially-refunded order', async () => {
+      const variant = { id: 'var-1', stock: 10 } as ProductVariant;
+      const mockOrder = {
+        id: 'order-partial-1',
+        tenantId: mockTenantId,
+        status: 'processing',
+        paymentStatus: 'partially_refunded',
+        totalCents: 5000,
+        items: [{ variantId: 'var-1', quantity: 3 } as OrderItem],
+      } as unknown as Order;
+
+      em.findOne.mockImplementation((entityClass: any) => {
+        if (entityClass === Order) return Promise.resolve(mockOrder);
+        if (entityClass === ProductVariant) return Promise.resolve(variant);
+        return Promise.resolve(null);
+      });
+      // 2000 of the 5000 total was already refunded manually.
+      em.find.mockResolvedValue([{ amountCents: 2000 } as Refund]);
+
+      const result = await service.transitionStatus(
+        'order-partial-1',
+        'cancelled',
+        'admin',
+      );
+
+      expect(paymentsService.refundPayment).toHaveBeenCalledWith(
+        'order-partial-1',
+        3000,
+        'Order cancelled',
+        expect.anything(),
+      );
+      expect(result.paymentStatus).toBe('refunded');
     });
 
     it('should lock variants pessimistically and restore stock in variantId order regardless of item order', async () => {

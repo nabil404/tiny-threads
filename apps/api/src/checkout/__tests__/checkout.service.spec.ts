@@ -5,6 +5,7 @@ import { TenantSettingsService } from '../../tenant-settings/tenant-settings.ser
 import { PaymentsService } from '../../payments/payments.service';
 import { ClsService } from 'nestjs-cls';
 import { CheckoutDto } from '../dto/checkout.dto';
+import { getMetadataStorage } from 'class-validator';
 import { ErrorCode } from '@tiny-threads/shared';
 import {
   CodedBadRequestException,
@@ -275,9 +276,34 @@ describe('CheckoutService', () => {
     expect(tenantSettingsService.getSettings).toHaveBeenCalledTimes(1);
   });
 
+  it('5b. fetches (and would persist) tenant settings even when the checkout transaction itself subsequently fails — settings are no longer rolled back together with a failed checkout (behavioral change from un-nesting, R3)', async () => {
+    tenantDbService.run.mockRejectedValue(new Error('checkout tx failed'));
+
+    await expect(
+      service.checkout(dto, undefined, 'guest-session-1'),
+    ).rejects.toThrow('checkout tx failed');
+
+    // getSettings resolved (and, since it runs in its own tenantDb.run
+    // outside the checkout transaction, would have already committed) before
+    // the checkout transaction ever opened and failed.
+    expect(tenantSettingsService.getSettings).toHaveBeenCalledTimes(1);
+  });
+
   describe('IDOR protection (R4): cart identity is derived, never client-supplied', () => {
     it('6. does not accept a cartId on the DTO at all', () => {
-      expect((dto as any).cartId).toBeUndefined();
+      // Guards against the class field simply being re-declared without a
+      // validation decorator (which `instance.cartId` alone wouldn't catch,
+      // since a fixture object never assigns it either way): check the
+      // class-validator metadata itself for any constraint targeting a
+      // `cartId` property on CheckoutDto.
+      const constraints = getMetadataStorage().getTargetValidationMetadatas(
+        CheckoutDto,
+        '',
+        false,
+        false,
+      );
+      expect(constraints.some((c) => c.propertyName === 'cartId')).toBe(false);
+      expect(Object.keys(new CheckoutDto())).not.toContain('cartId');
     });
 
     it("7. looks up the cart using activeCartWhere(customerId, sessionId), scoped to the caller's own identity — not any client-supplied id", async () => {

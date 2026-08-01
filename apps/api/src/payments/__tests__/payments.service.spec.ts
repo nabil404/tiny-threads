@@ -115,6 +115,33 @@ describe('PaymentsService', () => {
       ).rejects.toThrow(CodedBadRequestException);
     });
 
+    it('should accept the boundary values 0 and 100 for platformFeePercent', async () => {
+      const em = {
+        create: jest.fn().mockImplementation((entityClass, data) => ({
+          id: `${entityClass.name.toLowerCase()}-id`,
+          ...data,
+        })),
+        save: jest.fn().mockImplementation((entityClass, data) => data),
+      };
+      tenantDbService.run.mockImplementation(async (cb) => cb(em as any));
+
+      const zeroFeeResult = await service.processOrderPayment(
+        dummyOrder,
+        'mock_success',
+        0,
+      );
+      expect(zeroFeeResult.settlement?.platformFeeCents).toBe(0);
+      expect(zeroFeeResult.settlement?.merchantNetAmountCents).toBe(10000);
+
+      const fullFeeResult = await service.processOrderPayment(
+        dummyOrder,
+        'mock_success',
+        100,
+      );
+      expect(fullFeeResult.settlement?.platformFeeCents).toBe(10000);
+      expect(fullFeeResult.settlement?.merchantNetAmountCents).toBe(0);
+    });
+
     it('should use provided EntityManager when passed', async () => {
       const mockEm = {
         create: jest.fn().mockImplementation((entityClass, data) => ({
@@ -154,7 +181,7 @@ describe('PaymentsService', () => {
       updatedAt: new Date(),
     } as Payment;
 
-    it('should throw ORDER_NOT_FOUND if no captured payment is found', async () => {
+    it('should throw PAYMENT_NOT_FOUND if no captured payment is found', async () => {
       tenantDbService.run.mockImplementation(async (cb) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
@@ -165,6 +192,12 @@ describe('PaymentsService', () => {
       await expect(service.refundPayment('order-1', 3000)).rejects.toThrow(
         CodedNotFoundException,
       );
+
+      try {
+        await service.refundPayment('order-1', 3000);
+      } catch (err: any) {
+        expect(err.getResponse().code).toBe(ErrorCode.PAYMENT_NOT_FOUND);
+      }
     });
 
     it('should throw REFUND_EXCEEDS_PAYMENT if refund sum exceeds payment amount', async () => {

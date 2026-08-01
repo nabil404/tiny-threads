@@ -35,7 +35,7 @@ export class CheckoutService {
     if (!customerId && !sessionId) {
       throw new CodedBadRequestException(
         ErrorCode.VALIDATION_FAILED,
-        'Either customerId or sessionId must be provided',
+        'x-guest-session-id header is required for guest checkout',
       );
     }
 

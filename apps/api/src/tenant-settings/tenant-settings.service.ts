@@ -16,6 +16,12 @@ export class TenantSettingsService {
     const work = async (em: EntityManager) => {
       let settings = await em.findOne(TenantSettings, { where: {} });
       if (!settings) {
+        // Relies solely on CLS (no tenantId fallback param) — safe for
+        // every current caller since TenantResolutionMiddleware always
+        // populates it before a request reaches a service. A future
+        // background job calling this outside request context would need
+        // to seed CLS itself, or this creates a row with tenantId: undefined
+        // and fails the NOT NULL constraint.
         const tId = this.cls.get<string>('tenantId');
         settings = em.create(TenantSettings, {
           tenantId: tId,

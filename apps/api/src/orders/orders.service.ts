@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { timingSafeEqual } from 'node:crypto';
 import { EntityManager } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
 import { ErrorCode } from '@tiny-threads/shared';
@@ -149,7 +148,7 @@ export class OrdersService {
         !order ||
         !stored ||
         stored.length !== supplied.length ||
-        !timingSafeEqual(stored, supplied)
+        !crypto.timingSafeEqual(stored, supplied)
       ) {
         throw new CodedNotFoundException(
           ErrorCode.ORDER_NOT_FOUND,
@@ -294,29 +293,47 @@ export class OrdersService {
   ): Promise<void> {
     await this.restoreStockForOrder(manager, order);
 
-    if (order.paymentStatus === 'captured') {
-      await this.paymentsService.refundPayment(
-        order.id,
-        order.totalCents,
-        'Order cancelled',
-        manager,
-      );
-      order.paymentStatus = 'refunded';
-
-      const tenantId = this.cls.get<string>('tenantId') || order.tenantId;
-
-      const refundEvent = manager.create(OrderEvent, {
-        tenantId,
-        orderId: order.id,
-        eventType: 'refunded',
-        actorType,
-        actorId: actorId ?? undefined,
-        metadata: {
-          amountCents: order.totalCents,
-          reason: 'Order cancelled',
-        },
+    if (
+      order.paymentStatus === 'captured' ||
+      order.paymentStatus === 'partially_refunded'
+    ) {
+      // A partially-refunded order (via the manual refundOrder endpoint)
+      // still has a captured balance outstanding — refund exactly that
+      // remainder, not the full order total, or refundPayment's
+      // REFUND_EXCEEDS_PAYMENT guard would reject it.
+      const existingRefunds = await manager.find(Refund, {
+        where: { orderId: order.id },
       });
-      await manager.save(OrderEvent, refundEvent);
+      const alreadyRefundedCents = existingRefunds.reduce(
+        (sum, r) => sum + r.amountCents,
+        0,
+      );
+      const remainingCents = order.totalCents - alreadyRefundedCents;
+
+      if (remainingCents > 0) {
+        await this.paymentsService.refundPayment(
+          order.id,
+          remainingCents,
+          'Order cancelled',
+          manager,
+        );
+        order.paymentStatus = 'refunded';
+
+        const tenantId = this.cls.get<string>('tenantId') || order.tenantId;
+
+        const refundEvent = manager.create(OrderEvent, {
+          tenantId,
+          orderId: order.id,
+          eventType: 'refunded',
+          actorType,
+          actorId: actorId ?? undefined,
+          metadata: {
+            amountCents: remainingCents,
+            reason: 'Order cancelled',
+          },
+        });
+        await manager.save(OrderEvent, refundEvent);
+      }
     }
   }
 

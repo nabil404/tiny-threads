@@ -14,13 +14,11 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { isUUID } from 'class-validator';
 import { CheckoutService } from './checkout.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { OptionalCustomerJwtAuthGuard } from '../customers/guards/optional-customer-jwt-auth.guard';
 import { CustomerAccessTokenPayload } from '../auth-core/services/token.service';
-import { CodedBadRequestException } from '../common/errors/coded-exceptions';
-import { ErrorCode } from '@tiny-threads/shared';
+import { resolveGuestSessionId } from '../common/utils/guest-session';
 
 @ApiTags('checkout')
 @ApiHeader({
@@ -61,25 +59,7 @@ export class CheckoutController {
     return this.checkoutService.checkout(
       dto,
       customerId,
-      this.resolveGuestSessionId(guestSessionId),
+      resolveGuestSessionId(guestSessionId),
     );
-  }
-
-  // Mirrors CartsController.resolveGuestSessionId: the session id is an
-  // attacker-controlled header that ends up as a cart lookup key, so it's
-  // constrained to the UUID shape we hand out ourselves. A blank header is
-  // treated as absent rather than rejected.
-  private resolveGuestSessionId(raw: string | undefined): string | undefined {
-    const sessionId = raw?.trim();
-    if (!sessionId) {
-      return undefined;
-    }
-    if (!isUUID(sessionId)) {
-      throw new CodedBadRequestException(
-        ErrorCode.VALIDATION_FAILED,
-        'x-guest-session-id must be a valid UUID',
-      );
-    }
-    return sessionId;
   }
 }
