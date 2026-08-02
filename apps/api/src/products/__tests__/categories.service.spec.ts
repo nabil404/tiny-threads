@@ -253,15 +253,18 @@ describe('CategoriesService', () => {
         parentId: null,
         children: [],
       };
+      let softRemoveSpy: jest.Mock;
       tenantDbService.run.mockImplementation(async (cb) => {
+        softRemoveSpy = jest.fn().mockResolvedValue(mockCategory);
         const em = {
           findOne: jest.fn().mockResolvedValue(mockCategory),
-          remove: jest.fn().mockResolvedValue(mockCategory),
+          softRemove: softRemoveSpy,
         };
         return cb(em as any);
       });
 
       await expect(service.delete('cat-1')).resolves.not.toThrow();
+      expect(softRemoveSpy!).toHaveBeenCalledWith(mockCategory);
     });
 
     it('throws CodedNotFoundException if category does not exist', async () => {

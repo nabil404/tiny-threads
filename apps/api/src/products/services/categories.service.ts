@@ -169,7 +169,7 @@ export class CategoriesService {
         );
       }
 
-      await em.remove(category);
+      await em.softRemove(category);
     });
   }
 }

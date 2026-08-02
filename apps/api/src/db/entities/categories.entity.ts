@@ -6,14 +6,14 @@ import {
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { TenantEntityBase } from './base';
+import { SoftDeletableTenantEntityBase } from './base';
 import { Tenant } from './tenants.entity';
 
 // Self-referential adjacency-list hierarchy; composite self-FK keeps a
 // category's parent within the same tenant.
 @Entity({ name: 'categories' })
 @Index('categories_tenant_parent_idx', ['tenantId', 'parentId'])
-export class Category extends TenantEntityBase {
+export class Category extends SoftDeletableTenantEntityBase {
   @ManyToOne(() => Tenant)
   @JoinColumn({ name: 'tenant_id', referencedColumnName: 'id' })
   tenant?: Tenant;
