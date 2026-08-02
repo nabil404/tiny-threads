@@ -448,11 +448,7 @@ export class ProductsService {
       const isDefault = dto.isDefault ?? false;
       if (isDefault) {
         // Demote existing defaults for this product
-        await em.update(
-          ProductVariant,
-          { productId },
-          { isDefault: false },
-        );
+        await em.update(ProductVariant, { productId }, { isDefault: false });
       }
 
       const variant = em.create(ProductVariant, {
@@ -537,11 +533,7 @@ export class ProductsService {
 
       if (dto.isDefault === true && !variant.isDefault) {
         // Demote existing defaults for this product
-        await em.update(
-          ProductVariant,
-          { productId },
-          { isDefault: false },
-        );
+        await em.update(ProductVariant, { productId }, { isDefault: false });
         variant.isDefault = true;
       } else if (dto.isDefault === false && variant.isDefault) {
         throw new CodedBadRequestException(

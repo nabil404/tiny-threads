@@ -21,7 +21,10 @@ describe('ProductsService - Single Variant Operations', () => {
     mockEntityManager = {
       findOne: jest.fn(),
       find: jest.fn(),
-      create: jest.fn((entityClass, dto) => ({ ...dto, id: 'var-generated-id' })),
+      create: jest.fn((entityClass, dto) => ({
+        ...dto,
+        id: 'var-generated-id',
+      })),
       save: jest.fn((entityClass, entity) => Promise.resolve(entity)),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
@@ -58,10 +61,15 @@ describe('ProductsService - Single Variant Operations', () => {
   describe('createVariant', () => {
     it('should create a variant successfully', async () => {
       mockEntityManager.findOne
-        .mockResolvedValueOnce({ id: 'prod-1' } as Product) // product check
+        .mockResolvedValueOnce({ id: 'prod-1' }) // product check
         .mockResolvedValueOnce(null); // SKU check
 
-      const dto = { sku: 'SKU-1', priceCents: 1000, stock: 10, isDefault: true };
+      const dto = {
+        sku: 'SKU-1',
+        priceCents: 1000,
+        stock: 10,
+        isDefault: true,
+      };
       const result = await service.createVariant('prod-1', dto);
 
       expect(mockEntityManager.update).toHaveBeenCalledWith(
@@ -77,24 +85,34 @@ describe('ProductsService - Single Variant Operations', () => {
       mockEntityManager.findOne.mockResolvedValueOnce(null);
 
       await expect(
-        service.createVariant('non-existent', { sku: 'SKU-1', priceCents: 1000, stock: 10 }),
+        service.createVariant('non-existent', {
+          sku: 'SKU-1',
+          priceCents: 1000,
+          stock: 10,
+        }),
       ).rejects.toThrow(CodedNotFoundException);
     });
 
     it('should throw CodedConflictException if SKU already exists', async () => {
       mockEntityManager.findOne
-        .mockResolvedValueOnce({ id: 'prod-1' } as Product)
+        .mockResolvedValueOnce({ id: 'prod-1' })
         .mockResolvedValueOnce({ id: 'existing-var', sku: 'SKU-1' });
 
       await expect(
-        service.createVariant('prod-1', { sku: 'SKU-1', priceCents: 1000, stock: 10 }),
+        service.createVariant('prod-1', {
+          sku: 'SKU-1',
+          priceCents: 1000,
+          stock: 10,
+        }),
       ).rejects.toThrow(CodedConflictException);
     });
   });
 
   describe('findVariantsByProduct', () => {
     it('should return list of variants for product', async () => {
-      mockEntityManager.findOne.mockResolvedValueOnce({ id: 'prod-1' } as Product);
+      mockEntityManager.findOne.mockResolvedValueOnce({
+        id: 'prod-1',
+      });
       mockEntityManager.find.mockResolvedValueOnce([
         { id: 'var-1', sku: 'SKU-1' },
         { id: 'var-2', sku: 'SKU-2' },
@@ -107,15 +125,18 @@ describe('ProductsService - Single Variant Operations', () => {
     it('should throw CodedNotFoundException if product does not exist', async () => {
       mockEntityManager.findOne.mockResolvedValueOnce(null);
 
-      await expect(service.findVariantsByProduct('non-existent')).rejects.toThrow(
-        CodedNotFoundException,
-      );
+      await expect(
+        service.findVariantsByProduct('non-existent'),
+      ).rejects.toThrow(CodedNotFoundException);
     });
   });
 
   describe('findVariantById', () => {
     it('should return a single variant by id', async () => {
-      mockEntityManager.findOne.mockResolvedValueOnce({ id: 'var-1', productId: 'prod-1' });
+      mockEntityManager.findOne.mockResolvedValueOnce({
+        id: 'var-1',
+        productId: 'prod-1',
+      });
 
       const result = await service.findVariantById('prod-1', 'var-1');
       expect(result.id).toBe('var-1');
@@ -124,18 +145,25 @@ describe('ProductsService - Single Variant Operations', () => {
     it('should throw CodedNotFoundException if variant not found', async () => {
       mockEntityManager.findOne.mockResolvedValueOnce(null);
 
-      await expect(service.findVariantById('prod-1', 'non-existent')).rejects.toThrow(
-        CodedNotFoundException,
-      );
+      await expect(
+        service.findVariantById('prod-1', 'non-existent'),
+      ).rejects.toThrow(CodedNotFoundException);
     });
   });
 
   describe('updateVariant', () => {
     it('should update a variant successfully', async () => {
-      const existing = { id: 'var-1', productId: 'prod-1', sku: 'SKU-OLD', isDefault: false };
+      const existing = {
+        id: 'var-1',
+        productId: 'prod-1',
+        sku: 'SKU-OLD',
+        isDefault: false,
+      };
       mockEntityManager.findOne.mockResolvedValueOnce(existing);
 
-      const result = await service.updateVariant('prod-1', 'var-1', { priceCents: 2000 });
+      const result = await service.updateVariant('prod-1', 'var-1', {
+        priceCents: 2000,
+      });
       expect(mockEntityManager.save).toHaveBeenCalled();
     });
 
@@ -159,7 +187,12 @@ describe('ProductsService - Single Variant Operations', () => {
     });
 
     it('should throw CodedBadRequestException when unsetting default on a default variant even if multiple variants exist', async () => {
-      const existing = { id: 'var-1', productId: 'prod-1', sku: 'SKU-1', isDefault: true };
+      const existing = {
+        id: 'var-1',
+        productId: 'prod-1',
+        sku: 'SKU-1',
+        isDefault: true,
+      };
       mockEntityManager.findOne.mockResolvedValueOnce(existing);
       mockEntityManager.count.mockResolvedValueOnce(2);
 
@@ -172,8 +205,18 @@ describe('ProductsService - Single Variant Operations', () => {
   describe('deleteVariant', () => {
     it('should delete variant and promote remaining if deleted variant was default', async () => {
       const variants = [
-        { id: 'var-1', productId: 'prod-1', isDefault: true, createdAt: new Date('2026-01-01') },
-        { id: 'var-2', productId: 'prod-1', isDefault: false, createdAt: new Date('2026-01-02') },
+        {
+          id: 'var-1',
+          productId: 'prod-1',
+          isDefault: true,
+          createdAt: new Date('2026-01-01'),
+        },
+        {
+          id: 'var-2',
+          productId: 'prod-1',
+          isDefault: false,
+          createdAt: new Date('2026-01-02'),
+        },
       ];
       mockEntityManager.find.mockResolvedValueOnce(variants);
 
@@ -193,9 +236,9 @@ describe('ProductsService - Single Variant Operations', () => {
     it('should throw CodedNotFoundException if variant not found', async () => {
       mockEntityManager.find.mockResolvedValueOnce([]);
 
-      await expect(service.deleteVariant('prod-1', 'non-existent')).rejects.toThrow(
-        CodedNotFoundException,
-      );
+      await expect(
+        service.deleteVariant('prod-1', 'non-existent'),
+      ).rejects.toThrow(CodedNotFoundException);
     });
 
     it('should throw CodedBadRequestException when deleting the only variant', async () => {
