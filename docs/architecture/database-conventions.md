@@ -6,7 +6,30 @@ this document carries the **rationale** (why the rules exist and what happens
 when they are violated). See `docs/architecture/architecture.md` for the
 multi-tenancy and RLS foundations these conventions build on.
 
-## 1. Entity base classes
+## 1. Shape of the system
+
+```mermaid
+flowchart TD
+    subgraph App ["apps/api request lifecycle"]
+        MW["TenantResolutionMiddleware\n(populates CLS tenantId)"]
+        SVC["Domain Service\n(e.g. OrdersService)"]
+        TDB["TenantDbService.run(work)\n(reads tenantId from CLS)"]
+        GATE["withTenant()\n(opens transaction,\nSELECT set_config('app.current_tenant', $1, true))"]
+    end
+
+    subgraph PG ["PostgreSQL 16"]
+        RLS["Row-Level Security\n(USING tenant_id = current_setting(...))"]
+        TABLE["Tenant-scoped table\n(composite PK: tenant_id + id)"]
+    end
+
+    MW -->|"cls.set('tenantId', ...)"| SVC
+    SVC --> TDB
+    TDB --> GATE
+    GATE --> RLS
+    RLS --> TABLE
+```
+
+## 2. Entity base classes
 
 Every entity in `apps/api` extends one of five base classes. The choice is
 determined by whether the entity is tenant-scoped and whether rows are ever
@@ -34,7 +57,7 @@ generateId() {
 at the end of the leaf page rather than at random positions, reducing page
 splits and improving cache efficiency versus random UUIDv4.
 
-## 2. RLS pattern
+## 3. RLS pattern
 
 ### The gate: `TenantDbService.run()`
 
@@ -88,7 +111,7 @@ fine for DDL. But if the application's `DATABASE_URL` ever pointed at
 the roles would be violated — even if `FORCE` protects you in theory, the
 separation of DDL and DML roles is a structural guarantee not a per-query one.
 
-## 3. Migration rules
+## 4. Migration rules
 
 ### Timestamp ordering
 
@@ -134,7 +157,7 @@ pnpm db:verify-rls     # Check that every tenant-scoped table has ENABLE + FORCE
 is added without calling `enableRls(queryRunner, table)` in its migration,
 `db:verify-rls` fails and blocks CI.
 
-## 4. Index conventions
+## 5. Index conventions
 
 ### Every tenant-scoped entity needs at least one composite index
 
@@ -168,7 +191,7 @@ Examples:
 - `orders_tenant_created_idx` (`tenant_id`, `created_at`)
 - `products_tenant_status_idx` (`tenant_id`, `status`)
 
-## 5. Numeric transformer pattern
+## 6. Numeric transformer pattern
 
 PostgreSQL `numeric` columns are returned as strings by the `pg` Node.js
 driver. A column declared as:
@@ -194,7 +217,7 @@ price!: number;
 Without the transformer, TypeScript typed as `number` but JS-valued as
 `string` causes silent arithmetic failures (e.g. `"1.00" + "2.00"` = `"1.002.00"`).
 
-## 6. Background job tenancy
+## 7. Background job tenancy
 
 Background jobs run without an HTTP request — there is no
 `TenantResolutionMiddleware` to populate CLS. Jobs that need to operate across
@@ -225,7 +248,7 @@ The `cls.run()` call creates a new AsyncLocalStorage scope, ensuring that
 `cls.get('tenantId')` inside `tenantDb.run` reads the correct tenant for
 each iteration.
 
-## 7. Static guards
+## 8. Static guards
 
 Two spec files run on every test invocation (`pnpm test`) and enforce
 structural rules that would otherwise only surface at runtime:
@@ -238,6 +261,27 @@ structural rules that would otherwise only surface at runtime:
 These specs have no runtime dependencies — they import and inspect TypeORM
 metadata directly. They run fast and catch structural violations before any
 code reaches a database.
+
+## 9. Programmatic interface
+
+This document describes infrastructure conventions. There is no HTTP API surface.
+The programmatic interface exposed to domain code is:
+
+| Symbol | Module | Description |
+|---|---|---|
+| `TenantDbService.run(work)` | `db/tenant-db.service.ts` | The sole entry point for all tenant-scoped DB access. Reads `tenantId` from CLS, opens a transaction, sets `app.current_tenant`, runs `work(manager)`. |
+| `withTenant(dataSource, cls, work)` | `db/tenant-db.ts` | The underlying function wrapped by `TenantDbService.run`. Never call directly from domain code. |
+| `enableRls(queryRunner, table)` | `db/migrations/helpers/rls.helper.ts` | Migration helper: `ENABLE + FORCE + CREATE POLICY + verify`. Called in every tenant-scoped table's `up()`. |
+| `disableRls(queryRunner, table)` | `db/migrations/helpers/rls.helper.ts` | Migration helper: reverses `enableRls`. Called in `down()` before `DROP TABLE`. |
+
+## 10. Runtime errors
+
+| Error | Thrown by | When |
+|---|---|---|
+| `Error: withTenant called with no tenant in context` | `withTenant` / `TenantDbService.run` | CLS `tenantId` is unset — a route bypassed `TenantResolutionMiddleware` without setting CLS itself |
+| Migration fails with `RLS verification failed` | `enableRls` helper | One of `ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL SECURITY`, or `CREATE POLICY` did not take effect |
+| Jest: `migration-order.spec.ts` assertion error | Static spec | Timestamp out of order, class name / `name` mismatch, or `DROP TABLE` in `up()` without same-`up()` creation |
+| Jest: `entity-metadata.spec.ts` assertion error | Static spec | A composite index on a tenant-scoped entity does not lead with `tenantId` |
 
 ## Related
 

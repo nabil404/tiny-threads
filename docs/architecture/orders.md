@@ -206,7 +206,7 @@ flowchart TD
     A["@Cron(EVERY_5_MINUTES)"] --> B["Fetch all Tenant rows via DataSource\n(global table, no RLS)"]
     B --> C{"For each tenant"}
     C --> D["cls.run(() => {\n  cls.set('tenantId', tenant.id);\n  await tenantDb.run(...)\n})"]
-    D --> E["SELECT orders WHERE status='pending_payment'\nAND expires_at < NOW()"]
+    D --> E["SELECT orders WHERE status='pending'\nAND payment_status='pending'\nAND expires_at < NOW()"]
     E --> F["For each expired order: transition to cancelled\n(stock restore + refund if paid)"]
     F --> C
 ```
