@@ -8,6 +8,8 @@ import { ProductCategory } from '../../db/entities/product-categories.entity';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { ProductQueryDto } from '../dto/product-query.dto';
+import { CreateProductVariantDto } from '../dto/create-product-variant.dto';
+import { UpdateProductVariantDto } from '../dto/update-product-variant.dto';
 import {
   CodedNotFoundException,
   CodedBadRequestException,
@@ -415,6 +417,183 @@ export class ProductsService {
       }
       product.status = 'archived';
       await em.save(Product, product);
+    });
+  }
+
+  async createVariant(
+    productId: string,
+    dto: CreateProductVariantDto,
+  ): Promise<ProductVariant> {
+    return this.tenantDb.run(async (em) => {
+      const tenantId = this.cls.get<string>('tenantId');
+      const product = await em.findOne(Product, { where: { id: productId } });
+      if (!product) {
+        throw new CodedNotFoundException(
+          ErrorCode.RESOURCE_NOT_FOUND,
+          `Product with ID ${productId} not found`,
+        );
+      }
+
+      // Check SKU uniqueness
+      const existingSku = await em.findOne(ProductVariant, {
+        where: { sku: dto.sku },
+      });
+      if (existingSku) {
+        throw new CodedConflictException(
+          ErrorCode.DUPLICATE_RESOURCE,
+          `Variant SKU ${dto.sku} already exists`,
+        );
+      }
+
+      const isDefault = dto.isDefault ?? false;
+      if (isDefault) {
+        // Demote existing defaults for this product
+        await em.update(
+          ProductVariant,
+          { productId },
+          { isDefault: false },
+        );
+      }
+
+      const variant = em.create(ProductVariant, {
+        tenantId,
+        productId,
+        sku: dto.sku,
+        priceCents: dto.priceCents,
+        stock: dto.stock,
+        isDefault,
+      });
+
+      return this.saveWithUniqueCheck(() => em.save(ProductVariant, variant));
+    });
+  }
+
+  async findVariantsByProduct(productId: string): Promise<ProductVariant[]> {
+    return this.tenantDb.run(async (em) => {
+      const product = await em.findOne(Product, { where: { id: productId } });
+      if (!product) {
+        throw new CodedNotFoundException(
+          ErrorCode.RESOURCE_NOT_FOUND,
+          `Product with ID ${productId} not found`,
+        );
+      }
+
+      return em.find(ProductVariant, {
+        where: { productId },
+        order: { createdAt: 'ASC' },
+      });
+    });
+  }
+
+  async findVariantById(
+    productId: string,
+    variantId: string,
+  ): Promise<ProductVariant> {
+    return this.tenantDb.run(async (em) => {
+      const variant = await em.findOne(ProductVariant, {
+        where: { id: variantId, productId },
+      });
+      if (!variant) {
+        throw new CodedNotFoundException(
+          ErrorCode.RESOURCE_NOT_FOUND,
+          `Variant with ID ${variantId} not found for product ${productId}`,
+        );
+      }
+      return variant;
+    });
+  }
+
+  async updateVariant(
+    productId: string,
+    variantId: string,
+    dto: UpdateProductVariantDto,
+  ): Promise<ProductVariant> {
+    return this.tenantDb.run(async (em) => {
+      const variant = await em.findOne(ProductVariant, {
+        where: { id: variantId, productId },
+      });
+      if (!variant) {
+        throw new CodedNotFoundException(
+          ErrorCode.RESOURCE_NOT_FOUND,
+          `Variant with ID ${variantId} not found for product ${productId}`,
+        );
+      }
+
+      if (dto.sku !== undefined && dto.sku !== variant.sku) {
+        const existingSku = await em.findOne(ProductVariant, {
+          where: { sku: dto.sku, id: Not(variantId) },
+        });
+        if (existingSku) {
+          throw new CodedConflictException(
+            ErrorCode.DUPLICATE_RESOURCE,
+            `Variant SKU ${dto.sku} already exists`,
+          );
+        }
+        variant.sku = dto.sku;
+      }
+
+      if (dto.priceCents !== undefined) variant.priceCents = dto.priceCents;
+      if (dto.stock !== undefined) variant.stock = dto.stock;
+
+      if (dto.isDefault === true && !variant.isDefault) {
+        // Demote existing defaults for this product
+        await em.update(
+          ProductVariant,
+          { productId },
+          { isDefault: false },
+        );
+        variant.isDefault = true;
+      } else if (dto.isDefault === false && variant.isDefault) {
+        // Prevent unsetting default if it is the only default unless another is promoted
+        const count = await em.count(ProductVariant, { where: { productId } });
+        if (count <= 1) {
+          throw new CodedBadRequestException(
+            ErrorCode.VALIDATION_FAILED,
+            'Product must have at least one default variant',
+          );
+        }
+        variant.isDefault = false;
+      }
+
+      return this.saveWithUniqueCheck(() => em.save(ProductVariant, variant));
+    });
+  }
+
+  async deleteVariant(productId: string, variantId: string): Promise<void> {
+    return this.tenantDb.run(async (em) => {
+      const variants = await em.find(ProductVariant, {
+        where: { productId },
+        order: { createdAt: 'ASC' },
+      });
+
+      const variantToDelete = variants.find((v) => v.id === variantId);
+      if (!variantToDelete) {
+        throw new CodedNotFoundException(
+          ErrorCode.RESOURCE_NOT_FOUND,
+          `Variant with ID ${variantId} not found for product ${productId}`,
+        );
+      }
+
+      if (variants.length <= 1) {
+        throw new CodedBadRequestException(
+          ErrorCode.VALIDATION_FAILED,
+          'Cannot delete the only variant of a product',
+        );
+      }
+
+      await em.delete(ProductVariant, { id: variantId, productId });
+
+      // If we deleted the default variant, promote the oldest remaining variant
+      if (variantToDelete.isDefault) {
+        const remaining = variants.filter((v) => v.id !== variantId);
+        if (remaining.length > 0) {
+          await em.update(
+            ProductVariant,
+            { id: remaining[0].id },
+            { isDefault: true },
+          );
+        }
+      }
     });
   }
 }
