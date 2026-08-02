@@ -69,17 +69,18 @@ layer:
 
 - **At least one variant required.** `CreateProductDto` accepts an optional
   `variants` array; if omitted or empty, a single default variant is created
-  automatically with `sku = 'SKU-<uuid8>'` and the product's `basePrice`.
+  automatically with `sku = 'SKU-<uuid8>'` and the product's `basePrice`. Deleting
+  the only variant of a product is rejected with `VALIDATION_FAILED`.
 - **Exactly one `isDefault` variant.** If the caller provides variants, exactly
-  one must have `isDefault: true`. The service validates this and throws
-  `VALIDATION_FAILED` if zero or more than one are flagged.
+  one must have `isDefault: true`. For single-variant endpoints, setting `isDefault: true`
+  automatically demotes the previous default variant. Deleting the default variant
+  automatically promotes the oldest remaining variant to default.
 - **SKU uniqueness is per-tenant.** A unique index on `(tenant_id, sku)` on
   `product_variants` enforces this at the DB level; the service surfaces
   constraint violations as `DUPLICATE_RESOURCE`.
-- **Replace-all strategy on update.** `UpdateProductDto.variants`, when
-  provided, replaces the full variant set in a single transaction (delete-all
-  then re-insert). This avoids partial-update edge cases around the `isDefault`
-  invariant.
+- **Bulk replace & single-variant endpoints.** In addition to bulk update via
+  `UpdateProductDto.variants`, fine-grained single-variant endpoints allow creating,
+  reading, patching, and deleting individual product variants.
 
 ## 5. Category tree
 
@@ -112,6 +113,11 @@ Guards enforced at the service layer:
 | `GET` | `/api/v1/merchant-admins/products/:id` | any | Get product by ID |
 | `PATCH` | `/api/v1/merchant-admins/products/:id` | `owner`, `admin`, `staff` | Update product |
 | `PATCH` | `/api/v1/merchant-admins/products/:id/archive` | `owner`, `admin` | Archive product |
+| `POST` | `/api/v1/merchant-admins/products/:productId/variants` | `owner`, `admin` | Add single variant to product |
+| `GET` | `/api/v1/merchant-admins/products/:productId/variants` | any | List variants of product |
+| `GET` | `/api/v1/merchant-admins/products/:productId/variants/:variantId` | any | Get single variant by ID |
+| `PATCH` | `/api/v1/merchant-admins/products/:productId/variants/:variantId` | `owner`, `admin` | Update single variant (stock, price, default) |
+| `DELETE` | `/api/v1/merchant-admins/products/:productId/variants/:variantId` | `owner`, `admin` | Delete single variant (auto-promotes default) |
 | `POST` | `/api/v1/merchant-admins/categories` | `owner`, `admin`, `staff` | Create category |
 | `GET` | `/api/v1/merchant-admins/categories` | any | Get full category tree |
 | `PATCH` | `/api/v1/merchant-admins/categories/:id` | `owner`, `admin`, `staff` | Update category |

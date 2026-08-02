@@ -94,7 +94,7 @@
       "ts"
     ],
     "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "testRegex": ".*\\.(spec|e2e-spec)\\.ts$",
     "setupFiles": [
       "<rootDir>/../test/setup-unit.ts"
     ],
