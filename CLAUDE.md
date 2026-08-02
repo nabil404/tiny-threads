@@ -148,7 +148,12 @@ pnpm test:e2e          # jest -c test/jest-e2e.json
 
 - **Backend operating manual:** `.claude/skills/backend-engineer/SKILL.md`
 - **REST API guidelines:** `.claude/skills/rest-api-design/SKILL.md`
-- **Architecture decision record:** `docs/architecture/architecture.md` (full rationale per decision under `references/`)
-- **Database ERD & schema spec:** `docs/architecture/database-schema.md`
-- **Authentication design:** `docs/design/authentication.md` (`docs/AuthDesign.md` is the earlier pre-implementation spec)
-- **Error-handling design:** `docs/design/error-handling.md`
+- **Architecture Rationale**: `docs/architecture/architecture.md`
+- **Database ERD & Schema Spec**: `docs/architecture/database-schema.md`
+- **Authentication Design**: `docs/architecture/authentication.md`
+- **Error-Handling Design**: `docs/architecture/error-handling.md`
+- **Products & Categories**: `docs/architecture/products-and-categories.md`
+- **Carts & Customer Addresses**: `docs/architecture/carts-and-addresses.md`
+- **Orders**: `docs/architecture/orders.md`
+- **Payments**: `docs/architecture/payments.md`
+- **Database Conventions**: `docs/architecture/database-conventions.md`
