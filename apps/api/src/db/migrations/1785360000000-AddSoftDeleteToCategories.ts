@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddSoftDeleteToCategories1785360000000
-  implements MigrationInterface
-{
+export class AddSoftDeleteToCategories1785360000000 implements MigrationInterface {
   name = 'AddSoftDeleteToCategories1785360000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

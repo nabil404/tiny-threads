@@ -187,9 +187,7 @@ describe('MerchantProductVariants (e2e)', () => {
 
     it('gets a single variant by ID', async () => {
       const res = await request(app.getHttpServer())
-        .get(
-          `/api/v1/merchant-admins/products/${productId}/variants/${var1Id}`,
-        )
+        .get(`/api/v1/merchant-admins/products/${productId}/variants/${var1Id}`)
         .set('Host', tenantHost)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
@@ -245,9 +243,7 @@ describe('MerchantProductVariants (e2e)', () => {
 
       // Verify previous default (var2Id) was demoted
       const var2Res = await request(app.getHttpServer())
-        .get(
-          `/api/v1/merchant-admins/products/${productId}/variants/${var2Id}`,
-        )
+        .get(`/api/v1/merchant-admins/products/${productId}/variants/${var2Id}`)
         .set('Host', tenantHost)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
@@ -281,9 +277,7 @@ describe('MerchantProductVariants (e2e)', () => {
 
       // Verify var2 is deleted
       await request(app.getHttpServer())
-        .get(
-          `/api/v1/merchant-admins/products/${productId}/variants/${var2Id}`,
-        )
+        .get(`/api/v1/merchant-admins/products/${productId}/variants/${var2Id}`)
         .set('Host', tenantHost)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(404);
