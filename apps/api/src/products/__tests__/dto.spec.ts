@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { CreateProductDto, CreateVariantDto } from '../dto/create-product.dto';
+import { CreateProductVariantDto } from '../dto/create-product-variant.dto';
+import { UpdateProductVariantDto } from '../dto/update-product-variant.dto';
 import { CreateCategoryDto } from '../dto/create-category.dto';
 import { ProductQueryDto } from '../dto/product-query.dto';
 
@@ -145,4 +147,48 @@ describe('Products & Categories DTO Validation', () => {
       code: 'IS_UUID',
     });
   });
+
+  describe('CreateProductVariantDto', () => {
+    it('passes validation with valid data', async () => {
+      const dto = plainToInstance(CreateProductVariantDto, {
+        sku: 'TEE-BLK-S',
+        priceCents: 2500,
+        stock: 100,
+        isDefault: false,
+      });
+      const errors = await validate(dto);
+      expect(errors.length).toBe(0);
+    });
+
+    it('fails validation when required fields are missing or invalid', async () => {
+      const dto = plainToInstance(CreateProductVariantDto, {
+        sku: '',
+        priceCents: -10,
+        stock: -5,
+      });
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('UpdateProductVariantDto', () => {
+    it('passes validation when empty or with partial fields', async () => {
+      const emptyDto = plainToInstance(UpdateProductVariantDto, {});
+      expect(await validate(emptyDto)).toHaveLength(0);
+
+      const partialDto = plainToInstance(UpdateProductVariantDto, {
+        priceCents: 2800,
+      });
+      expect(await validate(partialDto)).toHaveLength(0);
+    });
+
+    it('fails validation with invalid negative values', async () => {
+      const dto = plainToInstance(UpdateProductVariantDto, {
+        priceCents: -1,
+      });
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+    });
+  });
 });
+
