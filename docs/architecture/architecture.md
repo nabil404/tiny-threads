@@ -1,119 +1,375 @@
-# Backend Architecture — Multi-Tenant E-Commerce Platform
+# Backend Architecture — Tiny Threads
 
-The human-facing record of *what* we decided and *why*. Its companion is the **`backend-engineer` skill**, the operating manual (the *how* — rules, code patterns, checklist). This doc explains reasoning; the skill carries the rules. When a decision changes, update the section here **and** the skill's rule in the same change.
-
-Full rationale, rejected alternatives, and reference code for each decision live under [`references/`](references/); this page is the index.
-
-## Context
-
-A **multi-tenant e-commerce marketplace**: dozens of merchant tenants, each selling to *their own* customers (so funds land with the merchant, not the platform). Backend only.
-
----
-
-## D1 — Tenancy isolation: pooled shared-schema with `tenant_id`
-
-One shared schema, a `tenant_id` column on every tenant-scoped table, for a single migration path, one connection pool, and easy cross-tenant reporting. Safe only because of D2.
-
-*Rejected:* schema-per-tenant, database-per-tenant (kept as the future escape hatch).
-
-→ [references/d1-tenancy-isolation.md](references/d1-tenancy-isolation.md)
-
-## D2 — Enforce isolation with PostgreSQL RLS + a transaction-scoped context gate
-
-RLS (`FORCE` + `USING`/`WITH CHECK`) on every tenant-scoped table; app connects as a non-owner runtime role; tenant context set transaction-locally via `set_config` through one central `withTenant` gate.
-
-*Rejected:* application-only filtering, request-scoped DI for context, session-scoped `SET`.
-
-→ full rationale, RLS SQL, and `withTenant` reference implementation: [references/d2-rls-enforcement.md](references/d2-rls-enforcement.md)
-
-### D2a — `TenantResolutionMiddleware` is the entry point that populates the tenant context
-
-`withTenant` is the gate that *applies* tenant context to a transaction, but it reads that context from CLS rather than taking it as an argument — so something has to put it there first, exactly once, from a source the client cannot forge. That something is **`TenantResolutionMiddleware`** (`apps/api/src/common/middleware/tenant-resolution.middleware.ts`), and it is the **only** thing that populates CLS `tenantId` for ordinary requests. The whole RLS mechanism therefore depends on it: `TenantDbService.run()`/`withTenant` throw rather than falling back if CLS is empty, so a request that bypasses this middleware cannot touch tenant data at all.
-
-It resolves the tenant by looking up the request's **hostname** (`req.hostname`, lowercased) against the `host` column on `tenants` — an exact match, not a pattern or a shared-suffix scheme — and `404`s on no match. Deriving it from the host and never from a request body, query param, or header is the point: a client-supplied tenant id would make RLS trivially bypassable, and `tenant_id` is exactly what the policies compare against.
-
-Because the lookup is an exact match against a real row, there's no separate "is this host trustworthy" step the way a subdomain-suffix scheme would need — an attacker-forged `Host` either matches a genuine tenant's registered host (in which case it's the same origin a legitimate request would use) or it matches nothing and gets the same `404` as an unknown tenant. The middleware also has no required env var and doesn't fail-fast at boot as a result.
-
-There is no tenant-provisioning API today — a tenant's `host` value is inserted directly/manually, the same as before this branch. That's currently safe only because containment used to be structural (a resolvable host had to sit under the platform's own DNS suffix) and is now purely a data invariant on `tenants.host` that nothing in code enforces; any future self-service or automated tenant-provisioning surface will need domain-ownership verification and a reserved-host denylist (to stop a tenant registering the platform's own hostname, or a host it doesn't actually control) before it ships.
-
-Two consequences worth knowing:
-
-- **It is mounted on `forRoutes('*')` with a small, deliberate exclusion list** (`apps/api/src/app/app.module.ts`). Anything excluded must either not touch tenant data or set CLS itself from a verified source. Currently excluded:
-  - `GET /auth/google/callback` — a platform-domain route, because Google permits only one registered `redirect_uri` and it cannot be a per-tenant subdomain. It sets CLS itself from the HMAC-signed OAuth `state` before any DB call.
-  - `POST /api/v1/payments/webhook` — global payment webhook endpoint. Resolves tenancy from incoming signature/merchant account ref and runs inside `tenantDb.run(tenantId, ...)`.
-  - `GET /` — the root/liveness route. It touches no tenant data, and health probes arrive by IP or internal DNS name, which resolves to no registered tenant host; behind the middleware every probe would `404` with "Unknown tenant".
-- **The request's host becomes a usable security primitive only once it has resolved to a real tenant row** — it is not trustworthy on its own merits. The OAuth `returnUrl` origin check (`apps/api/src/common/utils/return-url.ts`) is built on it: it pins redirect targets to `req.hostname` rather than an allow-list, which also means it keeps working for tenants on a custom domain rather than a platform subdomain. That check is sound **only** because this middleware's lookup ran first; without it, a forged `Host` controls *both* sides of the comparison (the request host and the accepted `returnUrl`), so it passes trivially and the open-redirect/session-theft chain it exists to close is wide open again. Corollary: a route excluded from this middleware has an unvalidated `req.hostname` and must not use it as a security input.
-
-Each tenant has exactly one `host` value; there is no support today for a tenant to be reachable under more than one hostname (e.g. an old and a new custom domain during a migration window) — that would need a separate hosts table.
-
-**Keep in sync:** because this middleware is the sole populator of the context RLS depends on, any change to how the tenant is resolved, or to the exclusion list, must be reflected here **and** in the `backend-engineer` skill's tenancy-isolation rule in the same change.
-
-## D3 — ORM: TypeORM
-
-Entity/repository model with migrations as the source of truth for schema. Chosen for NestJS-ecosystem fit — `@nestjs/typeorm` is the first-party integration, with broader community tooling and examples in the NestJS world. RLS (`ENABLE`/`FORCE`/policy) is not declarable on an entity — TypeORM has no policy API — so it is declared exclusively in raw-SQL migrations.
-
-*Rejected:* Drizzle (SQL-first, auditable, but a lighter NestJS-ecosystem footprint), Prisma (ergonomic, but the query engine hides the SQL, working against auditing the isolation boundary).
-
-→ full rationale and reference `Order` entity + RLS migration: [references/d3-orm-typeorm.md](references/d3-orm-typeorm.md)
-
-## D4 — Application architecture: modular monolith
-
-One NestJS app whose modules map onto bounded contexts, keeping transactional consistency and low operational overhead.
-
-*Rejected:* microservices from the start.
-
-→ [references/d4-modular-monolith.md](references/d4-modular-monolith.md)
-
-## D5 — Vendor-agnostic external providers via ports & adapters
-
-Every external capability is a domain-owned port with adapters at the edge; a registry resolves the adapter per tenant.
-
-*Rejected:* vendor SDKs in domain code, a single fixed provider per capability.
-
-→ [references/d5-ports-adapters.md](references/d5-ports-adapters.md)
-
-### D5a — Implemented ports
-
-| Capability | Port | Adapters |
-| --- | --- | --- |
-| Notifications (transactional email) | `NotificationsPort` — `apps/api/src/notifications/notifications-port.ts` | `LogNotificationsAdapter` (dev/local: logs the send, redacting any `*token*` data key so log access alone can't hijack an account) |
-
-`NotificationsPort` is the first port to land. It is deliberately narrow — `sendEmail(to, template, data)` over an `EmailTemplate` union (`verification-email`, `password-reset`, `merchant-invite`) — so callers name an intent and never compose provider-specific payloads. It is injected by the `NOTIFICATIONS_PORT` symbol, so no auth service references an adapter type. Swapping in SES/SendGrid/Postmark means adding one adapter and rebinding that token; no domain code changes.
-
-Payments, shipping, tax, storage, and search remain designed-but-unimplemented as ports/adapters (the underlying DB schema for orders/payments already exists — see D6/D7 below).
-
-## D6 — Orders modeled as three coordinated state machines
-
-Lifecycle, payment, and fulfillment are independently-changing concerns modeled as three sub-machines, not one flat enum.
-
-*Rejected:* single flat `status` enum; immediate-capture-only / single-shipment-only / per-merchant configurable flows.
-
-The `orders`/`order_items`/`order_events` tables and entities already exist with RLS enabled (since the initial migration) — it's the state-machine transition logic and its wiring to the payment port that remain unbuilt, not the schema.
-
-→ [references/d6-order-state-machines.md](references/d6-order-state-machines.md)
-
-## D7 — Marketplace payments: split settlement via a payment port
-
-A provider-agnostic `PaymentPort` covering onboarding, split-settlement money movement, and normalized inbound events.
-
-*Rejected:* funds through the platform account then payout; coupling to one gateway's API.
-
-The `payments`/`payment_provider_configs`/`settlements`/`refunds` tables and entities already exist with RLS enabled — the `PaymentPort` implementation and its adapter are what's unbuilt, not the schema.
-
-→ full rationale and `PaymentPort` interface: [references/d7-payment-port.md](references/d7-payment-port.md)
+Tiny Threads is a **multi-tenant e-commerce marketplace**: dozens of merchant
+tenants, each selling to their own customers. This document describes the
+as-built backend architecture of `apps/api`. Its companion is the
+**`backend-engineer` skill** (`.agents/skills/backend-engineer/SKILL.md`),
+which is the operating manual — the rules engineers follow day-to-day. This
+document explains why those rules exist.
 
 ---
 
-## Database Schema
+## System overview
 
-The concrete tables produced by D1/D2's tenancy model — tenant-scoped vs.
-global tables, composite PK/FK conventions, and the full ERD — are documented
-in [`database-schema.md`](database-schema.md).
+```mermaid
+flowchart TD
+    subgraph Storefront ["Storefront (per-tenant subdomain)"]
+        SW[Next.js web app]
+    end
 
-**Keep in sync:** any change to the database schema (new table, column,
-relationship, or tenancy-scope reclassification) must be reflected in
-`database-schema.md` in the same change.
+    subgraph API ["apps/api — NestJS modular monolith"]
+        AM[AppModule]
+        subgraph Auth ["Auth"]
+            CA[CustomersAuth]
+            MA[MerchantAdminsAuth]
+            OA[GoogleOAuth]
+        end
+        subgraph Commerce ["Commerce"]
+            PR[Products / Categories]
+            CT[Carts]
+            CK[Checkout]
+            OR[Orders]
+            PY[Payments]
+            SC[Scheduler]
+        end
+        subgraph Infra ["Infrastructure"]
+            DB[TenantDbService / RLS]
+            NT[Notifications port]
+            TS[TenantSettings]
+        end
+    end
 
-→ [database-schema.md](database-schema.md)
+    subgraph PG ["PostgreSQL 16"]
+        RLS[Row-Level Security]
+    end
+
+    SW --> API
+    AM --> Auth
+    AM --> Commerce
+    AM --> Infra
+    DB --> RLS
+```
+
+The API is a **modular monolith**: one NestJS process whose modules map onto
+bounded contexts. This keeps transactional consistency (order + payment +
+stock side-effects in one DB transaction) and low operational overhead. A
+context can be extracted to an independent service later if it needs
+independent scaling — the module boundaries are the extraction seams.
+
+Schema-per-tenant and database-per-tenant were considered and rejected at
+this scale, though database-per-tenant remains the escape hatch for a high-
+volume tenant. Microservices from the start were also rejected — premature
+at this scale, adding distributed-transaction and ops complexity with no
+offsetting benefit.
 
 ---
+
+## Multi-tenancy
+
+### Model: pooled shared schema
+
+All tenants share one PostgreSQL schema. Every tenant-scoped table carries a
+`tenant_id` column. This gives a single migration path, one connection pool,
+and easy cross-tenant reporting — the tradeoffs being shared CPU/connections
+and noisy-neighbour risk, contained by per-tenant rate limits, cache keys, and
+job context.
+
+The scheme is not permanent: a high-volume tenant can be moved to its own
+database without changing the application (the `tenant_id` column stays, the
+RLS policy stays, only the connection string changes).
+
+### Isolation: PostgreSQL Row-Level Security
+
+Application `WHERE` clauses alone cannot be the isolation boundary under a
+shared connection pool — one omission in one code path is a breach.
+PostgreSQL RLS is the enforced backstop:
+
+```sql
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders FORCE  ROW LEVEL SECURITY;  -- owner role bypasses RLS without FORCE
+CREATE POLICY tenant_isolation ON orders
+  USING      (tenant_id = current_setting('app.current_tenant', true)::uuid)
+  WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid);
+```
+
+`missing_ok = true` means an unset `app.current_tenant` GUC returns `NULL`,
+which fails the equality check — unset context is **fail-closed**, not
+fail-open.
+
+Two caveats that must both hold for RLS to actually enforce isolation:
+
+1. **`FORCE`** is required. Without it, the table owner (used for migrations)
+   bypasses RLS silently.
+2. **A non-owner runtime role** is required. The application connects as
+   `app_runtime` (granted `SELECT/INSERT/UPDATE/DELETE`, no DDL,
+   `NOSUPERUSER NOBYPASSRLS`). Migrations run as `app_owner` (owns the
+   schema, also `NOBYPASSRLS`). Pointing the application's `DATABASE_URL`
+   at `app_owner` would bypass RLS on every query — never do this.
+
+Application-only filtering was rejected as the primary boundary (unsafe under
+pooling); request-scoped DI for tenant context was rejected (rebuilds provider
+tree per request, hurts throughput); session-scoped `SET` was rejected (leaks
+context across pooled connections under PgBouncer transaction mode).
+
+### The tenant context gate: `TenantDbService`
+
+Tenant context is set **transaction-locally** — never as a session-level `SET`
+(which bleeds across pooled connections under PgBouncer transaction mode):
+
+```ts
+// The only gate. Feature code never touches DataSource directly for tenant data.
+export async function withTenant<T>(
+  dataSource: DataSource,
+  cls: ClsService,
+  work: (manager: EntityManager) => Promise<T>,
+): Promise<T> {
+  const tenantId = cls.get<string>('tenantId');
+  if (!tenantId) throw new Error('withTenant called with no tenant in context');
+
+  return dataSource.transaction(async (manager) => {
+    // set_config(..., true) = SET LOCAL: scoped to this transaction, discarded on COMMIT/ROLLBACK.
+    // PARAMETERIZED — never string-interpolated — to prevent injection.
+    await manager.query(`select set_config('app.current_tenant', $1, true)`, [tenantId]);
+    return work(manager);
+  });
+}
+```
+
+All domain code calls `TenantDbService.run(work)` (which wraps `withTenant`).
+Direct `DataSource` or `EntityManager` injection is prohibited for any
+tenant-scoped operation.
+
+### Tenant resolution: `TenantResolutionMiddleware`
+
+`withTenant` reads `tenantId` from CLS (AsyncLocalStorage). Something must
+populate CLS before any tenant DB call. That something is
+**`TenantResolutionMiddleware`** — the sole populator for ordinary requests.
+
+It resolves the tenant by exact match of the lowercased `Host` header against
+`tenants.host`, and `404`s on no match. The host is never taken from a request
+body or query param — a client-supplied tenant id would let any client forge
+the RLS context.
+
+Because the lookup is an exact match against a real row, there is no separate
+"is this host trustworthy" step — an attacker-forged `Host` either matches a
+genuine tenant's registered host (in which case it is the same origin a
+legitimate request would use) or it matches nothing and gets the same `404`
+as an unknown tenant.
+
+The middleware is mounted `forRoutes('*')` with a small deliberate exclusion
+list (see `apps/api/src/app/app.module.ts`). Current exclusions:
+
+| Route | Reason |
+|---|---|
+| `GET /auth/google/callback` | Platform-domain route; Google only allows one registered redirect URI. Sets CLS itself from the HMAC-signed OAuth `state`. |
+| `POST /api/v1/payments/webhook` | Global webhook; resolves tenancy from the verified provider event's `merchantAccount`. |
+| `GET /` | Health probe. Arrives by IP or internal DNS — resolves to no tenant host and would `404` every probe. Touches no tenant data. |
+
+Any route excluded from this middleware has an **unvalidated** `req.hostname`
+and must not use it as a security input. The OAuth `returnUrl` origin check
+(`apps/api/src/common/utils/return-url.ts`) pins redirect targets to
+`req.hostname` — this is sound **only** because the middleware ran first.
+Adding another exclusion requires updating this doc and the `backend-engineer`
+skill in the same change.
+
+There is no tenant-provisioning API today — tenant `host` values are inserted
+manually. Any future self-service provisioning will need domain-ownership
+verification and a reserved-host denylist before it ships.
+
+---
+
+## Data layer
+
+### ORM: TypeORM
+
+TypeORM with the `pg` driver via `@nestjs/typeorm`. Chosen for NestJS-ecosystem
+fit and first-party integration. Entities describe columns and constraints only;
+TypeORM has no declarative RLS API, so `ENABLE ROW LEVEL SECURITY`, `FORCE ROW
+LEVEL SECURITY`, and the tenant policy are declared exclusively in raw-SQL
+migrations — never in the entity.
+
+Drizzle (SQL-first, good RLS support, but lighter NestJS-ecosystem footprint)
+and Prisma (ergonomic but hides SQL, working against auditing the isolation
+boundary) were considered and rejected.
+
+Every new tenant-scoped table follows a two-step pattern in its migration:
+
+```ts
+// up()
+await queryRunner.query(`CREATE TABLE "orders" (...)`);
+await enableRls(queryRunner, 'orders');  // helper: ENABLE + FORCE + CREATE POLICY + verify
+
+// down()
+await disableRls(queryRunner, 'orders');
+await queryRunner.query(`DROP TABLE "orders"`);
+```
+
+The `enableRls` helper re-reads `pg_catalog` in the same transaction to assert
+all three statements took effect. A broken call fails the whole migration
+(and its `CREATE TABLE`) rather than shipping an unprotected table.
+
+**Gotcha:** there is no compiler-enforced link between an entity's
+`@Entity({ name: ... })` table name and the raw-SQL `CREATE POLICY ... ON
+"..."` string in its migration. Renaming a table means remembering to update
+the migration by hand — catch this in review.
+
+### Entity base classes
+
+| Class | PK | `tenant_id` | Timestamps | When to use |
+|---|---|---|---|---|
+| `TenantEntityBase` | `(tenant_id, id)` uuidv7 | ✓ | `created_at`, `updated_at` | Most tenant-scoped entities |
+| `ImmutableTenantEntityBase` | `(tenant_id, id)` uuidv7 | ✓ | `created_at` only | Append-only tenant tables (events, tokens) |
+| `EntityBase` | `id` uuidv7 | — | `created_at`, `updated_at` | Non-tenant shared entities (e.g. `tenants`) |
+| `ImmutableEntityBase` | `id` uuidv7 | — | `created_at` only | Non-tenant append-only entities |
+| `CreatedAtEntityBase` | `id` uuidv7 | — | `created_at` only | Simple shared timestamped entities |
+
+PK generation uses `uuidv7` (monotonically increasing UUID) for index locality
+via a `@BeforeInsert` hook. Every FK between tenant-scoped tables is
+**composite** — it carries `tenant_id` alongside `id`, making a cross-tenant
+reference physically impossible at the database level.
+
+### Migration safety rules
+
+1. Timestamp prefixes must be strictly ascending across all migration files.
+2. The exported class name and its `name` property must match the filename
+   timestamp exactly.
+3. No `DROP TABLE` in `up()` unless the table is created in the same `up()`.
+
+These rules are verified statically by `migration-order.spec.ts` on every test
+run. `pnpm db:verify-fresh` proves the full migration chain runs on a clean
+database from zero. `pnpm db:verify-rls` checks policies after every
+`db:migrate`.
+
+---
+
+## Vendor abstraction: ports & adapters
+
+Every external capability (payments, shipping, tax, notifications, storage,
+search) is a **domain-owned port** with **adapters** at the edge. A
+**`*Registry`** resolves the per-tenant adapter from configuration at runtime.
+
+Shared contract across all ports:
+- Money as integer minor units paired with an uppercase ISO-4217 currency string.
+- Opaque `ProviderRef { provider, externalId }` persisted by us — no vendor
+  blobs in domain tables.
+- An `idempotencyKey` on every mutation.
+- Async providers expose `parseEvent → NormalizedEvent` with a `providerEventId`
+  for deduplication and refs for tenant attribution.
+- Normalized error taxonomy with a `retryable` flag.
+
+Vendor SDKs and vendor-specific types must never appear in domain services or
+controllers. Swapping an adapter means adding one class and rebinding one DI
+token — no domain code changes.
+
+Vendor SDKs directly in domain code were rejected (lock-in, leaked types). A
+single fixed provider per capability was rejected (incompatible with per-tenant
+choice). Note: external search has no RLS, so any `SearchPort` must enforce
+tenant scoping itself.
+
+### Implemented ports
+
+| Capability | Port | Adapter(s) |
+|---|---|---|
+| Transactional email | `NotificationsPort` (`notifications/notifications-port.ts`) | `LogNotificationsAdapter` (logs the send; redacts `*token*` data keys so log access cannot hijack an account) |
+| Payments | `PaymentPort` (`payments/interfaces/payment-port.interface.ts`) | `MockPaymentProvider` (dev/test) |
+
+Shipping, tax, storage, and search remain designed-but-unimplemented ports.
+See [`payments.md`](payments.md) for the full `PaymentPort` contract.
+
+---
+
+## Commerce domain
+
+### Orders: three coordinated state machines
+
+An order carries three independently-changing concerns modeled as three
+separate columns — not one flat status enum:
+
+| Column | States | Driven by |
+|---|---|---|
+| `status` (lifecycle) | `pending → confirmed → completed`, `cancelled` as the pre-completion exit | Merchant admin actions, payment events, expiry |
+| `payment_status` | `pending → authorized → paid → refunded`; also `partially_captured`, `partially_refunded`, `voided`, `failed`, `disputed`, `charged_back` | Payment port events |
+| `fulfillment_status` | `unfulfilled → partially_fulfilled → fulfilled` | Derived from `shipments` records |
+
+The lifecycle machine is a pure guarded function `(state, event) → nextState |
+IllegalTransition`. Every transition appends an `order_events` row (audit
+trail); `unique(tenant_id, provider_event_id)` doubles as webhook idempotency
+key. Side effects (stock restoration, payment refund) run in the same
+transaction as the status update.
+
+A single flat `status` enum, immediate-capture-only flows, and
+single-shipment-only flows were all rejected — they collapse under real
+multi-step commerce.
+
+See [`orders.md`](orders.md) for the checkout flow, expiry scheduler, guest
+order access, and cancellation side-effects.
+
+### Marketplace payments: split settlement via a payment port
+
+A provider-agnostic `PaymentPort` covers merchant onboarding, split-settlement
+money movement, and normalized inbound webhook events. The platform takes a fee
+(`platformFeePercent`) computed at checkout; the remainder goes to the
+merchant. Refunds can claw back the platform fee.
+
+The `MockPaymentProvider` implements `PaymentPort` for dev and tests.
+`PaymentPortRegistry` resolves the per-tenant provider adapter at runtime.
+
+```ts
+interface Money { amount: number; currency: string }            // integer MINOR units
+interface ProviderRef { provider: string; externalId: string }  // we persist this
+type MerchantAccountRef = ProviderRef;
+type PaymentRef = ProviderRef;
+
+interface PaymentPort {
+  createMerchantAccount(i: { tenantId: string; profile: BusinessProfile; idempotencyKey: string }): Promise<MerchantAccountRef>;
+  createOnboardingSession(a: MerchantAccountRef, returnUrl: string): Promise<{ url: string; expiresAt: Date }>;
+  getOnboardingStatus(a: MerchantAccountRef): Promise<'pending'|'needs_information'|'active'|'rejected'|'disabled'>;
+
+  authorize(i: {
+    merchantAccount: MerchantAccountRef; amount: Money; platformFee: Money;
+    paymentMethodToken: string; orderId: string;
+    autoCapture: boolean;                 // true on immediate_capture stores
+    idempotencyKey: string;
+  }): Promise<{ paymentRef: PaymentRef; state: 'authorized'|'captured'|'failed'; authExpiresAt?: Date }>;
+
+  capture(i: { payment: PaymentRef; amount?: Money; idempotencyKey: string }): Promise<{ state: 'partially_captured'|'captured'; capturedTotal: Money }>;
+  void(payment: PaymentRef, idempotencyKey: string): Promise<void>;
+  refund(i: { payment: PaymentRef; amount?: Money; refundPlatformFee: boolean; reason?: string; idempotencyKey: string }): Promise<{ refundRef: ProviderRef; refundedTotal: Money }>;
+
+  parseEvent(raw: Buffer, headers: Record<string, string>): Promise<NormalizedPaymentEvent>;
+}
+
+interface NormalizedPaymentEvent {
+  providerEventId: string;              // → unique(tenant_id, provider_event_id)
+  type: 'payment.authorized'|'payment.captured'|'payment.refunded'
+      | 'payment.dispute.opened'|'payment.dispute.won'|'payment.dispute.lost'
+      | 'payout.paid'|'merchant_account.updated';
+  merchantAccount: MerchantAccountRef;  // → resolve tenant, then withTenant(...)
+  payment?: PaymentRef;
+  occurredAt: Date;
+}
+```
+
+Funds through the platform account then payout were rejected (worse
+regulatory/reconciliation posture). Coupling to one gateway's API was rejected
+(lock-in).
+
+See [`payments.md`](payments.md) for the full contract, settlement formula, and
+webhook idempotency design.
+
+---
+
+## Domain design references
+
+As-built references for each shipped domain:
+
+| Domain | Reference |
+|---|---|
+| Authentication | [`authentication.md`](authentication.md) |
+| Error handling | [`error-handling.md`](error-handling.md) |
+| Products & categories | [`products-and-categories.md`](products-and-categories.md) |
+| Carts & customer addresses | [`carts-and-addresses.md`](carts-and-addresses.md) |
+| Orders | [`orders.md`](orders.md) |
+| Payments | [`payments.md`](payments.md) |
+| Database conventions | [`database-conventions.md`](database-conventions.md) |
+| Database schema (ERD) | [`database-schema.md`](database-schema.md) |
