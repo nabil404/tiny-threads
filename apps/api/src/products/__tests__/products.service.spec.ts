@@ -26,7 +26,7 @@ describe('ProductsService', () => {
   describe('create', () => {
     it('auto-creates default variant with full product ID SKU if no variants are provided on create', async () => {
       let savedVariant: any;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           save: jest.fn().mockImplementation((entityOrClass, entity) => {
             const item = entity || entityOrClass;
@@ -41,7 +41,7 @@ describe('ProductsService', () => {
           }),
           find: jest.fn().mockResolvedValue([]),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.create({
@@ -56,7 +56,7 @@ describe('ProductsService', () => {
 
     it('ensures only the first variant with isDefault=true retains true when custom variants are supplied', async () => {
       let savedVariants: any[];
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           save: jest.fn().mockImplementation((entityOrClass, entity) => {
             const item = entity || entityOrClass;
@@ -70,7 +70,7 @@ describe('ProductsService', () => {
           }),
           find: jest.fn().mockResolvedValue([]),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await service.create({
@@ -88,11 +88,11 @@ describe('ProductsService', () => {
     });
 
     it('throws CodedBadRequestException if one or more provided category IDs do not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           find: jest.fn().mockResolvedValue([{ id: 'cat-1' }]), // only 1 of 2 found
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -105,13 +105,13 @@ describe('ProductsService', () => {
     });
 
     it('throws CodedBadRequestException if duplicate SKUs are present in payload', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           find: jest.fn().mockResolvedValue([{ id: 'cat-1' }]),
           create: jest.fn().mockImplementation((_, entity) => entity),
           save: jest.fn().mockResolvedValue({ id: 'prod-1' }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -128,7 +128,7 @@ describe('ProductsService', () => {
     });
 
     it('throws CodedConflictException if a variant SKU already exists in DB', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           find: jest.fn().mockResolvedValue([]),
           create: jest.fn().mockImplementation((_, entity) => entity),
@@ -137,7 +137,7 @@ describe('ProductsService', () => {
             .fn()
             .mockResolvedValue({ id: 'v-99', sku: 'TSHIRT-RED' }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -166,7 +166,7 @@ describe('ProductsService', () => {
         productCategories: [{ productId: 'prod-1', categoryId: 'cat-1' }],
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           find: jest.fn().mockResolvedValue([{ id: 'cat-1' }]),
           create: jest.fn().mockImplementation((_, entity) => entity),
@@ -178,7 +178,7 @@ describe('ProductsService', () => {
             return Promise.resolve(mockProduct);
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.create({
@@ -205,11 +205,11 @@ describe('ProductsService', () => {
         getManyAndCount: jest.fn().mockResolvedValue([mockProducts, 1]),
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           createQueryBuilder: jest.fn().mockReturnValue(mockQb),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.findAll({
@@ -251,9 +251,9 @@ describe('ProductsService', () => {
         getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { createQueryBuilder: jest.fn().mockReturnValue(mockQb) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.findAll({});
@@ -274,9 +274,9 @@ describe('ProductsService', () => {
         getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { createQueryBuilder: jest.fn().mockReturnValue(mockQb) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await service.findAll({ page: 1, limit: 10 }, true);
@@ -290,9 +290,9 @@ describe('ProductsService', () => {
   describe('findById', () => {
     it('returns product when found', async () => {
       const mockProduct = { id: 'prod-1', title: 'Tee', status: 'active' };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(mockProduct) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.findById('prod-1');
@@ -300,9 +300,9 @@ describe('ProductsService', () => {
     });
 
     it('throws CodedNotFoundException when product does not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(null) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(service.findById('prod-nonexistent')).rejects.toThrow(
@@ -312,9 +312,9 @@ describe('ProductsService', () => {
 
     it('throws CodedNotFoundException on storefront call if product is draft', async () => {
       const mockProduct = { id: 'prod-1', title: 'Draft Tee', status: 'draft' };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(mockProduct) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(service.findById('prod-1', true)).rejects.toThrow(
@@ -336,7 +336,7 @@ describe('ProductsService', () => {
         status: 'active',
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockImplementation((entityClass, options) => {
             if (options.where?.sku) return Promise.resolve(null);
@@ -351,7 +351,7 @@ describe('ProductsService', () => {
           delete: jest.fn().mockResolvedValue({ affected: 1 }),
           create: jest.fn().mockImplementation((_, entity) => entity),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.update('prod-1', {
@@ -366,9 +366,9 @@ describe('ProductsService', () => {
     });
 
     it('throws CodedNotFoundException when updating non-existent product', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(null) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -382,7 +382,7 @@ describe('ProductsService', () => {
       const existingProduct = { id: 'prod-1', title: 'Tee', status: 'active' };
       let savedProduct: any;
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(existingProduct),
           save: jest.fn().mockImplementation((_, entity) => {
@@ -390,7 +390,7 @@ describe('ProductsService', () => {
             return Promise.resolve(entity);
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await service.delete('prod-1');
@@ -399,7 +399,7 @@ describe('ProductsService', () => {
 
     it('stamps tenantId from ClsService on created entities', async () => {
       let createdProduct: any;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           find: jest.fn().mockResolvedValue([]),
           create: jest.fn().mockImplementation((_, entity) => entity),
@@ -414,7 +414,7 @@ describe('ProductsService', () => {
             variants: [],
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await service.create({ title: 'Tenant Tee', status: 'active' });
@@ -423,7 +423,7 @@ describe('ProductsService', () => {
     });
 
     it('translates Postgres 23505 unique violation error to CodedConflictException', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           find: jest.fn().mockResolvedValue([]),
           create: jest.fn().mockImplementation((_, entity) => entity),
@@ -432,7 +432,7 @@ describe('ProductsService', () => {
             message: 'duplicate key value violates unique constraint',
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -453,7 +453,7 @@ describe('ProductsService', () => {
 
       let savedVariants: any[];
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockImplementation((entityClass, options) => {
             if (options?.where?.sku) return Promise.resolve(null);
@@ -477,7 +477,7 @@ describe('ProductsService', () => {
           delete: jest.fn().mockResolvedValue({ affected: 0 }),
           create: jest.fn().mockImplementation((_, entity) => entity),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await service.update('prod-1', {
@@ -499,9 +499,9 @@ describe('ProductsService', () => {
     });
 
     it('throws CodedNotFoundException when deleting non-existent product', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(null) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(service.delete('prod-nonexistent')).rejects.toThrow(

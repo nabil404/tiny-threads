@@ -30,9 +30,9 @@ describe('TenantSettingsService', () => {
         updatedAt: new Date(),
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(existingSettings) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.getSettings();
@@ -41,11 +41,11 @@ describe('TenantSettingsService', () => {
     });
 
     it('should throw CodedNotFoundException when no row exists', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(service.getSettings()).rejects.toThrow(
@@ -87,14 +87,14 @@ describe('TenantSettingsService', () => {
         updatedAt: new Date(),
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(existingSettings),
           save: jest
             .fn()
             .mockImplementation((entity) => Promise.resolve(entity)),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const dto = {
@@ -119,7 +119,7 @@ describe('TenantSettingsService', () => {
         updatedAt: new Date(),
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockImplementation((entityClass, options) => {
             if (options.where?.code === 'EUR') {
@@ -135,7 +135,7 @@ describe('TenantSettingsService', () => {
             .fn()
             .mockImplementation((entity) => Promise.resolve(entity)),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const dto = {
@@ -158,7 +158,7 @@ describe('TenantSettingsService', () => {
         updatedAt: new Date(),
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockImplementation((entityClass, options) => {
             if (options.where?.code === 'INVALID') {
@@ -167,7 +167,7 @@ describe('TenantSettingsService', () => {
             return Promise.resolve(existingSettings);
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const dto = {
@@ -180,11 +180,11 @@ describe('TenantSettingsService', () => {
     });
 
     it('should throw CodedNotFoundException when no row exists when updating', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const dto = {

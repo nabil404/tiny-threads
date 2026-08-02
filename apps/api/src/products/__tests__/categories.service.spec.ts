@@ -24,13 +24,13 @@ describe('CategoriesService', () => {
   describe('create', () => {
     it('creates root category successfully', async () => {
       const mockCategory = { id: 'cat-1', name: 'Shirts', parentId: null };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
           create: jest.fn().mockReturnValue(mockCategory),
           save: jest.fn().mockResolvedValue(mockCategory),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.create({ name: 'Shirts' });
@@ -40,13 +40,13 @@ describe('CategoriesService', () => {
     it('creates child category successfully when parent exists', async () => {
       const parentCat = { id: 'cat-1', name: 'Apparel', parentId: null };
       const childCat = { id: 'cat-2', name: 'Shirts', parentId: 'cat-1' };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(parentCat),
           create: jest.fn().mockReturnValue(childCat),
           save: jest.fn().mockResolvedValue(childCat),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.create({
@@ -57,11 +57,11 @@ describe('CategoriesService', () => {
     });
 
     it('throws CodedNotFoundException if parent category does not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -72,11 +72,11 @@ describe('CategoriesService', () => {
 
   describe('getCategoryTree', () => {
     it('returns empty array when no categories exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           find: jest.fn().mockResolvedValue([]),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.getCategoryTree();
@@ -89,11 +89,11 @@ describe('CategoriesService', () => {
       const cat3 = { id: 'cat-3', name: 'T-Shirts', parentId: 'cat-2' };
       const cat4 = { id: 'cat-4', name: 'Electronics', parentId: null };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           find: jest.fn().mockResolvedValue([cat1, cat2, cat3, cat4]),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const tree = await service.getCategoryTree();
@@ -116,11 +116,11 @@ describe('CategoriesService', () => {
         parentId: null,
         children: [],
       };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(mockCategory),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.findById('cat-1');
@@ -128,11 +128,11 @@ describe('CategoriesService', () => {
     });
 
     it('throws CodedNotFoundException when category not found', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(service.findById('cat-999')).rejects.toThrow(
@@ -155,7 +155,7 @@ describe('CategoriesService', () => {
         parentId: 'cat-1',
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockImplementation((_entity, opts) => {
             if (opts.where.id === 'cat-2')
@@ -166,7 +166,7 @@ describe('CategoriesService', () => {
           }),
           save: jest.fn().mockResolvedValue(updatedCategory),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.update('cat-2', {
@@ -177,13 +177,13 @@ describe('CategoriesService', () => {
     });
 
     it('throws CodedBadRequestException if parentId equals category id on update', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest
             .fn()
             .mockResolvedValue({ id: 'cat-1', name: 'Shirts', parentId: null }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -196,7 +196,7 @@ describe('CategoriesService', () => {
       const cat2 = { id: 'cat-2', name: 'Shirts', parentId: 'cat-1' };
       const cat3 = { id: 'cat-3', name: 'T-Shirts', parentId: 'cat-2' };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockImplementation((_entity, opts) => {
             if (opts.where.id === 'cat-1') return Promise.resolve(cat1);
@@ -205,7 +205,7 @@ describe('CategoriesService', () => {
             return Promise.resolve(null);
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -214,11 +214,11 @@ describe('CategoriesService', () => {
     });
 
     it('throws CodedNotFoundException if target category does not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -228,7 +228,7 @@ describe('CategoriesService', () => {
 
     it('throws CodedNotFoundException if new parent category does not exist', async () => {
       const existingCategory = { id: 'cat-2', name: 'Shirts', parentId: null };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockImplementation((_entity, opts) => {
             if (opts.where.id === 'cat-2')
@@ -236,7 +236,7 @@ describe('CategoriesService', () => {
             return Promise.resolve(null);
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -254,13 +254,13 @@ describe('CategoriesService', () => {
         children: [],
       };
       let softRemoveSpy: jest.Mock;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         softRemoveSpy = jest.fn().mockResolvedValue(mockCategory);
         const em = {
           findOne: jest.fn().mockResolvedValue(mockCategory),
           softRemove: softRemoveSpy,
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(service.delete('cat-1')).resolves.not.toThrow();
@@ -268,11 +268,11 @@ describe('CategoriesService', () => {
     });
 
     it('throws CodedNotFoundException if category does not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(service.delete('cat-999')).rejects.toThrow(
@@ -287,11 +287,11 @@ describe('CategoriesService', () => {
         parentId: null,
         children: [{ id: 'cat-2', name: 'Shirts', parentId: 'cat-1' }],
       };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(mockCategory),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(service.delete('cat-1')).rejects.toThrow(

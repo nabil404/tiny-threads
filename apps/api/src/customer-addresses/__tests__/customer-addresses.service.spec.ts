@@ -31,9 +31,9 @@ describe('CustomerAddressesService', () => {
   describe('getAddresses', () => {
     it('should return all addresses for the customer', async () => {
       const addresses = [{ id: 'addr-1', customerId: 'cust-1' }];
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { find: jest.fn().mockResolvedValue(addresses) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.getAddresses('cust-1');
@@ -45,9 +45,9 @@ describe('CustomerAddressesService', () => {
   describe('getAddressById', () => {
     it('should return the address when found', async () => {
       const address = { id: 'addr-1', customerId: 'cust-1' };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(address) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.getAddressById('cust-1', 'addr-1');
@@ -56,9 +56,9 @@ describe('CustomerAddressesService', () => {
     });
 
     it('should throw CodedNotFoundException when the address does not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(null) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -69,9 +69,9 @@ describe('CustomerAddressesService', () => {
 
   describe('createAddress', () => {
     it('should throw CodedNotFoundException if countryCode does not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(null) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -86,7 +86,7 @@ describe('CustomerAddressesService', () => {
       const country = { code: 'US', name: 'United States' };
       const savedAddress = { id: 'addr-1', ...baseCreateDto };
       let created: any;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(country),
           update: jest.fn().mockResolvedValue(undefined),
@@ -96,7 +96,7 @@ describe('CustomerAddressesService', () => {
           }),
           save: jest.fn().mockResolvedValue(savedAddress),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.createAddress('cust-1', baseCreateDto);
@@ -115,7 +115,7 @@ describe('CustomerAddressesService', () => {
       const country = { code: 'US', name: 'United States' };
       const savedAddress = { id: 'addr-1', ...baseCreateDto };
       const updateCalls: any[] = [];
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(country),
           update: jest.fn().mockImplementation((_, where, patch) => {
@@ -125,7 +125,7 @@ describe('CustomerAddressesService', () => {
           create: jest.fn().mockImplementation((_, entity) => entity),
           save: jest.fn().mockResolvedValue(savedAddress),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await service.createAddress('cust-1', {
@@ -151,9 +151,9 @@ describe('CustomerAddressesService', () => {
 
   describe('updateAddress', () => {
     it('should throw CodedNotFoundException if address does not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(null) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -163,14 +163,14 @@ describe('CustomerAddressesService', () => {
 
     it('should throw CodedNotFoundException if the new countryCode is invalid', async () => {
       const address = { id: 'addr-1', customerId: 'cust-1', countryCode: 'US' };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest
             .fn()
             .mockResolvedValueOnce(address) // loadAddress
             .mockResolvedValueOnce(null), // country lookup
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -184,13 +184,13 @@ describe('CustomerAddressesService', () => {
         customerId: 'cust-1',
         city: 'Old City',
       };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValueOnce(address),
           update: jest.fn().mockResolvedValue(undefined),
           save: jest.fn().mockImplementation((_, entity) => entity),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.updateAddress('cust-1', 'addr-1', {
@@ -205,9 +205,9 @@ describe('CustomerAddressesService', () => {
 
   describe('deleteAddress', () => {
     it('should throw CodedNotFoundException if address does not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(null) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -218,7 +218,7 @@ describe('CustomerAddressesService', () => {
     it('should remove the address via a single transaction', async () => {
       const address = { id: 'addr-1', customerId: 'cust-1' };
       let removed: any;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(address),
           remove: jest.fn().mockImplementation((_, entity) => {
@@ -226,7 +226,7 @@ describe('CustomerAddressesService', () => {
             return Promise.resolve(entity);
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await service.deleteAddress('cust-1', 'addr-1');
@@ -237,9 +237,9 @@ describe('CustomerAddressesService', () => {
 
   describe('setDefaultFlags', () => {
     it('should throw CodedNotFoundException if address does not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(null) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -257,7 +257,7 @@ describe('CustomerAddressesService', () => {
         isDefaultBilling: false,
       };
       const updateCalls: any[] = [];
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(address),
           update: jest.fn().mockImplementation((_, where, patch) => {
@@ -266,7 +266,7 @@ describe('CustomerAddressesService', () => {
           }),
           save: jest.fn().mockImplementation((_, entity) => entity),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.setDefaultFlags('cust-1', 'addr-1', {
@@ -306,7 +306,7 @@ describe('CustomerAddressesService', () => {
         isDefaultShipping: false,
         isDefaultBilling: false,
       };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         depth += 1;
         runCallDepths.push(depth);
         const em = {

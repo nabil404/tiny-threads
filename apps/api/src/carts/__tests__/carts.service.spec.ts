@@ -31,9 +31,9 @@ describe('CartsService', () => {
         status: 'active',
         items: [],
       };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(existingCart) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const cart = await service.getOrCreateCart('cust-1', undefined);
@@ -48,7 +48,7 @@ describe('CartsService', () => {
         status: 'active',
       };
       let created: any;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
           query: jest.fn().mockResolvedValue(undefined),
@@ -58,7 +58,7 @@ describe('CartsService', () => {
           }),
           save: jest.fn().mockResolvedValue(newCart),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const cart = await service.getOrCreateCart('cust-1', undefined);
@@ -77,7 +77,7 @@ describe('CartsService', () => {
     // finds and controls the customer's cart.
     it('should never stamp a guest sessionId onto a customer-owned cart', async () => {
       let created: any;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
           query: jest.fn().mockResolvedValue(undefined),
@@ -87,7 +87,7 @@ describe('CartsService', () => {
           }),
           save: jest.fn().mockImplementation((_, entity) => entity),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await service.getOrCreateCart('cust-1', 'leaked-guest-session');
@@ -103,14 +103,14 @@ describe('CartsService', () => {
         items: [],
       };
       let whereUsed: any;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockImplementation((_, options) => {
             whereUsed = options.where;
             return Promise.resolve(existingCart);
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const cart = await service.getOrCreateCart(undefined, 'sess-1');
@@ -129,7 +129,7 @@ describe('CartsService', () => {
       });
       const queries: string[] = [];
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest
             .fn()
@@ -142,7 +142,7 @@ describe('CartsService', () => {
           create: jest.fn().mockImplementation((_, entity) => entity),
           save: jest.fn().mockRejectedValue(uniqueViolation),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const cart = await service.getOrCreateCart('cust-1', undefined);
@@ -158,14 +158,14 @@ describe('CartsService', () => {
       const boom = Object.assign(new Error('connection lost'), {
         code: '08006',
       });
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
           query: jest.fn().mockResolvedValue(undefined),
           create: jest.fn().mockImplementation((_, entity) => entity),
           save: jest.fn().mockRejectedValue(boom),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -188,7 +188,9 @@ describe('CartsService', () => {
         create: jest.fn(),
         save: jest.fn(),
       };
-      tenantDbService.run.mockImplementation(async (cb) => cb(em as any));
+      tenantDbService.run.mockImplementation(
+        async (cb: any) => await cb(em as any),
+      );
 
       await expect(
         service.getActiveCart(undefined, 'sess-unseen'),
@@ -199,14 +201,14 @@ describe('CartsService', () => {
 
     it('should exclude customer-owned carts from session lookups', async () => {
       let whereUsed: any;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockImplementation((_, options) => {
             whereUsed = options.where;
             return Promise.resolve({ id: 'cart-1', items: [] });
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await service.getActiveCart(undefined, 'sess-1');
@@ -227,9 +229,9 @@ describe('CartsService', () => {
 
   describe('addItem', () => {
     it('should throw CodedNotFoundException if cart does not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(null) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -239,14 +241,14 @@ describe('CartsService', () => {
 
     it('should throw CodedNotFoundException if product variant does not exist', async () => {
       const cart = { id: 'cart-1', items: [] };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest
             .fn()
             .mockResolvedValueOnce(cart)
             .mockResolvedValueOnce(null),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -263,7 +265,7 @@ describe('CartsService', () => {
         items: [{ ...existingItem, qty: 5 }],
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest
             .fn()
@@ -272,7 +274,7 @@ describe('CartsService', () => {
             .mockResolvedValueOnce(reloadedCart),
           save: jest.fn().mockResolvedValue(existingItem),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.addItem('cart-1', 'variant-1', 3);
@@ -290,7 +292,7 @@ describe('CartsService', () => {
       };
       let createdItem: any;
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest
             .fn()
@@ -303,7 +305,7 @@ describe('CartsService', () => {
           }),
           save: jest.fn().mockResolvedValue(undefined),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.addItem('cart-1', 'variant-2', 1);
@@ -322,9 +324,9 @@ describe('CartsService', () => {
 
   describe('updateItemQty', () => {
     it('should throw CodedNotFoundException if cart item does not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(null) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -338,7 +340,7 @@ describe('CartsService', () => {
         id: 'cart-1',
         items: [{ ...item, qty: 4 }],
       };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest
             .fn()
@@ -346,7 +348,7 @@ describe('CartsService', () => {
             .mockResolvedValueOnce(reloadedCart),
           save: jest.fn().mockResolvedValue(item),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.updateItemQty('cart-1', 'item-1', 4);
@@ -359,7 +361,7 @@ describe('CartsService', () => {
       const item = { id: 'item-1', cartId: 'cart-1', qty: 1 };
       const reloadedCart = { id: 'cart-1', items: [] };
       let removed: any;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest
             .fn()
@@ -370,7 +372,7 @@ describe('CartsService', () => {
             return Promise.resolve(entity);
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.updateItemQty('cart-1', 'item-1', 0);
@@ -384,7 +386,7 @@ describe('CartsService', () => {
       const item = { id: 'item-1', cartId: 'cart-1', qty: 1 };
       const reloadedCart = { id: 'cart-1', items: [] };
       let removed: any;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest
             .fn()
@@ -395,7 +397,7 @@ describe('CartsService', () => {
             return Promise.resolve(entity);
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.removeItem('cart-1', 'item-1');
@@ -405,9 +407,9 @@ describe('CartsService', () => {
     });
 
     it('should throw CodedNotFoundException if the item does not exist', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = { findOne: jest.fn().mockResolvedValue(null) };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await expect(
@@ -419,14 +421,14 @@ describe('CartsService', () => {
   describe('mergeCart', () => {
     it('should return the customer cart unchanged if there is no active guest cart', async () => {
       const customerCart = { id: 'cart-1', customerId: 'cust-1', items: [] };
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest
             .fn()
             .mockResolvedValueOnce(customerCart) // findOrCreateCart lookup
             .mockResolvedValueOnce(null), // guest cart lookup
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.mergeCart('cust-1', 'guest-sess-1');
@@ -437,14 +439,14 @@ describe('CartsService', () => {
     it('should exclude customer-owned carts from the guest cart lookup', async () => {
       const customerCart = { id: 'cart-1', customerId: 'cust-1', items: [] };
       const wheres: any[] = [];
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockImplementation((_, options) => {
             wheres.push(options.where);
             return Promise.resolve(wheres.length === 1 ? customerCart : null);
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await service.mergeCart('cust-1', 'guest-sess-1');
@@ -463,12 +465,12 @@ describe('CartsService', () => {
         items: [{ id: 'item-1', variantId: 'variant-1', qty: 2 }],
       };
       const save = jest.fn();
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(selfCart),
           save,
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.mergeCart('cust-1', 'guest-sess-1');
@@ -496,7 +498,7 @@ describe('CartsService', () => {
       };
       const savedEntities: any[] = [];
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest
             .fn()
@@ -508,7 +510,7 @@ describe('CartsService', () => {
             return Promise.resolve(entity);
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.mergeCart('cust-1', 'guest-sess-1');
@@ -536,7 +538,7 @@ describe('CartsService', () => {
       };
       let createdItem: any;
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest
             .fn()
@@ -549,7 +551,7 @@ describe('CartsService', () => {
           }),
           save: jest.fn().mockResolvedValue(undefined),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.mergeCart('cust-1', 'guest-sess-1');
@@ -569,7 +571,7 @@ describe('CartsService', () => {
     it('should open exactly one tenantDb.run per public method call, never nested', async () => {
       const runCallDepths: number[] = [];
       let depth = 0;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         depth += 1;
         runCallDepths.push(depth);
         const em = {

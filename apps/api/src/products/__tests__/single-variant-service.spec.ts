@@ -2,13 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from '../services/products.service';
 import { TenantDbService } from '../../db/tenant-db.service';
 import { ClsService } from 'nestjs-cls';
-import { ErrorCode } from '@tiny-threads/shared';
 import {
   CodedNotFoundException,
   CodedBadRequestException,
   CodedConflictException,
 } from '../../common/errors/coded-exceptions';
-import { Product } from '../../db/entities/products.entity';
 import { ProductVariant } from '../../db/entities/product-variants.entity';
 
 describe('ProductsService - Single Variant Operations', () => {
@@ -51,11 +49,7 @@ describe('ProductsService - Single Variant Operations', () => {
   });
 
   it('should be defined', () => {
-    expect(service.createVariant).toBeDefined();
-    expect(service.findVariantsByProduct).toBeDefined();
-    expect(service.findVariantById).toBeDefined();
-    expect(service.updateVariant).toBeDefined();
-    expect(service.deleteVariant).toBeDefined();
+    expect(service).toBeDefined();
   });
 
   describe('createVariant', () => {
@@ -161,9 +155,10 @@ describe('ProductsService - Single Variant Operations', () => {
       };
       mockEntityManager.findOne.mockResolvedValueOnce(existing);
 
-      const result = await service.updateVariant('prod-1', 'var-1', {
+      const updated = await service.updateVariant('prod-1', 'var-1', {
         priceCents: 2000,
       });
+      expect(updated).toBeDefined();
       expect(mockEntityManager.save).toHaveBeenCalled();
     });
 

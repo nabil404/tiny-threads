@@ -91,11 +91,11 @@ describe('CheckoutService', () => {
   });
 
   it('2. should reject when cart is empty or not found for this caller (CART_EMPTY)', async () => {
-    tenantDbService.run.mockImplementation(async (cb) => {
+    tenantDbService.run.mockImplementation(async (cb: any) => {
       const em = {
         findOne: jest.fn().mockResolvedValue(null), // Cart not found
       };
-      return cb(em as any);
+      return await cb(em as any);
     });
 
     await expect(
@@ -109,7 +109,7 @@ describe('CheckoutService', () => {
     }
 
     // Also reject when the found cart has no items.
-    tenantDbService.run.mockImplementation(async (cb) => {
+    tenantDbService.run.mockImplementation(async (cb: any) => {
       const em = {
         findOne: jest.fn().mockResolvedValue({
           id: 'cart-uuid-1',
@@ -117,7 +117,7 @@ describe('CheckoutService', () => {
           items: [],
         }),
       };
-      return cb(em as any);
+      return await cb(em as any);
     });
 
     try {
@@ -141,14 +141,14 @@ describe('CheckoutService', () => {
       sku: 'SKU-1',
     };
 
-    tenantDbService.run.mockImplementation(async (cb) => {
+    tenantDbService.run.mockImplementation(async (cb: any) => {
       const em = {
         findOne: jest
           .fn()
           .mockResolvedValueOnce(mockCart) // Cart lookup
           .mockResolvedValueOnce(mockVariant), // ProductVariant lookup
       };
-      return cb(em as any);
+      return await cb(em as any);
     });
 
     await expect(
@@ -181,7 +181,7 @@ describe('CheckoutService', () => {
 
     const savedEntities: any[] = [];
 
-    tenantDbService.run.mockImplementation(async (cb) => {
+    tenantDbService.run.mockImplementation(async (cb: any) => {
       const em = {
         findOne: jest
           .fn()
@@ -196,7 +196,7 @@ describe('CheckoutService', () => {
           return Promise.resolve(entity);
         }),
       };
-      return cb(em as any);
+      return await cb(em as any);
     });
 
     const result = await service.checkout(dto, undefined, 'guest-session-1');
@@ -252,7 +252,7 @@ describe('CheckoutService', () => {
     };
 
     let createdOrder: any;
-    tenantDbService.run.mockImplementation(async (cb) => {
+    tenantDbService.run.mockImplementation(async (cb: any) => {
       const em = {
         findOne: jest
           .fn()
@@ -269,7 +269,7 @@ describe('CheckoutService', () => {
           .fn()
           .mockImplementation((_entityClassOrObj, obj) => Promise.resolve(obj)),
       };
-      return cb(em as any);
+      return await cb(em as any);
     });
 
     paymentsService.processOrderPayment.mockResolvedValueOnce({
@@ -304,7 +304,7 @@ describe('CheckoutService', () => {
       product: { title: 'Product' },
     };
 
-    tenantDbService.run.mockImplementation(async (cb) => {
+    tenantDbService.run.mockImplementation(async (cb: any) => {
       const em = {
         findOne: jest
           .fn()
@@ -317,7 +317,7 @@ describe('CheckoutService', () => {
             Promise.resolve(obj ?? entityClassOrObject),
           ),
       };
-      return cb(em as any);
+      return await cb(em as any);
     });
 
     // Guest checkout exercises both the pre-refactor call sites (guest-check
@@ -376,7 +376,7 @@ describe('CheckoutService', () => {
       };
 
       let capturedWhere: any;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockImplementation((_entity, opts: any) => {
             if (capturedWhere === undefined) {
@@ -392,7 +392,7 @@ describe('CheckoutService', () => {
               Promise.resolve(obj ?? entityClassOrObject),
             ),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       await service.checkout(dto, 'customer-owner', undefined);
@@ -451,7 +451,7 @@ describe('CheckoutService', () => {
         },
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         let cartLookupDone = false;
         const em = {
           findOne: jest.fn().mockImplementation((_entity, opts: any) => {
@@ -474,7 +474,7 @@ describe('CheckoutService', () => {
               Promise.resolve(obj),
             ),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.checkout(
@@ -525,7 +525,7 @@ describe('CheckoutService', () => {
         },
       };
 
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         let cartLookupDone = false;
         const em = {
           findOne: jest.fn().mockImplementation((_entity, opts: any) => {
@@ -549,7 +549,7 @@ describe('CheckoutService', () => {
               Promise.resolve(obj),
             ),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       const result = await service.checkout(dto, undefined, 'attacker-session');
@@ -566,14 +566,14 @@ describe('CheckoutService', () => {
       // session id that had been associated with a customer cart, the
       // where clause itself excludes customer-owned rows.
       let capturedWhere: any;
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockImplementation((_entity, opts: any) => {
             capturedWhere = opts.where;
             return Promise.resolve(null);
           }),
         };
-        return cb(em as any);
+        return await cb(em as any);
       });
 
       try {

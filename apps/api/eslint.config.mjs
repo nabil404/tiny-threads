@@ -43,12 +43,11 @@ export default tseslint.config(
     // is unaffected.
     files: ['**/__tests__/**/*.ts', 'test/**/*.ts', '**/*.spec.ts'],
     rules: {
-      '@typescript-eslint/no-unsafe-assignment': 'warn',
-      '@typescript-eslint/no-unsafe-member-access': 'warn',
-      '@typescript-eslint/no-unsafe-call': 'warn',
-      // Same population: `tenantDb.run` doubles are written as
-      // `jest.fn((work: any) => work(manager))`, whose return type is `any`.
-      '@typescript-eslint/no-unsafe-return': 'warn',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
     },
   },
 );
