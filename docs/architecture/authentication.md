@@ -1,6 +1,6 @@
 # Authentication — current flow
 
-As-built reference for how authentication actually works in `apps/api` today. `docs/AuthDesign.md` is the pre-implementation spec that guided the build; this doc describes what shipped, and calls out where it diverged. See `.claude/skills/backend-engineer/SKILL.md` for the tenancy-isolation rules (RLS, `withTenant`) this flow depends on.
+As-built reference for how authentication actually works in `apps/api` today. `docs/AuthDesign.md` is the pre-implementation spec that guided the build; this doc describes what shipped, and calls out where it diverged. See `.agents/skills/backend-engineer/SKILL.md` for the tenancy-isolation rules (RLS, `withTenant`) this flow depends on.
 
 ## 1. Shape of the system
 
