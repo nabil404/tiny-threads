@@ -141,7 +141,10 @@ to one generic message rather than throwing.
 
 ## Related
 
-- `.claude/skills/backend-engineer/SKILL.md` — general backend conventions
+- `.agents/skills/backend-engineer/SKILL.md` — general backend conventions
   this design follows (module boundaries, testing conventions).
-- `docs/design/authentication.md` — the auth flow whose ~30 existing throw
+- `docs/architecture/authentication.md` — the auth flow whose ~30 existing throw
   sites this design retrofits.
+- `docs/architecture/orders.md` — commerce domain error codes.
+- `docs/architecture/products-and-categories.md` — product catalog error codes.
+- `docs/architecture/carts-and-addresses.md` — cart and address error codes.
