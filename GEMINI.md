@@ -180,5 +180,10 @@ pnpm test:e2e                      # Run E2E test suite in apps/api
 - **REST API Guidelines**: `.agents/skills/rest-api-design/SKILL.md`
 - **Architecture Rationale**: `docs/architecture/architecture.md`
 - **Database ERD & Schema Spec**: `docs/architecture/database-schema.md`
-- **Authentication Design**: `docs/design/authentication.md` (`docs/AuthDesign.md` is the earlier pre-implementation spec)
-- **Error-Handling Design**: `docs/design/error-handling.md`
+- **Authentication Design**: `docs/architecture/authentication.md` (`docs/AuthDesign.md` is the earlier pre-implementation spec; authentication.md notes where it diverged)
+- **Error-Handling Design**: `docs/architecture/error-handling.md`
+- **Products & Categories**: `docs/architecture/products-and-categories.md`
+- **Carts & Customer Addresses**: `docs/architecture/carts-and-addresses.md`
+- **Orders**: `docs/architecture/orders.md`
+- **Payments**: `docs/architecture/payments.md`
+- **Database Conventions**: `docs/architecture/database-conventions.md`
