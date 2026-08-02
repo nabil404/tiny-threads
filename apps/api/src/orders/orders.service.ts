@@ -19,7 +19,6 @@ import { deriveFulfillmentStatus } from './domain/fulfillment-status-calculator'
 import {
   transitionLifecycle,
   transitionPayment,
-  type OrderLifecycleStatus,
 } from './domain/order-state-machine';
 import {
   CodedBadRequestException,
@@ -27,10 +26,8 @@ import {
 } from '../common/errors/coded-exceptions';
 
 const VALID_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
-  pending_payment: ['paid', 'cancelled'],
-  paid: ['processing', 'cancelled'],
-  processing: ['shipped', 'cancelled'],
-  shipped: ['delivered'],
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['completed', 'cancelled'],
 };
 
 @Injectable()
@@ -72,8 +69,8 @@ export class OrdersService {
         await this.cancelOrderSideEffects(manager, order, actorType, actorId);
       }
 
-      // A paid order must never be expired by the scheduler.
-      if (newStatus === 'paid') {
+      // A confirmed order must never be expired by the scheduler.
+      if (newStatus === 'confirmed') {
         order.expiresAt = null;
       }
 
@@ -112,10 +109,10 @@ export class OrdersService {
         );
       }
 
-      if (order.status !== 'pending_payment') {
+      if (order.status !== 'pending') {
         throw new CodedBadRequestException(
           ErrorCode.ORDER_CANNOT_BE_CANCELLED,
-          `Only pending_payment orders can be cancelled by customer, but order status is '${order.status}'`,
+          `Only pending orders can be cancelled by customer, but order status is '${order.status}'`,
         );
       }
 
@@ -422,28 +419,11 @@ export class OrdersService {
       order.fulfillmentStatus = newFulfillmentStatus;
 
       if (newFulfillmentStatus === 'fulfilled') {
-        const currentLifecycle: OrderLifecycleStatus =
-          order.status === 'confirmed' ||
-          order.status === 'paid' ||
-          order.status === 'processing' ||
-          order.status === 'shipped'
-            ? 'confirmed'
-            : order.status === 'pending' || order.status === 'pending_payment'
-              ? 'pending'
-              : (order.status as OrderLifecycleStatus);
-
-        const res = transitionLifecycle(
-          currentLifecycle,
-          'FULFILLMENT_COMPLETE',
-        );
+        const res = transitionLifecycle(order.status, 'FULFILLMENT_COMPLETE');
         if (res.success) {
-          order.status = res.nextState as OrderStatus;
+          order.status = res.nextState;
         } else {
-          order.status = 'completed' as OrderStatus;
-        }
-      } else if (newFulfillmentStatus === 'partially_fulfilled') {
-        if (order.status === 'paid' || order.status === 'processing') {
-          order.status = 'shipped';
+          order.status = 'completed';
         }
       }
 
@@ -532,7 +512,7 @@ export class OrdersService {
         );
       }
 
-      if (order.status === 'completed' || order.status === 'delivered') {
+      if (order.status === 'completed') {
         throw new CodedBadRequestException(
           ErrorCode.ORDER_CANNOT_BE_CANCELLED,
           'Completed orders cannot be cancelled',

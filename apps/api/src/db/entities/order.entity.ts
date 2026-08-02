@@ -3,11 +3,9 @@ import { TenantEntityBase } from './base';
 import { OrderItem } from './order-item.entity';
 
 export const ORDER_STATUSES = [
-  'pending_payment',
-  'paid',
-  'processing',
-  'shipped',
-  'delivered',
+  'pending',
+  'confirmed',
+  'completed',
   'cancelled',
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];

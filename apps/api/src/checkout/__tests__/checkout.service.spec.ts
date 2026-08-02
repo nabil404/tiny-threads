@@ -221,7 +221,7 @@ describe('CheckoutService', () => {
     );
     expect(savedOrder).toBeDefined();
     expect(savedOrder.totalCents).toBe(3000); // 1500 * 2
-    expect(savedOrder.status).toBe('paid');
+    expect(savedOrder.status).toBe('confirmed');
     expect(savedOrder.paymentStatus).toBe('captured');
     expect(savedOrder.expiresAt).toBeNull();
 

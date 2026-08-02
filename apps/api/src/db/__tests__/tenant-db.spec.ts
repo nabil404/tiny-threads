@@ -48,7 +48,7 @@ describe('withTenant (RLS isolation)', () => {
       customerEmail: email,
       shippingAddress: { line1: '123 Main St', countryCode: 'US' },
       currencyCode: currency.code,
-      status: 'pending_payment',
+      status: 'pending',
       paymentStatus: 'pending',
       totalCents: 1000,
     };

@@ -57,7 +57,7 @@ export class OrderExpiryService {
 
         const expiredOrders = await manager.find(Order, {
           where: {
-            status: 'pending_payment',
+            status: 'pending',
             expiresAt: LessThanOrEqual(now),
           },
           relations: { items: true },

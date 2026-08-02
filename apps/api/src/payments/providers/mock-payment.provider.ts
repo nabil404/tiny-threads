@@ -20,38 +20,39 @@ import {
 export class MockPaymentProvider implements PaymentPort, PaymentProvider {
   readonly providerName = 'mock';
 
-  async createMerchantAccount(i: {
+  createMerchantAccount(i: {
     tenantId: string;
     profile: Record<string, any>;
     idempotencyKey: string;
   }): Promise<MerchantAccountRef> {
     void i.idempotencyKey;
     const externalId =
-      (i.profile && i.profile.externalId) || `acct_mock_${i.tenantId}`;
-    return { provider: this.providerName, externalId };
+      (i.profile && (i.profile.externalId as string)) ||
+      `acct_mock_${i.tenantId}`;
+    return Promise.resolve({ provider: this.providerName, externalId });
   }
 
-  async createOnboardingSession(
+  createOnboardingSession(
     account: MerchantAccountRef,
     returnUrl: string,
   ): Promise<{ url: string; expiresAt: Date }> {
     void returnUrl;
-    return {
+    return Promise.resolve({
       url: `https://mock.onboarding.local/${account.externalId}`,
       expiresAt: new Date(Date.now() + 3600 * 1000),
-    };
+    });
   }
 
-  async getOnboardingStatus(
+  getOnboardingStatus(
     account: MerchantAccountRef,
   ): Promise<
     'pending' | 'needs_information' | 'active' | 'rejected' | 'disabled'
   > {
     void account;
-    return 'active';
+    return Promise.resolve('active');
   }
 
-  async authorize(i: {
+  authorize(i: {
     merchantAccount: MerchantAccountRef;
     amount: Money;
     platformFee: Money;
@@ -75,36 +76,36 @@ export class MockPaymentProvider implements PaymentPort, PaymentProvider {
       i.paymentMethodToken === 'mock_decline' ||
       i.paymentMethodToken === 'tok_decline'
     ) {
-      return {
+      return Promise.resolve({
         paymentRef: {
           provider: this.providerName,
           externalId: `mock_tx_failed_${uuid}`,
         },
         state: 'failed',
-      };
+      });
     }
 
     if (i.autoCapture) {
-      return {
+      return Promise.resolve({
         paymentRef: {
           provider: this.providerName,
           externalId: `mock_tx_${uuid}`,
         },
         state: 'captured',
-      };
+      });
     }
 
-    return {
+    return Promise.resolve({
       paymentRef: {
         provider: this.providerName,
         externalId: `mock_tx_${uuid}`,
       },
       state: 'authorized',
       authExpiresAt: new Date(Date.now() + 7 * 86400 * 1000),
-    };
+    });
   }
 
-  async capture(i: {
+  capture(i: {
     payment: PaymentRef;
     amount?: Money;
     idempotencyKey: string;
@@ -115,18 +116,19 @@ export class MockPaymentProvider implements PaymentPort, PaymentProvider {
     void i.payment;
     void i.idempotencyKey;
     const capturedTotal = i.amount ?? { amount: 0, currency: 'USD' };
-    return {
+    return Promise.resolve({
       state: 'captured',
       capturedTotal,
-    };
+    });
   }
 
-  async void(payment: PaymentRef, idempotencyKey: string): Promise<void> {
+  void(payment: PaymentRef, idempotencyKey: string): Promise<void> {
     void payment;
     void idempotencyKey;
+    return Promise.resolve();
   }
 
-  async refund(i: {
+  refund(i: {
     payment: PaymentRef;
     amount?: Money;
     refundPlatformFee: boolean;
@@ -139,22 +141,33 @@ export class MockPaymentProvider implements PaymentPort, PaymentProvider {
     void i.idempotencyKey;
     const uuid = randomUUID();
     const refundedTotal = i.amount ?? { amount: 0, currency: 'USD' };
-    return {
+    return Promise.resolve({
       refundRef: {
         provider: this.providerName,
         externalId: `mock_ref_${uuid}`,
       },
       refundedTotal,
-    };
+    });
   }
 
-  async parseEvent(
+  parseEvent(
     raw: Buffer,
     headers: Record<string, string>,
   ): Promise<NormalizedPaymentEvent> {
     void headers;
-    const body = JSON.parse(raw.toString('utf-8'));
-    return {
+    const body = JSON.parse(raw.toString('utf-8')) as {
+      id?: string;
+      providerEventId?: string;
+      type?: NormalizedPaymentEvent['type'];
+      merchantAccountId?: string;
+      merchantAccount?: { externalId?: string };
+      paymentId?: string;
+      payment?: { externalId?: string };
+      amount?: Money;
+      occurredAt?: string;
+    };
+    const paymentId = body.paymentId || body.payment?.externalId;
+    return Promise.resolve({
       providerEventId: body.id || body.providerEventId || `evt_${randomUUID()}`,
       type: body.type ?? 'payment.captured',
       merchantAccount: {
@@ -164,16 +177,15 @@ export class MockPaymentProvider implements PaymentPort, PaymentProvider {
           body.merchantAccount?.externalId ||
           'acct-1',
       },
-      payment:
-        body.paymentId || body.payment?.externalId
-          ? {
-              provider: this.providerName,
-              externalId: body.paymentId || body.payment?.externalId,
-            }
-          : undefined,
+      payment: paymentId
+        ? {
+            provider: this.providerName,
+            externalId: paymentId,
+          }
+        : undefined,
       amount: body.amount,
       occurredAt: body.occurredAt ? new Date(body.occurredAt) : new Date(),
-    };
+    });
   }
 
   // Legacy PaymentProvider methods

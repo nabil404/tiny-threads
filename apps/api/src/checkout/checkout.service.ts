@@ -125,7 +125,7 @@ export class CheckoutService {
         tenantId: effectiveTenantId,
         customerId: customerId ?? undefined,
         customerEmail: dto.customerEmail,
-        status: 'pending_payment',
+        status: 'pending',
         paymentStatus: 'pending',
         currencyCode: settings.defaultCurrencyCode,
         totalCents,
@@ -176,7 +176,7 @@ export class CheckoutService {
       );
 
       if (paymentResult.payment.status === 'captured') {
-        savedOrder.status = 'paid';
+        savedOrder.status = 'confirmed';
         savedOrder.paymentStatus = 'captured';
         savedOrder.expiresAt = null;
         await manager.save(Order, savedOrder);

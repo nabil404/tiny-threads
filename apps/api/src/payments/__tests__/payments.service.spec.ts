@@ -35,7 +35,7 @@ describe('PaymentsService', () => {
       id: 'order-1',
       tenantId: 'tenant-123',
       customerEmail: 'customer@example.com',
-      status: 'pending_payment',
+      status: 'pending',
       paymentStatus: 'pending',
       currencyCode: 'USD',
       totalCents: 10000,
@@ -46,7 +46,7 @@ describe('PaymentsService', () => {
 
     it('should process payment successfully with mock_success, saving captured Payment and Settlement', async () => {
       const savedEntities: any[] = [];
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation((cb) => {
         const em = {
           create: jest.fn().mockImplementation((entityClass, data) => ({
             id: `${entityClass.name.toLowerCase()}-id`,
@@ -80,7 +80,7 @@ describe('PaymentsService', () => {
     });
 
     it('should handle mock_decline by saving failed Payment and throwing PAYMENT_FAILED', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation((cb) => {
         const em = {
           create: jest.fn().mockImplementation((entityClass, data) => ({
             id: `${entityClass.name.toLowerCase()}-id`,
@@ -123,7 +123,7 @@ describe('PaymentsService', () => {
         })),
         save: jest.fn().mockImplementation((entityClass, data) => data),
       };
-      tenantDbService.run.mockImplementation(async (cb) => cb(em as any));
+      tenantDbService.run.mockImplementation((cb) => cb(em as any));
 
       const zeroFeeResult = await service.processOrderPayment(
         dummyOrder,
@@ -182,7 +182,7 @@ describe('PaymentsService', () => {
     } as Payment;
 
     it('should throw PAYMENT_NOT_FOUND if no captured payment is found', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation((cb) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
         };
@@ -201,7 +201,7 @@ describe('PaymentsService', () => {
     });
 
     it('should throw REFUND_EXCEEDS_PAYMENT if refund sum exceeds payment amount', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation((cb) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(existingPayment),
           find: jest.fn().mockResolvedValue([{ amountCents: 8000 } as Refund]),
@@ -221,7 +221,7 @@ describe('PaymentsService', () => {
     });
 
     it('should execute refund and save Refund entity when valid', async () => {
-      tenantDbService.run.mockImplementation(async (cb) => {
+      tenantDbService.run.mockImplementation((cb) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(existingPayment),
           find: jest.fn().mockResolvedValue([{ amountCents: 2000 } as Refund]),

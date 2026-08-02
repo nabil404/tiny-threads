@@ -98,7 +98,7 @@ describe('OrderExpiryScheduler', () => {
 
       const staleOrderTenant1 = {
         id: 'order-1',
-        status: 'pending_payment',
+        status: 'pending',
         expiresAt: new Date(Date.now() - 1000),
       };
 

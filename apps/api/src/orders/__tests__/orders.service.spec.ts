@@ -69,11 +69,11 @@ describe('OrdersService', () => {
   });
 
   describe('transitionStatus', () => {
-    it('should successfully transition pending_payment -> paid and clear expiresAt', async () => {
+    it('should successfully transition pending -> confirmed and clear expiresAt', async () => {
       const order = {
         id: mockOrderId,
         tenantId: mockTenantId,
-        status: 'pending_payment',
+        status: 'pending',
         expiresAt: new Date(Date.now() + 1800000),
         items: [],
       } as unknown as Order;
@@ -85,66 +85,60 @@ describe('OrdersService', () => {
 
       const updated = await service.transitionStatus(
         mockOrderId,
-        'paid',
+        'confirmed',
         'system',
       );
 
-      expect(updated.status).toBe('paid');
+      expect(updated.status).toBe('confirmed');
       expect(updated.expiresAt).toBeNull();
       expect(savedEntities).toContainEqual(
         expect.objectContaining({
           id: mockOrderId,
-          status: 'paid',
+          status: 'confirmed',
           expiresAt: null,
         }),
       );
       expect(savedEntities).toContainEqual(
         expect.objectContaining({
-          eventType: 'status_changed_to_paid',
+          eventType: 'status_changed_to_confirmed',
           actorType: 'system',
         }),
       );
     });
 
-    it('should transition through full valid lifecycle: pending_payment -> paid -> processing -> shipped -> delivered', async () => {
+    it('should transition through full valid lifecycle: pending -> confirmed -> completed', async () => {
       const order = {
         id: mockOrderId,
         tenantId: mockTenantId,
-        status: 'pending_payment',
+        status: 'pending',
         items: [],
       } as unknown as Order;
 
       em.findOne.mockImplementation(() => Promise.resolve(order));
 
-      await service.transitionStatus(mockOrderId, 'paid', 'admin');
-      expect(order.status).toBe('paid');
+      await service.transitionStatus(mockOrderId, 'confirmed', 'admin');
+      expect(order.status).toBe('confirmed');
 
-      await service.transitionStatus(mockOrderId, 'processing', 'admin');
-      expect(order.status).toBe('processing');
-
-      await service.transitionStatus(mockOrderId, 'shipped', 'admin');
-      expect(order.status).toBe('shipped');
-
-      await service.transitionStatus(mockOrderId, 'delivered', 'admin');
-      expect(order.status).toBe('delivered');
+      await service.transitionStatus(mockOrderId, 'completed', 'admin');
+      expect(order.status).toBe('completed');
     });
 
-    it('should throw INVALID_ORDER_STATUS_TRANSITION on invalid transition (e.g. pending_payment -> delivered)', async () => {
+    it('should throw INVALID_ORDER_STATUS_TRANSITION on invalid transition (e.g. pending -> completed)', async () => {
       const order = {
         id: mockOrderId,
         tenantId: mockTenantId,
-        status: 'pending_payment',
+        status: 'pending',
         items: [],
       } as unknown as Order;
 
       em.findOne.mockImplementation(() => Promise.resolve(order));
 
       await expect(
-        service.transitionStatus(mockOrderId, 'delivered', 'admin'),
+        service.transitionStatus(mockOrderId, 'completed', 'admin'),
       ).rejects.toThrow(CodedBadRequestException);
 
       try {
-        await service.transitionStatus(mockOrderId, 'delivered', 'admin');
+        await service.transitionStatus(mockOrderId, 'completed', 'admin');
       } catch (err: any) {
         expect(err.getResponse().code).toBe(
           ErrorCode.INVALID_ORDER_STATUS_TRANSITION,
@@ -157,7 +151,7 @@ describe('OrdersService', () => {
       const order = {
         id: mockOrderId,
         tenantId: mockTenantId,
-        status: 'processing',
+        status: 'confirmed',
         items: [{ variantId: 'var-1', quantity: 3 } as OrderItem],
       } as unknown as Order;
 
@@ -179,7 +173,7 @@ describe('OrdersService', () => {
       const mockOrder = {
         id: 'order-paid-1',
         tenantId: mockTenantId,
-        status: 'processing',
+        status: 'confirmed',
         paymentStatus: 'captured',
         totalCents: 5000,
         items: [{ variantId: 'var-1', quantity: 3 } as OrderItem],
@@ -213,7 +207,7 @@ describe('OrdersService', () => {
       const mockOrder = {
         id: 'order-paid-2',
         tenantId: mockTenantId,
-        status: 'processing',
+        status: 'confirmed',
         paymentStatus: 'captured',
         totalCents: 5000,
         items: [{ variantId: 'var-1', quantity: 3 } as OrderItem],
@@ -238,7 +232,7 @@ describe('OrdersService', () => {
       // The order was never transitioned/saved as cancelled: the throw
       // happens before `order.status = newStatus` and before the
       // subsequent `manager.save(Order, ...)` call.
-      expect(mockOrder.status).toBe('processing');
+      expect(mockOrder.status).toBe('confirmed');
       expect(mockOrder.paymentStatus).toBe('captured');
       const orderSaveCalls = em.save.mock.calls.filter(
         ([entityClass]: any[]) => entityClass === Order,
@@ -250,7 +244,7 @@ describe('OrdersService', () => {
       const order = {
         id: mockOrderId,
         tenantId: mockTenantId,
-        status: 'pending_payment',
+        status: 'pending',
         paymentStatus: 'pending',
         totalCents: 5000,
         items: [],
@@ -276,7 +270,7 @@ describe('OrdersService', () => {
       const mockOrder = {
         id: 'order-partial-1',
         tenantId: mockTenantId,
-        status: 'processing',
+        status: 'confirmed',
         paymentStatus: 'partially_refunded',
         totalCents: 5000,
         items: [{ variantId: 'var-1', quantity: 3 } as OrderItem],
@@ -311,7 +305,7 @@ describe('OrdersService', () => {
       const order = {
         id: mockOrderId,
         tenantId: mockTenantId,
-        status: 'processing',
+        status: 'confirmed',
         items: [
           { variantId: 'var-b', quantity: 1 } as OrderItem,
           { variantId: 'var-a', quantity: 2 } as OrderItem,
@@ -357,13 +351,13 @@ describe('OrdersService', () => {
   });
 
   describe('customerCancelOrder', () => {
-    it('should allow customer to cancel pending_payment order and restore stock', async () => {
+    it('should allow customer to cancel pending order and restore stock', async () => {
       const variant = { id: 'var-1', stock: 5 } as ProductVariant;
       const order = {
         id: mockOrderId,
         customerId: mockCustomerId,
         tenantId: mockTenantId,
-        status: 'pending_payment',
+        status: 'pending',
         items: [{ variantId: 'var-1', quantity: 2 } as OrderItem],
       } as unknown as Order;
 
@@ -394,7 +388,7 @@ describe('OrdersService', () => {
         id: mockOrderId,
         customerId: mockCustomerId,
         tenantId: mockTenantId,
-        status: 'paid',
+        status: 'confirmed',
         items: [],
       } as unknown as Order;
 

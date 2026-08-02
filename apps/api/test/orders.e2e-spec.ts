@@ -197,7 +197,7 @@ describe('Orders (e2e)', () => {
             tenantId,
             customerId,
             customerEmail: 'customer@example.com',
-            status: 'pending_payment',
+            status: 'pending',
             paymentStatus: 'pending',
             currencyCode: 'USD',
             totalCents: 2000,
@@ -267,27 +267,17 @@ describe('Orders (e2e)', () => {
       .expect(200);
 
     expect(detailRes.body.id).toBe(guestOrderId);
-    expect(detailRes.body.status).toBe('paid');
+    expect(detailRes.body.status).toBe('confirmed');
 
-    // 3c. Transition status paid -> processing
+    // 3c. Transition status confirmed -> completed
     const status1Res = await request(app.getHttpServer())
       .patch(`/api/v1/merchant-admins/orders/${guestOrderId}/status`)
       .set('Host', tenantHost)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ status: 'processing' })
+      .send({ status: 'completed' })
       .expect(200);
 
-    expect(status1Res.body.status).toBe('processing');
-
-    // 3d. Transition status processing -> shipped
-    const status2Res = await request(app.getHttpServer())
-      .patch(`/api/v1/merchant-admins/orders/${guestOrderId}/status`)
-      .set('Host', tenantHost)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ status: 'shipped' })
-      .expect(200);
-
-    expect(status2Res.body.status).toBe('shipped');
+    expect(status1Res.body.status).toBe('completed');
 
     // 3e. Refund order (partial refund)
     const refundRes = await request(app.getHttpServer())
@@ -347,7 +337,7 @@ describe('Orders (e2e)', () => {
       .expect(201);
 
     const cancelOrderId = checkoutRes.body.order.id;
-    expect(checkoutRes.body.order.status).toBe('paid');
+    expect(checkoutRes.body.order.status).toBe('confirmed');
     expect(checkoutRes.body.order.paymentStatus).toBe('captured');
 
     // 4b. Cancel the paid (captured) order via the admin transition endpoint
