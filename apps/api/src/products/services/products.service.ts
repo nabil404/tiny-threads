@@ -544,15 +544,10 @@ export class ProductsService {
         );
         variant.isDefault = true;
       } else if (dto.isDefault === false && variant.isDefault) {
-        // Prevent unsetting default if it is the only default unless another is promoted
-        const count = await em.count(ProductVariant, { where: { productId } });
-        if (count <= 1) {
-          throw new CodedBadRequestException(
-            ErrorCode.VALIDATION_FAILED,
-            'Product must have at least one default variant',
-          );
-        }
-        variant.isDefault = false;
+        throw new CodedBadRequestException(
+          ErrorCode.VALIDATION_FAILED,
+          'Product must have at least one default variant',
+        );
       }
 
       return this.saveWithUniqueCheck(() => em.save(ProductVariant, variant));

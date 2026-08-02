@@ -158,10 +158,10 @@ describe('ProductsService - Single Variant Operations', () => {
       ).rejects.toThrow(CodedConflictException);
     });
 
-    it('should throw CodedBadRequestException when unsetting default on sole variant', async () => {
+    it('should throw CodedBadRequestException when unsetting default on a default variant even if multiple variants exist', async () => {
       const existing = { id: 'var-1', productId: 'prod-1', sku: 'SKU-1', isDefault: true };
       mockEntityManager.findOne.mockResolvedValueOnce(existing);
-      mockEntityManager.count.mockResolvedValueOnce(1);
+      mockEntityManager.count.mockResolvedValueOnce(2);
 
       await expect(
         service.updateVariant('prod-1', 'var-1', { isDefault: false }),
