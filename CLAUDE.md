@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Tiny Threads is a **multi-tenant e-commerce marketplace** backend (dozens of merchant tenants, each selling to their own customers) plus a Next.js storefront/admin frontend. It's a pnpm monorepo:
 
 - **`apps/api`** — NestJS backend, the substantive app. What's built so far: the tenancy/DB foundation, auth end-to-end (customer + merchant-admin password auth, Google OAuth, JWT refresh rotation, role-based access control for merchant admins), a coded error-envelope system every response goes through, the first provider port (notifications), and the first commerce domain module — products and categories (storefront read endpoints, merchant-admin CRUD). Orders, payments, and the rest of the commerce domain don't exist yet.
-- **`apps/web`** — Next.js 16 (App Router) frontend. Currently a fresh `create-next-app` scaffold — no storefront/admin UI yet.
+- **`apps/admin-web`** — React SPA (Vite, React 19, Redux Toolkit, Tailwind CSS v4, shadcn/ui) frontend for merchant administration.
 - **`packages/shared`** — shared TypeScript code between `api` and `web`. Currently just the error-envelope types (`src/errors/` — `ErrorCode` enum, `ErrorResponseBody`/`FieldError`), kept here so neither app can drift from the other.
 
 **Read `.claude/skills/backend-engineer/SKILL.md` before touching any backend code** — it is the operating manual (the *how*: tenancy rules, ORM conventions, provider ports, order state machine) that `docs/architecture/architecture.md` is the decision record (the *why*) for. It's invoked automatically for backend work, but skim it directly for the full detail up front. Two areas in it are marked ⚠️ because getting them wrong is a data breach or vendor lock-in, not a style nit:
@@ -46,7 +46,7 @@ tiny-threads/
 │   │   │   └── main.ts
 │   │   ├── test/                   # e2e specs + Jest setup (setup-unit.ts / setup-e2e.ts)
 │   │   └── scripts/                # db-generate.sh / db-migrate.sh wrappers (see section 5)
-│   └── web/                        # Next.js frontend (fresh scaffold, App Router)
+│   └── admin-web/                  # Vite + React admin SPA
 ├── docs/
 │   ├── architecture/               # architecture.md (decision record) + database-schema.md (ERD) + references/
 │   ├── design/                     # authentication.md, error-handling.md (as-built references)
@@ -97,7 +97,7 @@ cp .env.test.example .env.test   # self-contained, no dependency on the root .en
 
 ```bash
 pnpm dev:api     # NestJS, watch mode
-pnpm dev:web     # Next.js dev server
+pnpm dev:admin-web # Vite dev server (@tiny-threads/admin-web)
 ```
 
 **Build / lint / format (repo root):**
@@ -131,7 +131,7 @@ pnpm test:e2e          # jest -c test/jest-e2e.json
 
 `docker-compose.test.yml` adds a `postgres-test` service (port 5433, its own volume, same roles as dev). `pretest`/`pretest:e2e` hooks auto-start that container and migrate it — no manual setup needed beyond the one-time `.env.test` copy.
 
-`apps/web` has no test runner configured yet; use `pnpm --filter @tiny-threads/web lint` for lint-only checks.
+`apps/admin-web` has no test runner configured yet; use `pnpm --filter @tiny-threads/admin-web lint` for lint-only checks.
 
 ## 6. Coding Conventions & Best Practices
 
@@ -142,7 +142,7 @@ pnpm test:e2e          # jest -c test/jest-e2e.json
 - **REST API design:** follow `.claude/skills/rest-api-design/SKILL.md` for resource naming, HTTP methods/status codes, versioning, pagination, and OpenAPI docs.
 - **Formatting:** single quotes, trailing commas everywhere (`.prettierrc` at repo root; enforced through ESLint's `prettier/prettier` rule, not a separate check).
 - **Linting:** `apps/api` ESLint runs with `recommendedTypeChecked`; `@typescript-eslint/no-explicit-any` is off, `no-floating-promises`/`no-unsafe-argument` are warnings not errors.
-- **Package names** are scoped: `@tiny-threads/api`, `@tiny-threads/web`, `@tiny-threads/shared`.
+- **Package names** are scoped: `@tiny-threads/api`, `@tiny-threads/admin-web`, `@tiny-threads/shared`.
 
 ## 7. Essential References
 

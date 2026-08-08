@@ -5,7 +5,7 @@
   "scripts": {
     "postinstall": "pnpm --filter @tiny-threads/shared build",
     "dev:api": "pnpm --filter @tiny-threads/api start:dev",
-    "dev:web": "pnpm --filter @tiny-threads/web dev",
+    "dev:admin-web": "pnpm --filter @tiny-threads/admin-web dev",
     "db:generate": "pnpm --filter @tiny-threads/api db:generate",
     "db:migrate": "pnpm --filter @tiny-threads/api db:migrate",
     "db:revert": "pnpm --filter @tiny-threads/api db:revert",

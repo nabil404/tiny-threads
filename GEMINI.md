@@ -9,7 +9,7 @@ This file provides guidance to Gemini / Antigravity AI agents working in this re
 **Tiny Threads** is a multi-tenant e-commerce marketplace platform (supporting dozens of merchant tenants, each selling to their own customers) built as a `pnpm` monorepo:
 
 - **`apps/api`**: NestJS 11 backend providing core APIs, authentication (incl. merchant-admin RBAC), multi-tenant DB foundation, RLS policies, and domain services. The first commerce domain module — products and categories (storefront read endpoints, merchant-admin CRUD) — has shipped; orders, payments, and the rest of the commerce domain don't exist yet.
-- **`apps/web`**: Next.js 16 (App Router) frontend for storefronts and administration.
+- **`apps/admin-web`**: React SPA (Vite, React 19, Redux Toolkit, Tailwind CSS v4, shadcn/ui) frontend for merchant administration.
 - **`packages/shared`**: Shared TypeScript code used across `api` and `web`. Currently just the error-envelope types (`src/errors/` — `ErrorCode` enum, `ErrorResponseBody`/`FieldError`), kept here so neither app can drift from the other.
 - **`docs/`**: Architectural Decision Records (ADRs), database schema/ERD specifications, and feature design docs.
 - **`.agents/skills/`**: Domain-specific guidance for backend engineering, Docker Compose orchestration, multi-stage Dockerfiles, and REST API design.
@@ -47,7 +47,7 @@ tiny-threads/
 │   │   │   ├── bootstrap.ts # configureApp(): global pipes/filters/prefix/versioning, called from main.ts
 │   │   ├── test/            # Integration & E2E tests, Jest setup scripts
 │   │   └── scripts/         # DB migration wrapper scripts
-│   └── web/                 # Next.js frontend application
+│   └── admin-web/           # Merchant administration web application
 ├── docker/                  # PostgreSQL initialization scripts and roles
 ├── docs/
 │   ├── architecture/        # Architecture decisions & database ERD/schema docs
@@ -110,7 +110,7 @@ Both roles are created `NOSUPERUSER NOBYPASSRLS` (`docker/postgres/init/01-roles
 
 ```bash
 pnpm dev:api     # Start NestJS API in watch mode (@tiny-threads/api)
-pnpm dev:web     # Start Next.js web application in dev mode (@tiny-threads/web)
+pnpm dev:admin-web # Start admin web application in dev mode (@tiny-threads/admin-web)
 ```
 
 ### Build & Code Quality
@@ -169,7 +169,7 @@ pnpm test:e2e                      # Run E2E test suite in apps/api
 
 6. **Code Style & Formatting**:
    - Single quotes, trailing commas (`.prettierrc`).
-   - Scoped package names (`@tiny-threads/api`, `@tiny-threads/web`, `@tiny-threads/shared`).
+   - Scoped package names (`@tiny-threads/api`, `@tiny-threads/admin-web`, `@tiny-threads/shared`).
    - Avoid `any` types; prefer strict TypeScript interfaces and DTOs with `class-validator`.
 
 ---
