@@ -1,2 +1,3 @@
-export * from './error-codes';
+export { ErrorCode } from './error-codes';
 export * from './types';
+
