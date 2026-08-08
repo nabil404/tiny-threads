@@ -8,7 +8,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@tiny-threads/shared': path.resolve(__dirname, '../../packages/shared/src'),
+      '@tiny-threads/shared': path.resolve(
+        __dirname,
+        '../../packages/shared/src',
+      ),
     },
   },
   server: {

@@ -70,17 +70,17 @@ layer:
 - **At least one variant required.** `CreateProductDto` accepts an optional
   `variants` array; if omitted or empty, a single default variant is created
   automatically with `sku = 'SKU-<uuid8>'` and the product's `basePrice`. Deleting
-  the only variant of a product is rejected with `VALIDATION_FAILED`.
+  the only variant of a product (via bulk update or single-variant `DELETE`) is rejected with `VALIDATION_FAILED`.
 - **Exactly one `isDefault` variant.** If the caller provides variants, exactly
-  one must have `isDefault: true`. For single-variant endpoints, setting `isDefault: true`
-  automatically demotes the previous default variant. Deleting the default variant
-  automatically promotes the oldest remaining variant to default.
+  one must have `isDefault: true`. For single-variant endpoints (`POST` or `PATCH`), setting `isDefault: true`
+  automatically demotes the previous default variant (`isDefault = false`) within the transaction. Unsetting `isDefault: false` on the sole default variant without promoting another throws `VALIDATION_FAILED`.
+- **Default auto-promotion on delete.** Deleting the default variant via `DELETE /api/v1/merchant-admins/products/:productId/variants/:variantId` automatically promotes the oldest remaining variant (ordered by `createdAt ASC`) to default within the transaction.
 - **SKU uniqueness is per-tenant.** A unique index on `(tenant_id, sku)` on
   `product_variants` enforces this at the DB level; the service surfaces
   constraint violations as `DUPLICATE_RESOURCE`.
+- **Product scope & tenant isolation.** Single-variant operations verify that both `:productId` and `:variantId` belong to the active tenant and that the variant is owned by the specified product. If `:variantId` does not belong to `:productId`, `RESOURCE_NOT_FOUND` is thrown.
 - **Bulk replace & single-variant endpoints.** In addition to bulk update via
-  `UpdateProductDto.variants`, fine-grained single-variant endpoints allow creating,
-  reading, patching, and deleting individual product variants.
+  `UpdateProductDto.variants`, fine-grained single-variant endpoints under `/api/v1/merchant-admins/products/:productId/variants` allow creating (`POST`), listing (`GET`), inspecting (`GET /:variantId`), patching (`PATCH /:variantId`), and deleting (`DELETE /:variantId`) individual product variants.
 
 ## 5. Category tree
 
@@ -116,7 +116,7 @@ Guards enforced at the service layer:
 | `POST` | `/api/v1/merchant-admins/products/:productId/variants` | `owner`, `admin` | Add single variant to product |
 | `GET` | `/api/v1/merchant-admins/products/:productId/variants` | any | List variants of product |
 | `GET` | `/api/v1/merchant-admins/products/:productId/variants/:variantId` | any | Get single variant by ID |
-| `PATCH` | `/api/v1/merchant-admins/products/:productId/variants/:variantId` | `owner`, `admin` | Update single variant (stock, price, default) |
+| `PATCH` | `/api/v1/merchant-admins/products/:productId/variants/:variantId` | `owner`, `admin` | Update single variant (stock, price, SKU, default) |
 | `DELETE` | `/api/v1/merchant-admins/products/:productId/variants/:variantId` | `owner`, `admin` | Delete single variant (auto-promotes default) |
 | `POST` | `/api/v1/merchant-admins/categories` | `owner`, `admin`, `staff` | Create category |
 | `GET` | `/api/v1/merchant-admins/categories` | any | Get full category tree |
@@ -135,8 +135,8 @@ Guards enforced at the service layer:
 
 | Code | When |
 |---|---|
-| `RESOURCE_NOT_FOUND` | Product or category ID not found in this tenant |
-| `VALIDATION_FAILED` | Invalid variant config, circular parentage, bad field value |
+| `RESOURCE_NOT_FOUND` | Product or category ID not found in tenant, or variant ID does not belong to specified product |
+| `VALIDATION_FAILED` | Invalid variant config, circular parentage, bad field value, deleting sole variant, or unsetting only default variant |
 | `DUPLICATE_RESOURCE` | SKU already exists in this tenant |
 
 ## Related
@@ -146,3 +146,5 @@ Guards enforced at the service layer:
 - `docs/architecture/orders.md` — order items snapshot variant prices
 - `docs/architecture/error-handling.md` — error envelope format
 - `.agents/skills/backend-engineer/SKILL.md` — operating rules
+
+

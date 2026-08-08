@@ -1,7 +1,7 @@
 # Database Conventions — design reference
 
 As-built reference for the data-layer patterns shared across all domain modules
-in `apps/api`. `GEMINI.md §4` carries the **rules** (what engineers must do);
+in `apps/api`. `apps/api/GEMINI.md §4` carries the **rules** (what engineers must do);
 this document carries the **rationale** (why the rules exist and what happens
 when they are violated). See `docs/architecture/architecture.md` for the
 multi-tenancy and RLS foundations these conventions build on.
@@ -288,5 +288,5 @@ The programmatic interface exposed to domain code is:
 - `docs/architecture/architecture.md` — multi-tenancy model and RLS
 - `docs/architecture/authentication.md` — refresh token entities (ImmutableTenantEntityBase usage)
 - `docs/architecture/orders.md` — background job tenancy (order expiry scheduler)
-- `GEMINI.md §4` — the rules that these conventions underpin
+- `apps/api/GEMINI.md §4` — the rules that these conventions underpin
 - `.agents/skills/backend-engineer/SKILL.md` — operating manual
