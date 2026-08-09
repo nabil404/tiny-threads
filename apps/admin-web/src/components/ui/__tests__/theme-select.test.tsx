@@ -1,53 +1,26 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
-import appReducer from '../../../store/slices/appSlice';
 import { ThemeSelect } from '../theme-select';
-import { THEMES } from '../../../theme/themes';
+import { THEMES, THEME_STORAGE_KEY } from '../../../theme/themes';
 
-function createMockStore(initialTheme = 'dark') {
-  return configureStore({
-    reducer: {
-      app: appReducer,
-    },
-    preloadedState: {
-      app: {
-        tenantId: 'tenant-1',
-        tenantName: 'Test Tenant',
-        theme: initialTheme,
-      },
-    },
-  });
-}
-
-describe('ThemeSelect', () => {
+describe('ThemeSelect (Standalone Component - No Redux dependency)', () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.className = '';
+    document.documentElement.removeAttribute('data-theme');
   });
 
-  it('renders active theme button', () => {
-    const store = createMockStore('dark');
-    render(
-      <Provider store={store}>
-        <ThemeSelect />
-      </Provider>
-    );
+  it('renders active theme button when controlled via value prop', () => {
+    render(<ThemeSelect value="emerald" />);
 
     const button = screen.getByRole('button', { name: /select theme/i });
     expect(button).toBeInTheDocument();
-    expect(button).toHaveTextContent('Dark');
+    expect(button).toHaveTextContent('Emerald');
   });
 
   it('opens dropdown menu when clicked', () => {
-    const store = createMockStore('dark');
-    render(
-      <Provider store={store}>
-        <ThemeSelect />
-      </Provider>
-    );
+    render(<ThemeSelect value="dark" />);
 
     const button = screen.getByRole('button', { name: /select theme/i });
     fireEvent.click(button);
@@ -59,13 +32,9 @@ describe('ThemeSelect', () => {
     });
   });
 
-  it('dispatches setTheme and closes dropdown when an option is clicked', () => {
-    const store = createMockStore('dark');
-    render(
-      <Provider store={store}>
-        <ThemeSelect />
-      </Provider>
-    );
+  it('calls onChange callback when an option is clicked in controlled mode', () => {
+    const handleChange = vi.fn();
+    render(<ThemeSelect value="dark" onChange={handleChange} />);
 
     const button = screen.getByRole('button', { name: /select theme/i });
     fireEvent.click(button);
@@ -73,18 +42,28 @@ describe('ThemeSelect', () => {
     const emeraldOption = screen.getByRole('button', { name: /emerald/i });
     fireEvent.click(emeraldOption);
 
-    expect(store.getState().app.theme).toBe('emerald');
+    expect(handleChange).toHaveBeenCalledWith('emerald');
     expect(screen.queryByText('Select Theme')).not.toBeInTheDocument();
   });
 
+  it('updates local state and DOM when clicked in uncontrolled mode without Redux', () => {
+    render(<ThemeSelect />);
+
+    const button = screen.getByRole('button', { name: /select theme/i });
+    fireEvent.click(button);
+
+    const midnightOption = screen.getByRole('button', { name: /midnight/i });
+    fireEvent.click(midnightOption);
+
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('midnight');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('midnight');
+  });
+
   it('closes dropdown when clicking outside', () => {
-    const store = createMockStore('dark');
     render(
       <div>
         <div data-testid="outside">Outside</div>
-        <Provider store={store}>
-          <ThemeSelect />
-        </Provider>
+        <ThemeSelect value="dark" />
       </div>
     );
 

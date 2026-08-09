@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAppDispatch, useAppSelector } from './store/hooks';
-import { selectApp } from './store/slices/appSlice';
+import { selectApp, setTheme } from './store/slices/appSlice';
 import { selectAuth, logout } from './store/slices/authSlice';
 import { applyThemeToDocument } from './theme/themes';
 import { LoginPage } from './pages/LoginPage';
@@ -58,7 +58,10 @@ export default function App() {
               >
                 {tenantId ? `Tenant: ${tenantId}` : 'Platform Context'}
               </Badge>
-              <ThemeSelect />
+              <ThemeSelect
+                value={theme}
+                onChange={(newTheme) => dispatch(setTheme(newTheme))}
+              />
               <Button
                 variant="outline"
                 size="sm"
@@ -108,7 +111,10 @@ export default function App() {
               </CardContent>
               <CardFooter className="gap-3">
                 <Button onClick={() => dispatch(logout())}>Sign Out</Button>
-                <ThemeSelect />
+                <ThemeSelect
+                  value={theme}
+                  onChange={(newTheme) => dispatch(setTheme(newTheme))}
+                />
               </CardFooter>
             </Card>
           </main>

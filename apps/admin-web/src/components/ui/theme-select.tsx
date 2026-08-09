@@ -1,7 +1,12 @@
 import * as React from 'react';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { selectApp, setTheme } from '../../store/slices/appSlice';
-import { THEMES, ThemeConfig } from '../../theme/themes';
+import {
+  THEMES,
+  ThemeConfig,
+  ThemeId,
+  getSavedTheme,
+  applyThemeToDocument,
+  THEME_STORAGE_KEY,
+} from '../../theme/themes';
 import { Sun, Moon, Sparkles, Trees, Palette, Check } from 'lucide-react';
 
 const ICON_MAP: Record<ThemeConfig['iconName'], React.ComponentType<{ className?: string }>> = {
@@ -12,14 +17,30 @@ const ICON_MAP: Record<ThemeConfig['iconName'], React.ComponentType<{ className?
 };
 
 export interface ThemeSelectProps {
+  value?: ThemeId;
+  onChange?: (theme: ThemeId) => void;
   className?: string;
 }
 
-export function ThemeSelect({ className = '' }: ThemeSelectProps) {
-  const dispatch = useAppDispatch();
-  const { theme: currentThemeId } = useAppSelector(selectApp);
+export function ThemeSelect({ value, onChange, className = '' }: ThemeSelectProps) {
+  const [internalTheme, setInternalTheme] = React.useState<ThemeId>(() => getSavedTheme());
   const [isOpen, setIsOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
+
+  const currentThemeId = value !== undefined ? value : internalTheme;
+
+  const handleThemeChange = (newTheme: ThemeId) => {
+    if (onChange) {
+      onChange(newTheme);
+    } else {
+      setInternalTheme(newTheme);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+      }
+      applyThemeToDocument(newTheme);
+    }
+    setIsOpen(false);
+  };
 
   const activeTheme = THEMES.find((t) => t.id === currentThemeId) || THEMES[0];
   const ActiveIcon = ICON_MAP[activeTheme.iconName] || Palette;
@@ -62,10 +83,7 @@ export function ThemeSelect({ className = '' }: ThemeSelectProps) {
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => {
-                    dispatch(setTheme(t.id));
-                    setIsOpen(false);
-                  }}
+                  onClick={() => handleThemeChange(t.id)}
                   className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left transition-colors cursor-pointer hover:bg-muted/70 ${
                     isSelected ? 'bg-muted font-semibold text-primary' : ''
                   }`}

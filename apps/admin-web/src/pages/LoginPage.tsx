@@ -1,6 +1,6 @@
 import { useState, useId } from 'react';
-import { useAppDispatch } from '../store/hooks';
-import { setTenant } from '../store/slices/appSlice';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { selectApp, setTenant, setTheme } from '../store/slices/appSlice';
 import { loginSuccess } from '../store/slices/authSlice';
 import { AuthCard } from '../components/auth/AuthCard';
 import { Input } from '../components/ui/input';
@@ -10,6 +10,7 @@ import { Store, ArrowRight, Lock, User, AlertCircle } from 'lucide-react';
 
 export function LoginPage() {
   const dispatch = useAppDispatch();
+  const { theme } = useAppSelector(selectApp);
   const emailId = useId();
   const passwordId = useId();
 
@@ -33,13 +34,13 @@ export function LoginPage() {
       dispatch(
         loginSuccess({
           token: 'jwt-mock-merchant-token',
-          tenantId: 'tenant_demo_1',
           user: {
             id: 'usr_m1',
             email,
             name: 'Merchant Admin',
             role: 'MERCHANT_ADMIN',
           },
+          tenantId: 'tenant_demo_1',
         }),
       );
 
@@ -55,7 +56,7 @@ export function LoginPage() {
   };
 
   return (
-    <AuthCard>
+    <AuthCard theme={theme} onThemeChange={(newTheme) => dispatch(setTheme(newTheme))}>
       <div className="flex flex-col items-center mb-8 text-center">
         <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
           <Store className="h-6 w-6 text-primary" />
