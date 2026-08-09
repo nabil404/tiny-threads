@@ -1,10 +1,10 @@
-export type ThemeId = 'light' | 'dark' | 'midnight' | 'emerald' | string;
+export type ThemeId = 'light' | 'dark' | string;
 
 export interface ThemeConfig {
   id: ThemeId;
   name: string;
   description: string;
-  iconName: 'Sun' | 'Moon' | 'Sparkles' | 'Trees';
+  iconName: 'Sun' | 'Moon';
 }
 
 export const THEMES: ThemeConfig[] = [
@@ -19,18 +19,6 @@ export const THEMES: ThemeConfig[] = [
     name: 'Dark',
     description: 'Classic dark mode',
     iconName: 'Moon',
-  },
-  {
-    id: 'midnight',
-    name: 'Midnight',
-    description: 'Deep navy & purple night theme',
-    iconName: 'Sparkles',
-  },
-  {
-    id: 'emerald',
-    name: 'Emerald',
-    description: 'Rich dark slate & mint theme',
-    iconName: 'Trees',
   },
 ];
 
@@ -51,7 +39,7 @@ export function applyThemeToDocument(themeId: ThemeId): void {
   const root = document.documentElement;
   root.setAttribute('data-theme', themeId);
 
-  if (themeId === 'dark' || themeId === 'midnight') {
+  if (themeId === 'dark') {
     root.classList.add('dark');
   } else {
     root.classList.remove('dark');

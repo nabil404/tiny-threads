@@ -7,13 +7,11 @@ import {
   applyThemeToDocument,
   THEME_STORAGE_KEY,
 } from '@theme/themes';
-import { Sun, Moon, Sparkles, Trees, Palette, Check } from 'lucide-react';
+import { Sun, Moon, Palette, Check } from 'lucide-react';
 
 const ICON_MAP: Record<ThemeConfig['iconName'], React.ComponentType<{ className?: string }>> = {
   Sun,
   Moon,
-  Sparkles,
-  Trees,
 };
 
 export interface ThemeSelectProps {

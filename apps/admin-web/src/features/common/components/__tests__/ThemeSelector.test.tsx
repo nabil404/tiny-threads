@@ -29,7 +29,7 @@ describe('ThemeSelector (Smart Component connected to Redux)', () => {
   });
 
   it('renders active theme from Redux state', () => {
-    const store = createMockStore('emerald');
+    const store = createMockStore('light');
     render(
       <Provider store={store}>
         <ThemeSelector />
@@ -38,7 +38,7 @@ describe('ThemeSelector (Smart Component connected to Redux)', () => {
 
     const button = screen.getByRole('button', { name: /select theme/i });
     expect(button).toBeInTheDocument();
-    expect(button).toHaveTextContent('Emerald');
+    expect(button).toHaveTextContent('Light');
   });
 
   it('dispatches setTheme action to Redux store when theme option is selected', () => {
@@ -52,10 +52,10 @@ describe('ThemeSelector (Smart Component connected to Redux)', () => {
     const button = screen.getByRole('button', { name: /select theme/i });
     fireEvent.click(button);
 
-    const midnightOption = screen.getByRole('button', { name: /midnight/i });
-    fireEvent.click(midnightOption);
+    const lightOption = screen.getByRole('button', { name: /light/i });
+    fireEvent.click(lightOption);
 
-    expect(store.getState().app.theme).toBe('midnight');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('midnight');
+    expect(store.getState().app.theme).toBe('light');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
   });
 });

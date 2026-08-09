@@ -26,11 +26,11 @@ describe('appSlice', () => {
 
   it('should handle setTheme and update localStorage & document attribute', () => {
     const initialState: AppState = appReducer(undefined, { type: 'unknown' });
-    const nextState = appReducer(initialState, setTheme('midnight'));
+    const nextState = appReducer(initialState, setTheme('light'));
 
-    expect(nextState.theme).toBe('midnight');
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('midnight');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('midnight');
-    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(nextState.theme).toBe('light');
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 });

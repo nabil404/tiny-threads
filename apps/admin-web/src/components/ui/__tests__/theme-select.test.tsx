@@ -12,11 +12,11 @@ describe('ThemeSelect (Standalone Component - No Redux dependency)', () => {
   });
 
   it('renders active theme button when controlled via value prop', () => {
-    render(<ThemeSelect value="emerald" />);
+    render(<ThemeSelect value="light" />);
 
     const button = screen.getByRole('button', { name: /select theme/i });
     expect(button).toBeInTheDocument();
-    expect(button).toHaveTextContent('Emerald');
+    expect(button).toHaveTextContent('Light');
   });
 
   it('opens dropdown menu when clicked', () => {
@@ -39,10 +39,10 @@ describe('ThemeSelect (Standalone Component - No Redux dependency)', () => {
     const button = screen.getByRole('button', { name: /select theme/i });
     fireEvent.click(button);
 
-    const emeraldOption = screen.getByRole('button', { name: /emerald/i });
-    fireEvent.click(emeraldOption);
+    const lightOption = screen.getByRole('button', { name: /light/i });
+    fireEvent.click(lightOption);
 
-    expect(handleChange).toHaveBeenCalledWith('emerald');
+    expect(handleChange).toHaveBeenCalledWith('light');
     expect(screen.queryByText('Select Theme')).not.toBeInTheDocument();
   });
 
@@ -52,11 +52,11 @@ describe('ThemeSelect (Standalone Component - No Redux dependency)', () => {
     const button = screen.getByRole('button', { name: /select theme/i });
     fireEvent.click(button);
 
-    const midnightOption = screen.getByRole('button', { name: /midnight/i });
-    fireEvent.click(midnightOption);
+    const lightOption = screen.getByRole('button', { name: /light/i });
+    fireEvent.click(lightOption);
 
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('midnight');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('midnight');
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
   });
 
   it('closes dropdown when clicking outside', () => {
