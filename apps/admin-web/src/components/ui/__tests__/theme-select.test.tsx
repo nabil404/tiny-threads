@@ -3,9 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import appReducer from '../../store/slices/appSlice';
-import { ThemeSelect } from './theme-select';
-import { THEMES } from '../../theme/themes';
+import appReducer from '../../../store/slices/appSlice';
+import { ThemeSelect } from '../theme-select';
+import { THEMES } from '../../../theme/themes';
 
 function createMockStore(initialTheme = 'dark') {
   return configureStore({

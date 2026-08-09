@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import appReducer, { setTheme, setTenant, AppState } from './appSlice';
-import { THEME_STORAGE_KEY } from '../../theme/themes';
+import appReducer, { setTheme, setTenant, AppState } from '../appSlice';
+import { THEME_STORAGE_KEY } from '../../../theme/themes';
 
 describe('appSlice', () => {
   beforeEach(() => {
@@ -34,4 +34,3 @@ describe('appSlice', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 });
-

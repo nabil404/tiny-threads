@@ -5,7 +5,7 @@ import {
   THEME_STORAGE_KEY,
   getSavedTheme,
   applyThemeToDocument,
-} from './themes';
+} from '../themes';
 
 describe('Theme Registry', () => {
   beforeEach(() => {
