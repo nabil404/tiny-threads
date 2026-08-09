@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { ThemeSelect } from '../ui/theme-select';
-import { ThemeId } from '../../theme/themes';
+import { ThemeSelect } from '../../../components/ui/theme-select';
+import { ThemeId } from '../../../theme/themes';
 
 export interface AuthCardProps {
   children: React.ReactNode;

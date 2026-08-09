@@ -1,20 +1,26 @@
 import { useState, useId } from 'react';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { selectApp, setTenant, setTheme } from '../store/slices/appSlice';
-import { loginSuccess } from '../store/slices/authSlice';
-import { AuthCard } from '../components/auth/AuthCard';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Button } from '../components/ui/button';
-import { Store, ArrowRight, Lock, User, AlertCircle } from 'lucide-react';
+import { useAppDispatch } from '../../../store/hooks';
+import { setTenant } from '../../../store/slices/appSlice';
+import { loginSuccess } from '../../../store/slices/authSlice';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
+import { Button } from '../../../components/ui/button';
+import { ArrowRight, Lock, User, AlertCircle } from 'lucide-react';
 
-export function LoginPage() {
+export interface LoginFormProps {
+  initialEmail?: string;
+  onSuccess?: () => void;
+}
+
+export function LoginForm({
+  initialEmail = 'admin@tinythreads.dev',
+  onSuccess,
+}: LoginFormProps) {
   const dispatch = useAppDispatch();
-  const { theme } = useAppSelector(selectApp);
   const emailId = useId();
   const passwordId = useId();
 
-  const [email, setEmail] = useState('admin@tinythreads.dev');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('password123');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,21 +58,12 @@ export function LoginPage() {
       );
 
       setIsLoading(false);
+      onSuccess?.();
     }, 600);
   };
 
   return (
-    <AuthCard theme={theme} onThemeChange={(newTheme) => dispatch(setTheme(newTheme))}>
-      <div className="flex flex-col items-center mb-8 text-center">
-        <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
-          <Store className="h-6 w-6 text-primary" />
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight">Merchant Portal</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Sign in to manage your e-commerce tenant store
-        </p>
-      </div>
-
+    <div className="w-full">
       {error && (
         <div className="mb-6 p-3.5 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -115,7 +112,7 @@ export function LoginPage() {
           </div>
         </div>
 
-        <Button type="submit" className="w-full mt-2" disabled={isLoading}>
+        <Button type="submit" className="w-full mt-2 cursor-pointer" disabled={isLoading}>
           {isLoading ? (
             'Authenticating...'
           ) : (
@@ -125,6 +122,6 @@ export function LoginPage() {
           )}
         </Button>
       </form>
-    </AuthCard>
+    </div>
   );
 }

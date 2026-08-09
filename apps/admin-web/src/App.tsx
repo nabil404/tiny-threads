@@ -3,7 +3,7 @@ import { useAppDispatch, useAppSelector } from './store/hooks';
 import { selectApp, setTheme } from './store/slices/appSlice';
 import { selectAuth, logout } from './store/slices/authSlice';
 import { applyThemeToDocument } from './theme/themes';
-import { LoginPage } from './pages/LoginPage';
+import { LoginPage } from './features/auth';
 import { ThemeSelect } from './components/ui/theme-select';
 import { Button } from './components/ui/button';
 import {
@@ -82,7 +82,7 @@ export default function App() {
                   <span>Authenticated Merchant Session</span>
                 </CardTitle>
                 <CardDescription>
-                  React 19 + Redux Toolkit + Multi-Theme Architecture Verified
+                  React 19 + Redux Toolkit + Feature-Based Architecture Verified
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">

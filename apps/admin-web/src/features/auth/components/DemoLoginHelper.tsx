@@ -1,5 +1,5 @@
 import { ShieldCheck } from 'lucide-react';
-import { Button } from '../ui/button';
+import { Button } from '../../../components/ui/button';
 
 export interface DemoLoginHelperProps {
   onSelectDemoUser: (credentials: { email: string; password: string }) => void;
@@ -7,8 +7,8 @@ export interface DemoLoginHelperProps {
 
 export function DemoLoginHelper({ onSelectDemoUser }: DemoLoginHelperProps) {
   return (
-    <div className="mt-8 pt-6 border-t border-[#c7c4d8]/60 dark:border-slate-800 text-center">
-      <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[#464555] dark:text-slate-400 uppercase tracking-wider mb-3">
+    <div className="mt-8 pt-6 border-t border-border text-center">
+      <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
         <ShieldCheck className="h-4 w-4 text-emerald-500" />
         <span>Development Demo Mode</span>
       </div>
@@ -22,7 +22,7 @@ export function DemoLoginHelper({ onSelectDemoUser }: DemoLoginHelperProps) {
             password: 'Password123!',
           })
         }
-        className="w-full text-xs text-slate-600 dark:text-slate-300"
+        className="w-full text-xs text-muted-foreground"
       >
         Use Demo Merchant Credentials
       </Button>
