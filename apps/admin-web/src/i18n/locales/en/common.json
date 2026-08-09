@@ -1,0 +1,33 @@
+{
+  "app": {
+    "subtitle": "Merchant Administration Console",
+    "platformContext": "Platform Context",
+    "tenantBadge": "Tenant: {{tenantId}}",
+    "authenticatedSessionTitle": "Authenticated Merchant Session",
+    "authenticatedSessionDescription": "React 19 + Redux Toolkit + Feature-Based Architecture Verified",
+    "loggedInUser": "Logged In User",
+    "role": "Role: {{role}}",
+    "sharedErrorCode": "Shared Error Code",
+    "logOut": "Log out",
+    "signOut": "Sign Out"
+  },
+  "theme": {
+    "selectThemeLabel": "Select Theme",
+    "selectThemeAria": "Select theme"
+  },
+  "locale": {
+    "selectLocaleLabel": "Select Language",
+    "selectLocaleAria": "Select language"
+  },
+  "auth": {
+    "portalTitle": "Merchant Portal",
+    "portalSubtitle": "Sign in to manage your e-commerce tenant store",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "admin@merchant.com",
+    "passwordLabel": "Password",
+    "forgotPassword": "Forgot password?",
+    "signIn": "Sign In",
+    "authenticating": "Authenticating...",
+    "genericError": "Unable to sign in. Please try again."
+  }
+}

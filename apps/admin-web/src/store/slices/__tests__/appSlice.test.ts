@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import appReducer, { setTheme, setTenant, AppState } from '../appSlice';
+import appReducer, { setTheme, setTenant, setLocale, AppState } from '../appSlice';
 import { THEME_STORAGE_KEY } from '@theme/themes';
+import { LOCALE_STORAGE_KEY } from '@i18n/locales';
+import i18n from '@i18n';
 
 describe('appSlice', () => {
   beforeEach(() => {
@@ -32,5 +34,19 @@ describe('appSlice', () => {
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
     expect(document.documentElement.classList.contains('dark')).toBe(false);
+  });
+
+  it('should initialize state with default locale from getSavedLocale()', () => {
+    const initialState: AppState = appReducer(undefined, { type: 'unknown' });
+    expect(initialState.locale).toBe('en');
+  });
+
+  it('should handle setLocale and update localStorage & i18next language', () => {
+    const initialState: AppState = appReducer(undefined, { type: 'unknown' });
+    const nextState = appReducer(initialState, setLocale('en'));
+
+    expect(nextState.locale).toBe('en');
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en');
+    expect(i18n.language).toBe('en');
   });
 });

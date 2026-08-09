@@ -16,6 +16,7 @@ function createMockStore(initialTheme = 'dark') {
         tenantId: 'tenant-1',
         tenantName: 'Test Tenant',
         theme: initialTheme,
+        locale: 'en' as const,
       },
     },
   });

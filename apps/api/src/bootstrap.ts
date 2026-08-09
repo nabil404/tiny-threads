@@ -10,6 +10,13 @@ import { buildValidationException } from './common/errors/validation-field';
 import { API_PREFIX, API_VERSION } from './common/constants';
 
 export function configureApp(app: INestApplication): void {
+  // admin-web needs credentialed cross-origin requests (httpOnly refresh
+  // cookie + Authorization header) — without this, no browser fetch from
+  // the admin SPA's origin can reach the API at all.
+  app.enableCors({
+    origin: [process.env.ADMIN_WEB_ORIGIN ?? 'http://localhost:3000'],
+    credentials: true,
+  });
   app.use(cookieParser());
   app.useGlobalPipes(
     new ValidationPipe({

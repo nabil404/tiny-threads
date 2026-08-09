@@ -12,8 +12,8 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\" --max-warnings=1000",
+    "lint": "eslint \"{src,apps,libs,test,scripts}/**/*.ts\" --fix",
+    "lint:check": "eslint \"{src,apps,libs,test,scripts}/**/*.ts\" --max-warnings=1000",
     "pretest": "pnpm test:db:up && pnpm db:migrate:test",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -27,7 +27,9 @@
     "db:migrate:test": "NODE_ENV=test typeorm-ts-node-commonjs migration:run -d ./src/db/data-source.ts",
     "db:revert": "typeorm-ts-node-commonjs migration:revert -d ./src/db/data-source.ts",
     "db:verify-rls": "node -r ts-node/register -r tsconfig-paths/register src/db/verify-rls.ts",
-    "db:verify-fresh": "sh scripts/db-verify-fresh.sh"
+    "db:verify-fresh": "sh scripts/db-verify-fresh.sh",
+    "create-tenant": "node -r ts-node/register -r tsconfig-paths/register scripts/create-tenant.ts",
+    "create-owner-user": "node -r ts-node/register -r tsconfig-paths/register scripts/create-owner-user.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

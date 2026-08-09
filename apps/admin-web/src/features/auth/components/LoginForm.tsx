@@ -1,10 +1,14 @@
 import { useState, useId } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAppDispatch } from '@store/hooks';
-import { setTenant } from '@store/slices/appSlice';
+import { setTenant, setLocale } from '@store/slices/appSlice';
 import { loginSuccess } from '@store/slices/authSlice';
 import { Input } from '@components/ui/input';
 import { Label } from '@components/ui/label';
 import { Button } from '@components/ui/button';
+import { login, getLocale, ApiClientError } from '@lib/api-client';
+import type { LocaleId } from '@i18n/locales';
+import { LOCALES } from '@i18n/locales';
 import { ArrowRight, Lock, User, AlertCircle } from 'lucide-react';
 
 export interface LoginFormProps {
@@ -12,34 +16,28 @@ export interface LoginFormProps {
   onSuccess?: () => void;
 }
 
-export function LoginForm({
-  initialEmail = 'admin@tinythreads.dev',
-  onSuccess,
-}: LoginFormProps) {
+export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const emailId = useId();
   const passwordId = useId();
 
   const [email, setEmail] = useState(initialEmail);
-  const [password, setPassword] = useState('password123');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    setTimeout(() => {
-      if (password !== 'password123') {
-        setError('Invalid credentials. Password is password123');
-        setIsLoading(false);
-        return;
-      }
+    try {
+      const { accessToken } = await login(email, password);
 
       dispatch(
         loginSuccess({
-          token: 'jwt-mock-merchant-token',
+          token: accessToken,
           user: {
             id: 'usr_m1',
             email,
@@ -57,9 +55,21 @@ export function LoginForm({
         }),
       );
 
-      setIsLoading(false);
+      try {
+        const { locale } = await getLocale(accessToken);
+        if (locale && LOCALES.some((l) => l.id === locale)) {
+          dispatch(setLocale(locale as LocaleId));
+        }
+      } catch (localeErr) {
+        console.error('Failed to hydrate locale preference', localeErr);
+      }
+
       onSuccess?.();
-    }, 600);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t('auth.genericError'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -74,14 +84,14 @@ export function LoginForm({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor={emailId} className="text-xs font-medium">
-            Email Address
+            {t('auth.emailLabel')}
           </Label>
           <div className="relative">
             <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               id={emailId}
               type="email"
-              placeholder="admin@merchant.com"
+              placeholder={t('auth.emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="pl-9"
@@ -93,10 +103,10 @@ export function LoginForm({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor={passwordId} className="text-xs font-medium">
-              Password
+              {t('auth.passwordLabel')}
             </Label>
             <span className="text-xs text-primary hover:underline cursor-pointer">
-              Forgot password?
+              {t('auth.forgotPassword')}
             </span>
           </div>
           <div className="relative">
@@ -114,10 +124,10 @@ export function LoginForm({
 
         <Button type="submit" className="w-full mt-2 cursor-pointer" disabled={isLoading}>
           {isLoading ? (
-            'Authenticating...'
+            t('auth.authenticating')
           ) : (
             <span className="flex items-center justify-center gap-2">
-              Sign In <ArrowRight className="h-4 w-4" />
+              {t('auth.signIn')} <ArrowRight className="h-4 w-4" />
             </span>
           )}
         </Button>

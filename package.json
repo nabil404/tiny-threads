@@ -10,6 +10,8 @@
     "db:migrate": "pnpm --filter @tiny-threads/api db:migrate",
     "db:revert": "pnpm --filter @tiny-threads/api db:revert",
     "db:verify-fresh": "pnpm --filter @tiny-threads/api db:verify-fresh",
+    "create-tenant": "pnpm --filter @tiny-threads/api create-tenant",
+    "create-owner-user": "pnpm --filter @tiny-threads/api create-owner-user",
     "test": "pnpm --filter @tiny-threads/api test",
     "test:e2e": "pnpm --filter @tiny-threads/api test:e2e",
     "build": "pnpm -r build",

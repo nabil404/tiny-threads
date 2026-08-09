@@ -12,6 +12,7 @@ import { TenantResolutionMiddleware } from '../common/middleware/tenant-resoluti
 import { CustomersAuthModule } from '../customers/customers-auth.module';
 import { OAuthModule } from '../oauth/oauth.module';
 import { MerchantAdminsAuthModule } from '../merchant-admins/merchant-admins-auth.module';
+import { MerchantAdminLocaleModule } from '../merchant-admins/merchant-admin-locale.module';
 import { ProductsModule } from '../products/products.module';
 import { CartsModule } from '../carts/carts.module';
 import { CustomerAddressesModule } from '../customer-addresses/customer-addresses.module';
@@ -33,6 +34,7 @@ import { validate } from '../config/env.validation';
     CustomersAuthModule,
     OAuthModule,
     MerchantAdminsAuthModule,
+    MerchantAdminLocaleModule,
     ProductsModule,
     CartsModule,
     CustomerAddressesModule,

@@ -1,49 +1,40 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  THEMES,
-  ThemeConfig,
-  ThemeId,
-  getSavedTheme,
-  applyThemeToDocument,
-  THEME_STORAGE_KEY,
-} from '@theme/themes';
-import { Sun, Moon, Palette, Check } from 'lucide-react';
+  LOCALES,
+  LocaleId,
+  getSavedLocale,
+  LOCALE_STORAGE_KEY,
+} from '@i18n/locales';
+import { Globe, Check } from 'lucide-react';
 
-const ICON_MAP: Record<ThemeConfig['iconName'], React.ComponentType<{ className?: string }>> = {
-  Sun,
-  Moon,
-};
-
-export interface ThemeSelectProps {
-  value?: ThemeId;
-  onChange?: (theme: ThemeId) => void;
+export interface LocaleSelectProps {
+  value?: LocaleId;
+  onChange?: (locale: LocaleId) => void;
   className?: string;
 }
 
-export function ThemeSelect({ value, onChange, className = '' }: ThemeSelectProps) {
+export function LocaleSelect({ value, onChange, className = '' }: LocaleSelectProps) {
   const { t } = useTranslation();
-  const [internalTheme, setInternalTheme] = React.useState<ThemeId>(() => getSavedTheme());
+  const [internalLocale, setInternalLocale] = React.useState<LocaleId>(() => getSavedLocale());
   const [isOpen, setIsOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
-  const currentThemeId = value !== undefined ? value : internalTheme;
+  const currentLocaleId = value !== undefined ? value : internalLocale;
 
-  const handleThemeChange = (newTheme: ThemeId) => {
+  const handleLocaleChange = (newLocale: LocaleId) => {
     if (onChange) {
-      onChange(newTheme);
+      onChange(newLocale);
     } else {
-      setInternalTheme(newTheme);
+      setInternalLocale(newLocale);
       if (typeof window !== 'undefined') {
-        localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+        localStorage.setItem(LOCALE_STORAGE_KEY, newLocale);
       }
-      applyThemeToDocument(newTheme);
     }
     setIsOpen(false);
   };
 
-  const activeTheme = THEMES.find((t) => t.id === currentThemeId) || THEMES[0];
-  const ActiveIcon = ICON_MAP[activeTheme.iconName] || Palette;
+  const activeLocale = LOCALES.find((l) => l.id === currentLocaleId) || LOCALES[0];
 
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -63,37 +54,36 @@ export function ThemeSelect({ value, onChange, className = '' }: ThemeSelectProp
         className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-card text-card-foreground shadow-xs hover:bg-muted transition-colors cursor-pointer"
         aria-haspopup="true"
         aria-expanded={isOpen}
-        aria-label={t('theme.selectThemeAria')}
+        aria-label={t('locale.selectLocaleAria')}
       >
-        <ActiveIcon className="h-4 w-4 text-primary" />
-        <span>{activeTheme.name}</span>
+        <Globe className="h-4 w-4 text-primary" />
+        <span>{activeLocale.nativeName}</span>
       </button>
 
       {isOpen && (
         <div className="absolute right-0 mt-2 w-48 rounded-xl border border-border bg-card text-card-foreground shadow-lg z-50 py-1 font-sans">
           <div className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/50">
-            {t('theme.selectThemeLabel')}
+            {t('locale.selectLocaleLabel')}
           </div>
           <div className="py-1">
-            {THEMES.map((t) => {
-              const IconComponent = ICON_MAP[t.iconName] || Palette;
-              const isSelected = t.id === currentThemeId;
+            {LOCALES.map((l) => {
+              const isSelected = l.id === currentLocaleId;
 
               return (
                 <button
-                  key={t.id}
+                  key={l.id}
                   type="button"
-                  onClick={() => handleThemeChange(t.id)}
+                  onClick={() => handleLocaleChange(l.id)}
                   className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left transition-colors cursor-pointer hover:bg-muted/70 ${
                     isSelected ? 'bg-muted font-semibold text-primary' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <IconComponent className="h-4 w-4 text-primary" />
+                    <Globe className="h-4 w-4 text-primary" />
                     <div>
-                      <div>{t.name}</div>
+                      <div>{l.nativeName}</div>
                       <div className="text-[10px] text-muted-foreground font-normal">
-                        {t.description}
+                        {l.englishName}
                       </div>
                     </div>
                   </div>

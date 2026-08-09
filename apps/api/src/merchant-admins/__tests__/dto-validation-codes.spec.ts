@@ -8,6 +8,7 @@ import { RequestMerchantUserPasswordResetDto } from '../dto/request-merchant-use
 import { InviteMemberDto } from '../dto/invite-member.dto';
 import { MerchantAdminOAuthInitiateDto } from '../dto/merchant-admin-oauth-initiate.dto';
 import { ResetMerchantUserPasswordDto } from '../dto/reset-merchant-user-password.dto';
+import { UpdateMerchantAdminLocaleDto } from '../dto/merchant-admin-locale.dto';
 
 function decode(raw: string): {
   code: string;
@@ -112,5 +113,24 @@ describe('merchant-admins DTO validation codes', () => {
       code: 'MIN_LENGTH',
       params: { min: 12 },
     });
+  });
+
+  it('UpdateMerchantAdminLocaleDto encodes IS_IN with the supported locales as a param for an unsupported locale', async () => {
+    const dto = plainToInstance(UpdateMerchantAdminLocaleDto, {
+      locale: 'xx',
+    });
+    const [error] = await validate(dto);
+    expect(decode(error.constraints!.isIn)).toMatchObject({
+      code: 'IS_IN',
+      params: { values: 'en' },
+    });
+  });
+
+  it('UpdateMerchantAdminLocaleDto allows a null locale with no validation errors', async () => {
+    const dto = plainToInstance(UpdateMerchantAdminLocaleDto, {
+      locale: null,
+    });
+    const errors = await validate(dto);
+    expect(errors).toHaveLength(0);
   });
 });

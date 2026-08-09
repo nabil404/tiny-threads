@@ -15,4 +15,7 @@ export class MerchantUser extends TenantEntityBase {
 
   @Column({ type: 'text' })
   role!: string;
+
+  @Column({ type: 'text', nullable: true })
+  locale!: string | null;
 }
