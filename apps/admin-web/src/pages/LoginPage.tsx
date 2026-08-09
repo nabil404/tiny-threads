@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { selectApp, toggleTheme, setTenant } from '../store/slices/appSlice';
 import {
   selectAuth,
   loginStart,
   loginSuccess,
   loginFailure,
 } from '../store/slices/authSlice';
-import { setTenant } from '../store/slices/appSlice';
 import { AuthCard } from '../components/auth/AuthCard';
 import { AuthHeader } from '../components/auth/AuthHeader';
 import { LoginForm } from '../components/auth/LoginForm';
@@ -14,6 +14,7 @@ import { DemoLoginHelper } from '../components/auth/DemoLoginHelper';
 
 export function LoginPage() {
   const dispatch = useAppDispatch();
+  const { theme } = useAppSelector(selectApp);
   const { status, error } = useAppSelector(selectAuth);
   const [initialEmail, setInitialEmail] = React.useState('');
 
@@ -28,7 +29,9 @@ export function LoginPage() {
       await new Promise((resolve) => setTimeout(resolve, 800));
 
       if (values.password === 'wrong') {
-        dispatch(loginFailure('Invalid merchant credentials. Please try again.'));
+        dispatch(
+          loginFailure('Invalid merchant credentials. Please try again.'),
+        );
         return;
       }
 
@@ -46,7 +49,7 @@ export function LoginPage() {
           user,
           tenantId,
           token: 'mock_jwt_token_xyz',
-        })
+        }),
       );
       dispatch(setTenant({ id: tenantId, name: tenantName }));
     } catch {
@@ -67,14 +70,16 @@ export function LoginPage() {
   };
 
   return (
-    <AuthCard>
+    <AuthCard theme={theme} onToggleTheme={() => dispatch(toggleTheme())}>
       <AuthHeader />
       <LoginForm
         onSubmit={handleLogin}
         isLoading={status === 'loading'}
         error={error}
         initialEmail={initialEmail}
-        onForgotPassword={() => alert('Password reset functionality requested.')}
+        onForgotPassword={() =>
+          alert('Password reset functionality requested.')
+        }
       />
       <DemoLoginHelper onSelectDemoUser={handleSelectDemoUser} />
     </AuthCard>

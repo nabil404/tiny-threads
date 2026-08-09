@@ -40,7 +40,7 @@ export const authSlice = createSlice({
         user: AuthUser;
         tenantId: string;
         token: string;
-      }>
+      }>,
     ) => {
       state.status = 'succeeded';
       state.user = action.payload.user;
