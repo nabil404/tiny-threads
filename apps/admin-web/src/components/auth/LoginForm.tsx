@@ -105,7 +105,7 @@ export function LoginForm({
         <button
           type="button"
           onClick={onForgotPassword}
-          className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline focus:outline-none transition-colors"
+          className="text-sm font-medium text-[#4f46e5] hover:text-[#3525cd] dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors focus:outline-none"
         >
           Forgot password?
         </button>
@@ -114,7 +114,7 @@ export function LoginForm({
       <Button
         type="submit"
         disabled={isLoading}
-        className="w-full h-12 rounded-xl text-base font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20 transition-all"
+        className="w-full h-11 rounded-lg text-sm font-semibold bg-[#4f46e5] hover:bg-[#3525cd] text-white shadow-sm transition-colors cursor-pointer"
       >
         {isLoading ? (
           <span className="flex items-center justify-center gap-2">

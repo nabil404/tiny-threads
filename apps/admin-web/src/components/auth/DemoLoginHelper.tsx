@@ -7,8 +7,8 @@ export interface DemoLoginHelperProps {
 
 export function DemoLoginHelper({ onSelectDemoUser }: DemoLoginHelperProps) {
   return (
-    <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 text-center">
-      <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+    <div className="mt-8 pt-6 border-t border-[#c7c4d8]/60 dark:border-slate-800 text-center">
+      <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[#464555] dark:text-slate-400 uppercase tracking-wider mb-3">
         <ShieldCheck className="h-4 w-4 text-emerald-500" />
         <span>Development Demo Mode</span>
       </div>
