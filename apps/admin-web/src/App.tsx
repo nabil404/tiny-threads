@@ -1,5 +1,7 @@
 import { useAppDispatch, useAppSelector } from './store/hooks';
-import { selectApp, setTenant, toggleTheme } from './store/slices/appSlice';
+import { selectApp, toggleTheme } from './store/slices/appSlice';
+import { selectAuth, logout } from './store/slices/authSlice';
+import { LoginPage } from './pages/LoginPage';
 import { Button } from './components/ui/button';
 import {
   Card,
@@ -11,19 +13,16 @@ import {
 } from './components/ui/card';
 import { Badge } from './components/ui/badge';
 import { ErrorCode } from '@tiny-threads/shared';
-import { ShieldAlert, Store, Moon, Sun, Layers } from 'lucide-react';
+import { ShieldAlert, Store, Moon, Sun, Layers, LogOut, User as UserIcon } from 'lucide-react';
 
 export default function App() {
   const dispatch = useAppDispatch();
   const { tenantId, tenantName, theme } = useAppSelector(selectApp);
+  const { isAuthenticated, user } = useAppSelector(selectAuth);
 
-  const handleToggleTenant = () => {
-    if (!tenantId) {
-      dispatch(setTenant({ id: 'tenant_12345', name: 'Acme Apparel' }));
-    } else {
-      dispatch(setTenant({ id: '', name: 'Tiny Threads Admin' }));
-    }
-  };
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
   return (
     <div
@@ -47,7 +46,7 @@ export default function App() {
               variant={tenantId ? 'default' : 'secondary'}
               className="px-3 py-1 text-xs"
             >
-              {tenantId ? `Tenant ID: ${tenantId}` : 'Platform Context'}
+              {tenantId ? `Tenant: ${tenantId}` : 'Platform Context'}
             </Badge>
             <Button
               variant="outline"
@@ -60,6 +59,15 @@ export default function App() {
                 <Moon className="h-4 w-4" />
               )}
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => dispatch(logout())}
+              className="gap-2 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/50"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Log out</span>
+            </Button>
           </div>
         </header>
 
@@ -68,19 +76,20 @@ export default function App() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Layers className="h-5 w-5 text-indigo-500" />
-                <span>State & UI Setup Status</span>
+                <span>Authenticated Merchant Session</span>
               </CardTitle>
               <CardDescription>
-                React 19 + Redux Toolkit + Tailwind CSS v4 + shadcn/ui verified
+                React 19 + Redux Toolkit + Tailwind CSS v4 + Stitch Login Flow Verified
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                  <span className="text-xs font-semibold uppercase text-slate-500">
-                    Active Tenant
+                  <span className="text-xs font-semibold uppercase text-slate-500 flex items-center gap-1.5 mb-1">
+                    <UserIcon className="h-3.5 w-3.5" /> Logged In User
                   </span>
-                  <p className="text-lg font-medium mt-1">{tenantName}</p>
+                  <p className="text-base font-medium">{user?.name} ({user?.email})</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Role: {user?.role}</p>
                 </div>
                 <div className="p-4 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                   <span className="text-xs font-semibold uppercase text-slate-500">
@@ -94,10 +103,8 @@ export default function App() {
               </div>
             </CardContent>
             <CardFooter className="gap-3">
-              <Button onClick={handleToggleTenant}>
-                {tenantId
-                  ? 'Reset to Platform Context'
-                  : 'Set Demo Merchant Tenant'}
+              <Button onClick={() => dispatch(logout())}>
+                Sign Out
               </Button>
               <Button
                 variant="secondary"
@@ -112,3 +119,4 @@ export default function App() {
     </div>
   );
 }
+
