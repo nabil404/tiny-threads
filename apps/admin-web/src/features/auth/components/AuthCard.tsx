@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ThemeSelector } from '../../common';
+import { ThemeSelector } from '@features/common';
 
 export interface AuthCardProps {
   children: React.ReactNode;

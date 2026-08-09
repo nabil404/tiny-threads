@@ -6,7 +6,7 @@ import {
   getSavedTheme,
   applyThemeToDocument,
   THEME_STORAGE_KEY,
-} from '../../theme/themes';
+} from '@theme/themes';
 import { Sun, Moon, Sparkles, Trees, Palette, Check } from 'lucide-react';
 
 const ICON_MAP: Record<ThemeConfig['iconName'], React.ComponentType<{ className?: string }>> = {

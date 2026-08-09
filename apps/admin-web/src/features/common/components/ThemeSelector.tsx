@@ -1,6 +1,6 @@
-import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { selectApp, setTheme } from '../../../store/slices/appSlice';
-import { ThemeSelect } from '../../../components/ui/theme-select';
+import { useAppDispatch, useAppSelector } from '@store/hooks';
+import { selectApp, setTheme } from '@store/slices/appSlice';
+import { ThemeSelect } from '@components/ui/theme-select';
 
 export interface ThemeSelectorProps {
   className?: string;

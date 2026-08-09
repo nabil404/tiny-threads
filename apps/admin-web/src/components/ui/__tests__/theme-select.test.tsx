@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { ThemeSelect } from '../theme-select';
-import { THEMES, THEME_STORAGE_KEY } from '../../../theme/themes';
+import { THEMES, THEME_STORAGE_KEY } from '@theme/themes';
 
 describe('ThemeSelect (Standalone Component - No Redux dependency)', () => {
   beforeEach(() => {

@@ -1,11 +1,11 @@
 import React from 'react';
-import { useAppDispatch, useAppSelector } from './store/hooks';
-import { selectApp } from './store/slices/appSlice';
-import { selectAuth, logout } from './store/slices/authSlice';
-import { applyThemeToDocument } from './theme/themes';
-import { LoginPage } from './features/auth';
-import { ThemeSelector } from './features/common';
-import { Button } from './components/ui/button';
+import { useAppDispatch, useAppSelector } from '@store/hooks';
+import { selectApp } from '@store/slices/appSlice';
+import { selectAuth, logout } from '@store/slices/authSlice';
+import { applyThemeToDocument } from '@theme/themes';
+import { LoginPage } from '@features/auth';
+import { ThemeSelector } from '@features/common';
+import { Button } from '@components/ui/button';
 import {
   Card,
   CardHeader,
@@ -13,8 +13,8 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from './components/ui/card';
-import { Badge } from './components/ui/badge';
+} from '@components/ui/card';
+import { Badge } from '@components/ui/badge';
 import { ErrorCode } from '@tiny-threads/shared';
 import {
   ShieldAlert,

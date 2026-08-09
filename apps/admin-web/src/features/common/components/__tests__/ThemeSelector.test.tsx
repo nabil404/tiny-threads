@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import appReducer from '../../../../store/slices/appSlice';
+import appReducer from '@store/slices/appSlice';
 import { ThemeSelector } from '../ThemeSelector';
 
 function createMockStore(initialTheme = 'dark') {

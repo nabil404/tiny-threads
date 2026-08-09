@@ -1,10 +1,10 @@
 import { useState, useId } from 'react';
-import { useAppDispatch } from '../../../store/hooks';
-import { setTenant } from '../../../store/slices/appSlice';
-import { loginSuccess } from '../../../store/slices/authSlice';
-import { Input } from '../../../components/ui/input';
-import { Label } from '../../../components/ui/label';
-import { Button } from '../../../components/ui/button';
+import { useAppDispatch } from '@store/hooks';
+import { setTenant } from '@store/slices/appSlice';
+import { loginSuccess } from '@store/slices/authSlice';
+import { Input } from '@components/ui/input';
+import { Label } from '@components/ui/label';
+import { Button } from '@components/ui/button';
 import { ArrowRight, Lock, User, AlertCircle } from 'lucide-react';
 
 export interface LoginFormProps {

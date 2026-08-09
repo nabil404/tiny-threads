@@ -25,7 +25,17 @@
     /* Paths */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@components/*": ["./src/components/*"],
+      "@components": ["./src/components"],
+      "@features/*": ["./src/features/*"],
+      "@features": ["./src/features"],
+      "@lib/*": ["./src/lib/*"],
+      "@lib": ["./src/lib"],
+      "@store/*": ["./src/store/*"],
+      "@store": ["./src/store"],
+      "@theme/*": ["./src/theme/*"],
+      "@theme": ["./src/theme"]
     }
   },
   "include": ["src"]
