@@ -1,11 +1,21 @@
-import { useState, useId } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useLoginMutation } from '@store/api/endpoints/authApi';
 import { extractErrorMessage } from '@lib/extract-error-message';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@components/ui/form';
 import { Input } from '@components/ui/input';
-import { Label } from '@components/ui/label';
 import { Button } from '@components/ui/button';
 import { ArrowRight, Lock, User, AlertCircle } from 'lucide-react';
+import { loginSchema, LoginFormData } from '../schemas';
 
 export interface LoginFormProps {
   initialEmail?: string;
@@ -14,21 +24,23 @@ export interface LoginFormProps {
 
 export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
   const { t } = useTranslation();
-  const emailId = useId();
-  const passwordId = useId();
-
-  const [email, setEmail] = useState(initialEmail);
-  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const [loginMutation, { isLoading }] = useLoginMutation();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: initialEmail,
+      password: '',
+    },
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
     setError(null);
 
     try {
-      await loginMutation({ email, password }).unwrap();
+      await loginMutation(data).unwrap();
       onSuccess?.();
     } catch (err: unknown) {
       setError(extractErrorMessage(err, t('auth.genericError')));
@@ -44,61 +56,75 @@ export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor={emailId} className="text-xs font-medium">
-            {t('auth.emailLabel')}
-          </Label>
-          <div className="relative">
-            <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              id={emailId}
-              type="email"
-              placeholder={t('auth.emailPlaceholder')}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-9"
-              required
-            />
-          </div>
-        </div>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel className="text-xs font-medium">
+                  {t('auth.emailLabel')}
+                </FormLabel>
+                <div className="relative">
+                  <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder={t('auth.emailPlaceholder')}
+                      className="pl-9"
+                      {...field}
+                    />
+                  </FormControl>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor={passwordId} className="text-xs font-medium">
-              {t('auth.passwordLabel')}
-            </Label>
-            <span className="text-xs text-primary hover:underline cursor-pointer">
-              {t('auth.forgotPassword')}
-            </span>
-          </div>
-          <div className="relative">
-            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              id={passwordId}
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="pl-9"
-              required
-            />
-          </div>
-        </div>
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-xs font-medium mb-0">
+                    {t('auth.passwordLabel')}
+                  </FormLabel>
+                  <span className="text-xs text-primary hover:underline cursor-pointer">
+                    {t('auth.forgotPassword')}
+                  </span>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <FormControl>
+                    <Input
+                      type="password"
+                      className="pl-9"
+                      {...field}
+                    />
+                  </FormControl>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <Button
-          type="submit"
-          className="w-full mt-2 cursor-pointer"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            t('auth.authenticating')
-          ) : (
-            <span className="flex items-center justify-center gap-2">
-              {t('auth.signIn')} <ArrowRight className="h-4 w-4" />
-            </span>
-          )}
-        </Button>
-      </form>
+          <Button
+            type="submit"
+            className="w-full mt-2 cursor-pointer"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              t('auth.authenticating')
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                {t('auth.signIn')} <ArrowRight className="h-4 w-4" />
+              </span>
+            )}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 }

@@ -18,11 +18,48 @@ describe('LoginForm', () => {
       screen.getByPlaceholderText(/admin@merchant\.com/i),
     ).toBeInTheDocument();
     expect(
+      screen.getByLabelText(/password/i),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole('button', { name: /sign in/i }),
     ).toBeInTheDocument();
   });
 
-  it('handles login form submission and calls onSuccess', async () => {
+  it('displays client-side validation errors for invalid input and does not submit', async () => {
+    const mockUnwrapLogin = vi.fn();
+    const mockLoginMutation = vi
+      .fn()
+      .mockReturnValue({ unwrap: mockUnwrapLogin });
+    vi.spyOn(authApiHooks, 'useLoginMutation').mockReturnValue([
+      mockLoginMutation as any,
+      { isLoading: false } as any,
+    ]);
+
+    const user = userEvent.setup();
+
+    render(
+      <Provider store={store}>
+        <LoginForm />
+      </Provider>,
+    );
+
+    await user.type(
+      screen.getByPlaceholderText(/admin@merchant\.com/i),
+      'invalid-email',
+    );
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Please enter a valid email address'),
+      ).toBeInTheDocument();
+      expect(screen.getByText('Password is required')).toBeInTheDocument();
+    });
+
+    expect(mockLoginMutation).not.toHaveBeenCalled();
+  });
+
+  it('handles valid login form submission and calls onSuccess', async () => {
     const mockUnwrapLogin = vi
       .fn()
       .mockResolvedValue({ accessToken: 'mock-token' });
@@ -59,7 +96,7 @@ describe('LoginForm', () => {
     });
   });
 
-  it('displays error message when login fails', async () => {
+  it('displays error message when login API fails', async () => {
     const mockUnwrapLogin = vi.fn().mockRejectedValue({
       data: {
         error: {
