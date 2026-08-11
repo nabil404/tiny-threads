@@ -13,8 +13,6 @@ function createMockStore(initialTheme = 'dark') {
     },
     preloadedState: {
       app: {
-        tenantId: 'tenant-1',
-        tenantName: 'Test Tenant',
         theme: initialTheme,
         locale: 'en' as const,
       },
