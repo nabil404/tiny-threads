@@ -14,9 +14,15 @@ export interface LocaleSelectProps {
   className?: string;
 }
 
-export function LocaleSelect({ value, onChange, className = '' }: LocaleSelectProps) {
+export function LocaleSelect({
+  value,
+  onChange,
+  className = '',
+}: LocaleSelectProps) {
   const { t } = useTranslation();
-  const [internalLocale, setInternalLocale] = React.useState<LocaleId>(() => getSavedLocale());
+  const [internalLocale, setInternalLocale] = React.useState<LocaleId>(() =>
+    getSavedLocale(),
+  );
   const [isOpen, setIsOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -34,7 +40,8 @@ export function LocaleSelect({ value, onChange, className = '' }: LocaleSelectPr
     setIsOpen(false);
   };
 
-  const activeLocale = LOCALES.find((l) => l.id === currentLocaleId) || LOCALES[0];
+  const activeLocale =
+    LOCALES.find((l) => l.id === currentLocaleId) || LOCALES[0];
 
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -47,7 +54,10 @@ export function LocaleSelect({ value, onChange, className = '' }: LocaleSelectPr
   }, []);
 
   return (
-    <div className={`relative inline-block text-left ${className}`} ref={menuRef}>
+    <div
+      className={`relative inline-block text-left ${className}`}
+      ref={menuRef}
+    >
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}

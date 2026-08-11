@@ -6,7 +6,11 @@ import {
   THEME_STORAGE_KEY,
 } from '../../theme/themes';
 import i18n from '../../i18n';
-import { LocaleId, getSavedLocale, LOCALE_STORAGE_KEY } from '../../i18n/locales';
+import {
+  LocaleId,
+  getSavedLocale,
+  LOCALE_STORAGE_KEY,
+} from '../../i18n/locales';
 
 export interface AppState {
   tenantId: string | null;
@@ -50,4 +54,3 @@ export const appSlice = createSlice({
 export const { setTenant, setTheme, setLocale } = appSlice.actions;
 export const selectApp = (state: { app: AppState }) => state.app;
 export default appSlice.reducer;
-

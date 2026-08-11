@@ -28,7 +28,9 @@ async function request<T>(
   });
 
   if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as ErrorResponseBody | null;
+    const body = (await res
+      .json()
+      .catch(() => null)) as ErrorResponseBody | null;
     const err = body?.error;
     throw new ApiClientError(
       res.status,

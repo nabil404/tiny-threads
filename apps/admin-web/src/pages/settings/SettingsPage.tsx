@@ -1,4 +1,10 @@
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@components/ui/card';
 import { Settings } from 'lucide-react';
 
 export function SettingsPage() {
@@ -23,7 +29,8 @@ export function SettingsPage() {
         </CardHeader>
         <CardContent>
           <div className="p-8 text-center border border-dashed border-border rounded-lg text-muted-foreground text-sm">
-            Store settings and payment provider configurations ready for connection.
+            Store settings and payment provider configurations ready for
+            connection.
           </div>
         </CardContent>
       </Card>

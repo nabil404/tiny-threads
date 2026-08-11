@@ -1,6 +1,12 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@components/ui/card';
 import { AlertTriangle, Home } from 'lucide-react';
 
 export function NotFoundPage() {

@@ -60,7 +60,10 @@ export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
 
       try {
         const localeResult = await fetchLocale().unwrap();
-        if (localeResult.locale && LOCALES.some((l) => l.id === localeResult.locale)) {
+        if (
+          localeResult.locale &&
+          LOCALES.some((l) => l.id === localeResult.locale)
+        ) {
           dispatch(setLocale(localeResult.locale as LocaleId));
         }
       } catch (localeErr) {
@@ -71,7 +74,9 @@ export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
     } catch (err: unknown) {
       const customErr = err as { data?: ErrorResponseBody; message?: string };
       const errorMessage =
-        customErr.data?.error?.message ?? customErr.message ?? t('auth.genericError');
+        customErr.data?.error?.message ??
+        customErr.message ??
+        t('auth.genericError');
       setError(errorMessage);
     }
   };
@@ -126,7 +131,11 @@ export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
           </div>
         </div>
 
-        <Button type="submit" className="w-full mt-2 cursor-pointer" disabled={isLoading}>
+        <Button
+          type="submit"
+          className="w-full mt-2 cursor-pointer"
+          disabled={isLoading}
+        >
           {isLoading ? (
             t('auth.authenticating')
           ) : (

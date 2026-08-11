@@ -67,7 +67,11 @@ describe('api-client', () => {
       vi.stubGlobal(
         'fetch',
         mockFetchOnce(400, {
-          error: { code: 'IS_IN', message: 'locale must be one of: en', params: { values: 'en' } },
+          error: {
+            code: 'IS_IN',
+            message: 'locale must be one of: en',
+            params: { values: 'en' },
+          },
         }),
       );
 

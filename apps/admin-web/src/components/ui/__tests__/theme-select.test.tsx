@@ -64,7 +64,7 @@ describe('ThemeSelect (Standalone Component - No Redux dependency)', () => {
       <div>
         <div data-testid="outside">Outside</div>
         <ThemeSelect value="dark" />
-      </div>
+      </div>,
     );
 
     const button = screen.getByRole('button', { name: /select theme/i });

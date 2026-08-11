@@ -34,7 +34,7 @@ describe('ThemeSelector (Smart Component connected to Redux)', () => {
     render(
       <Provider store={store}>
         <ThemeSelector />
-      </Provider>
+      </Provider>,
     );
 
     const button = screen.getByRole('button', { name: /select theme/i });
@@ -47,7 +47,7 @@ describe('ThemeSelector (Smart Component connected to Redux)', () => {
     render(
       <Provider store={store}>
         <ThemeSelector />
-      </Provider>
+      </Provider>,
     );
 
     const button = screen.getByRole('button', { name: /select theme/i });

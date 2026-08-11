@@ -6,6 +6,8 @@ describe('localeApi endpoints', () => {
     expect(localeApi.endpoints.getLocale).toBeDefined();
     expect(typeof localeApi.endpoints.getLocale.useQuery).toBe('function');
     expect(localeApi.endpoints.updateLocale).toBeDefined();
-    expect(typeof localeApi.endpoints.updateLocale.useMutation).toBe('function');
+    expect(typeof localeApi.endpoints.updateLocale.useMutation).toBe(
+      'function',
+    );
   });
 });

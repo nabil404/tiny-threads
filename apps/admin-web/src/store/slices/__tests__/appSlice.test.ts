@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import appReducer, { setTheme, setTenant, setLocale, AppState } from '../appSlice';
+import appReducer, {
+  setTheme,
+  setTenant,
+  setLocale,
+  AppState,
+} from '../appSlice';
 import { THEME_STORAGE_KEY } from '@theme/themes';
 import { LOCALE_STORAGE_KEY } from '@i18n/locales';
 import i18n from '@i18n';

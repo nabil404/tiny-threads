@@ -16,14 +16,24 @@ function renderWithStore(ui: React.ReactElement) {
     reducer: { auth: authReducer, app: appReducer },
     preloadedState: {
       auth: {
-        user: { id: '1', email: 'owner@example.com', name: 'Owner', role: 'MERCHANT_ADMIN' },
+        user: {
+          id: '1',
+          email: 'owner@example.com',
+          name: 'Owner',
+          role: 'MERCHANT_ADMIN',
+        },
         tenantId: 'tenant-1',
         token: 'tok',
         isAuthenticated: true,
         status: 'succeeded' as const,
         error: null,
       },
-      app: { tenantId: 'tenant-1', tenantName: 'Store 1', theme: 'dark' as const, locale: 'en' as const },
+      app: {
+        tenantId: 'tenant-1',
+        tenantName: 'Store 1',
+        theme: 'dark' as const,
+        locale: 'en' as const,
+      },
     },
   });
 
@@ -42,22 +52,30 @@ describe('Pages', () => {
 
   it('renders ProductsPage placeholder', () => {
     renderWithStore(<ProductsPage />);
-    expect(screen.getByRole('heading', { name: /products/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /products/i }),
+    ).toBeInTheDocument();
   });
 
   it('renders OrdersPage placeholder', () => {
     renderWithStore(<OrdersPage />);
-    expect(screen.getByRole('heading', { name: /orders/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /orders/i }),
+    ).toBeInTheDocument();
   });
 
   it('renders SettingsPage placeholder', () => {
     renderWithStore(<SettingsPage />);
-    expect(screen.getByRole('heading', { name: /settings/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /settings/i }),
+    ).toBeInTheDocument();
   });
 
   it('renders NotFoundPage with back link', () => {
     renderWithStore(<NotFoundPage />);
     expect(screen.getByText(/404/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /back to dashboard/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /back to dashboard/i }),
+    ).toBeInTheDocument();
   });
 });

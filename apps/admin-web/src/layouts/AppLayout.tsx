@@ -35,7 +35,9 @@ export function AppLayout() {
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2.5">
               <Store className="h-6 w-6 text-primary" />
-              <span className="font-bold text-lg tracking-tight">{tenantName}</span>
+              <span className="font-bold text-lg tracking-tight">
+                {tenantName}
+              </span>
             </div>
             <nav className="hidden md:flex items-center gap-1">
               {navItems.map((item) => (
@@ -63,7 +65,9 @@ export function AppLayout() {
               variant={tenantId ? 'default' : 'secondary'}
               className="px-2.5 py-0.5 text-xs hidden sm:inline-flex"
             >
-              {tenantId ? t('app.tenantBadge', { tenantId }) : t('app.platformContext')}
+              {tenantId
+                ? t('app.tenantBadge', { tenantId })
+                : t('app.platformContext')}
             </Badge>
             <ThemeSelector />
             <LocaleSelector />

@@ -15,20 +15,30 @@ describe('LoginForm', () => {
       </Provider>,
     );
 
-    expect(screen.getByPlaceholderText(/admin@merchant\.com/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(/admin@merchant\.com/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /sign in/i }),
+    ).toBeInTheDocument();
   });
 
   it('handles login form submission and calls onSuccess', async () => {
-    const mockUnwrapLogin = vi.fn().mockResolvedValue({ accessToken: 'mock-token' });
-    const mockLoginMutation = vi.fn().mockReturnValue({ unwrap: mockUnwrapLogin });
+    const mockUnwrapLogin = vi
+      .fn()
+      .mockResolvedValue({ accessToken: 'mock-token' });
+    const mockLoginMutation = vi
+      .fn()
+      .mockReturnValue({ unwrap: mockUnwrapLogin });
     vi.spyOn(authApiHooks, 'useLoginMutation').mockReturnValue([
       mockLoginMutation as any,
       { isLoading: false } as any,
     ]);
 
     const mockUnwrapLocale = vi.fn().mockResolvedValue({ locale: 'en' });
-    const mockFetchLocale = vi.fn().mockReturnValue({ unwrap: mockUnwrapLocale });
+    const mockFetchLocale = vi
+      .fn()
+      .mockReturnValue({ unwrap: mockUnwrapLocale });
     vi.spyOn(localeApiHooks, 'useLazyGetLocaleQuery').mockReturnValue([
       mockFetchLocale as any,
       {} as any,
@@ -44,7 +54,10 @@ describe('LoginForm', () => {
       </Provider>,
     );
 
-    await user.type(screen.getByPlaceholderText(/admin@merchant\.com/i), 'admin@test.com');
+    await user.type(
+      screen.getByPlaceholderText(/admin@merchant\.com/i),
+      'admin@test.com',
+    );
     await user.type(screen.getByLabelText(/password/i), 'password123');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
@@ -59,9 +72,16 @@ describe('LoginForm', () => {
 
   it('displays error message when login fails', async () => {
     const mockUnwrapLogin = vi.fn().mockRejectedValue({
-      data: { error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Invalid email or password' } },
+      data: {
+        error: {
+          code: 'AUTH_INVALID_CREDENTIALS',
+          message: 'Invalid email or password',
+        },
+      },
     });
-    const mockLoginMutation = vi.fn().mockReturnValue({ unwrap: mockUnwrapLogin });
+    const mockLoginMutation = vi
+      .fn()
+      .mockReturnValue({ unwrap: mockUnwrapLogin });
     vi.spyOn(authApiHooks, 'useLoginMutation').mockReturnValue([
       mockLoginMutation as any,
       { isLoading: false } as any,
@@ -75,7 +95,10 @@ describe('LoginForm', () => {
       </Provider>,
     );
 
-    await user.type(screen.getByPlaceholderText(/admin@merchant\.com/i), 'admin@test.com');
+    await user.type(
+      screen.getByPlaceholderText(/admin@merchant\.com/i),
+      'admin@test.com',
+    );
     await user.type(screen.getByLabelText(/password/i), 'wrongpassword');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 

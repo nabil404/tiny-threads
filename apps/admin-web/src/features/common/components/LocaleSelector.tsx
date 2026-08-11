@@ -24,6 +24,10 @@ export function LocaleSelector({ className = '' }: LocaleSelectorProps) {
   };
 
   return (
-    <LocaleSelect value={locale} onChange={handleChange} className={className} />
+    <LocaleSelect
+      value={locale}
+      onChange={handleChange}
+      className={className}
+    />
   );
 }

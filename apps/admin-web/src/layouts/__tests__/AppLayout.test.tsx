@@ -11,7 +11,12 @@ import { AppLayout } from '../AppLayout';
 function renderAppLayout({
   tenantId = 'tenant-demo',
   tenantName = 'Demo Store',
-  user = { id: 'usr_1', email: 'admin@demo.com', name: 'Admin', role: 'admin' } as {
+  user = {
+    id: 'usr_1',
+    email: 'admin@demo.com',
+    name: 'Admin',
+    role: 'admin',
+  } as {
     id: string;
     email: string;
     name: string;
@@ -22,7 +27,12 @@ function renderAppLayout({
   const store = configureStore({
     reducer: { app: appReducer, auth: authReducer },
     preloadedState: {
-      app: { tenantId, tenantName, theme: 'dark' as const, locale: 'en' as const },
+      app: {
+        tenantId,
+        tenantName,
+        theme: 'dark' as const,
+        locale: 'en' as const,
+      },
       auth: {
         user,
         tenantId,
@@ -64,7 +74,9 @@ describe('AppLayout', () => {
     renderAppLayout();
     expect(screen.getByText('Demo Store')).toBeInTheDocument();
     expect(screen.getByText('Dashboard Outlet Content')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /dashboard/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /products/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /orders/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument();
@@ -72,7 +84,10 @@ describe('AppLayout', () => {
   });
 
   it('renders platform context badge when tenantId is null', () => {
-    renderAppLayout({ tenantId: null as unknown as string, tenantName: 'Platform Console' });
+    renderAppLayout({
+      tenantId: null as unknown as string,
+      tenantName: 'Platform Console',
+    });
     expect(screen.getByText(/Platform Context/i)).toBeInTheDocument();
   });
 

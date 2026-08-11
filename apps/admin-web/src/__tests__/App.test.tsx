@@ -13,6 +13,8 @@ describe('App root with RouterProvider', () => {
       </Provider>,
     );
 
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /sign in/i }),
+    ).toBeInTheDocument();
   });
 });

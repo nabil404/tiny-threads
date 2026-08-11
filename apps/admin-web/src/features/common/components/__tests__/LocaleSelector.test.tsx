@@ -73,7 +73,9 @@ describe('LocaleSelector (Smart Component connected to Redux)', () => {
 
   it('keeps the optimistic locale change even when the persistence call rejects', async () => {
     vi.mocked(updateLocale).mockRejectedValue(new Error('network down'));
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
     const store = createMockStore('jwt-abc');
     render(
       <Provider store={store}>

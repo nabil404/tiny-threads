@@ -10,7 +10,10 @@ import {
 } from '@theme/themes';
 import { Sun, Moon, Palette, Check } from 'lucide-react';
 
-const ICON_MAP: Record<ThemeConfig['iconName'], React.ComponentType<{ className?: string }>> = {
+const ICON_MAP: Record<
+  ThemeConfig['iconName'],
+  React.ComponentType<{ className?: string }>
+> = {
   Sun,
   Moon,
 };
@@ -21,9 +24,15 @@ export interface ThemeSelectProps {
   className?: string;
 }
 
-export function ThemeSelect({ value, onChange, className = '' }: ThemeSelectProps) {
+export function ThemeSelect({
+  value,
+  onChange,
+  className = '',
+}: ThemeSelectProps) {
   const { t } = useTranslation();
-  const [internalTheme, setInternalTheme] = React.useState<ThemeId>(() => getSavedTheme());
+  const [internalTheme, setInternalTheme] = React.useState<ThemeId>(() =>
+    getSavedTheme(),
+  );
   const [isOpen, setIsOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -56,7 +65,10 @@ export function ThemeSelect({ value, onChange, className = '' }: ThemeSelectProp
   }, []);
 
   return (
-    <div className={`relative inline-block text-left ${className}`} ref={menuRef}>
+    <div
+      className={`relative inline-block text-left ${className}`}
+      ref={menuRef}
+    >
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}

@@ -1,4 +1,10 @@
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@components/ui/card';
 import { ShoppingCart } from 'lucide-react';
 
 export function OrdersPage() {
