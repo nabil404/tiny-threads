@@ -46,9 +46,10 @@ When working on a specific application or package, refer to its dedicated instru
 
 ```bash
 pnpm install
-cp .env.example .env             # Copy local dev configuration
-cp .env.test.example .env.test   # Copy test database configuration
-docker compose up -d             # Start local development PostgreSQL container
+cp apps/api/.env.example apps/api/.env                    # Copy API dev configuration
+cp apps/api/.env.test.example apps/api/.env.test           # Copy API test database configuration
+cp apps/admin-web/.env.example apps/admin-web/.env.local  # Copy Admin Web configuration
+docker compose up -d                                       # Start local development PostgreSQL container
 ```
 
 ### Running Applications

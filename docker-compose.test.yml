@@ -2,7 +2,7 @@ services:
   postgres-test:
     image: postgres:16-alpine
     env_file:
-      - .env.test
+      - apps/api/.env.test
     ports:
       - '5433:5432'
     volumes:

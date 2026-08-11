@@ -6,7 +6,7 @@ import { uuidv7 } from 'uuidv7';
 
 // Load environment variables (.env or .env.test)
 const envFile = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
-config({ path: resolve(__dirname, '../../../', envFile) });
+config({ path: resolve(__dirname, '../', envFile) });
 
 import dataSource from '../src/db/data-source';
 import { Tenant, TenantSettings } from '../src/db/entities';

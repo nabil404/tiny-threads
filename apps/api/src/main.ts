@@ -1,10 +1,18 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
+import { existsSync } from 'fs';
 
-// Repo root is three levels up from this file's directory, both from src/
-// (apps/api/src) when run via ts-node and from dist/ (apps/api/dist) after a
-// build. data-source.ts needs four because it sits one level deeper (src/db).
-config({ path: resolve(__dirname, '../../../.env') });
+// Load app-wise .env (apps/api/.env)
+const envCandidates = [
+  resolve(__dirname, '../.env'),
+  resolve(__dirname, '../../.env'),
+  resolve(process.cwd(), 'apps/api/.env'),
+  resolve(process.cwd(), '.env'),
+];
+const envPath = envCandidates.find((p) => existsSync(p));
+if (envPath) {
+  config({ path: envPath });
+}
 
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
@@ -32,6 +40,6 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, document);
   }
 
-  await app.listen(configService.get('PORT', { infer: true }) ?? 3000);
+  await app.listen(configService.get('PORT', { infer: true }) ?? 8000);
 }
 void bootstrap();

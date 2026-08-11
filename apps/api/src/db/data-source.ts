@@ -1,10 +1,20 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
+import { existsSync } from 'fs';
 import * as entities from './entities';
 import { NodeEnv, validate } from '../config/env.validation';
 
 const envFile = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
-config({ path: resolve(__dirname, '../../../../', envFile) });
+const envCandidates = [
+  resolve(__dirname, '../../', envFile),
+  resolve(__dirname, '../../../', envFile),
+  resolve(process.cwd(), 'apps/api', envFile),
+  resolve(process.cwd(), envFile),
+];
+const envPath = envCandidates.find((p) => existsSync(p));
+if (envPath) {
+  config({ path: envPath });
+}
 
 import { DataSource, DataSourceOptions } from 'typeorm';
 
