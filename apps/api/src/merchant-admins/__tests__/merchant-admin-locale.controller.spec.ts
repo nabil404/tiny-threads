@@ -22,7 +22,6 @@ describe('MerchantAdminLocaleController', () => {
 
   beforeEach(() => {
     service = {
-      getLocale: jest.fn(),
       updateLocale: jest.fn(),
     } as unknown as jest.Mocked<MerchantAdminLocaleService>;
     controller = new MerchantAdminLocaleController(service);
@@ -31,15 +30,6 @@ describe('MerchantAdminLocaleController', () => {
   function reqWithSub(sub: string): Request {
     return { user: { sub } } as unknown as Request;
   }
-
-  it('getLocale resolves the merchant user id from the JWT sub and returns the locale', async () => {
-    service.getLocale.mockResolvedValue('en');
-
-    const result = await controller.getLocale(reqWithSub('user-1'));
-
-    expect(service.getLocale).toHaveBeenCalledWith('user-1');
-    expect(result).toEqual({ locale: 'en' });
-  });
 
   it('updateLocale resolves the merchant user id from the JWT sub and persists the new locale', async () => {
     service.updateLocale.mockResolvedValue('en');

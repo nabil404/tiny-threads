@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Patch, Req, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -20,19 +20,6 @@ import type { MerchantAdminAccessTokenPayload } from '../auth-core/services/toke
 @UseGuards(MerchantAdminJwtAuthGuard)
 export class MerchantAdminLocaleController {
   constructor(private readonly localeService: MerchantAdminLocaleService) {}
-
-  @ApiOperation({
-    summary: "Get the calling merchant admin's preferred locale",
-  })
-  @ApiResponse({ status: 200, type: MerchantAdminLocaleResponseDto })
-  @Get()
-  async getLocale(
-    @Req() req: Request,
-  ): Promise<MerchantAdminLocaleResponseDto> {
-    const { sub } = req.user as MerchantAdminAccessTokenPayload;
-    const locale = await this.localeService.getLocale(sub);
-    return { locale };
-  }
 
   @ApiOperation({
     summary: "Update the calling merchant admin's preferred locale",

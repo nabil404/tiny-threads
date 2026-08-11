@@ -13,43 +13,6 @@ describe('MerchantAdminLocaleService', () => {
     service = new MerchantAdminLocaleService(tenantDbService);
   });
 
-  describe('getLocale', () => {
-    it('should return null when the merchant user has no locale preference set', async () => {
-      tenantDbService.run.mockImplementation(async (cb: any) => {
-        const em = {
-          findOne: jest.fn().mockResolvedValue({ id: 'user-1', locale: null }),
-        };
-        return await cb(em as any);
-      });
-
-      const result = await service.getLocale('user-1');
-      expect(result).toBeNull();
-    });
-
-    it('should return the stored locale', async () => {
-      tenantDbService.run.mockImplementation(async (cb: any) => {
-        const em = {
-          findOne: jest.fn().mockResolvedValue({ id: 'user-1', locale: 'en' }),
-        };
-        return await cb(em as any);
-      });
-
-      const result = await service.getLocale('user-1');
-      expect(result).toBe('en');
-    });
-
-    it('should throw CodedUnauthorizedException when the merchant user no longer exists', async () => {
-      tenantDbService.run.mockImplementation(async (cb: any) => {
-        const em = { findOne: jest.fn().mockResolvedValue(null) };
-        return await cb(em as any);
-      });
-
-      await expect(service.getLocale('stale-user')).rejects.toThrow(
-        CodedUnauthorizedException,
-      );
-    });
-  });
-
   describe('updateLocale', () => {
     it('should persist a valid locale and return it', async () => {
       const user = { id: 'user-1', locale: null };

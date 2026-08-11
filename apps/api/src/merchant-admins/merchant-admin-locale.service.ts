@@ -9,13 +9,6 @@ import { CodedUnauthorizedException } from '../common/errors/coded-exceptions';
 export class MerchantAdminLocaleService {
   constructor(private readonly tenantDb: TenantDbService) {}
 
-  async getLocale(merchantUserId: string): Promise<string | null> {
-    return this.tenantDb.run(async (em) => {
-      const user = await this.findUserOrThrow(em, merchantUserId);
-      return user.locale;
-    });
-  }
-
   async updateLocale(
     merchantUserId: string,
     locale: string | null,
