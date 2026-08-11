@@ -5,7 +5,6 @@ import {
   FetchArgs,
   FetchBaseQueryError,
 } from '@reduxjs/toolkit/query/react';
-import { logout } from '../slices/authSlice';
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
@@ -38,7 +37,12 @@ export const baseQueryWithReauth: BaseQueryFn<
       // Cookies are automatically updated by the response; retry the original query
       result = await rawBaseQuery(args, api, extraOptions);
     } else {
-      api.dispatch(logout());
+      // Dispatched as a plain action (rather than importing the `logout`
+      // action creator) to avoid a module import cycle: authSlice imports
+      // authApi, which imports this file, so this file must not import
+      // back from authSlice. The action type must stay in sync with
+      // authSlice's `name: 'auth'` slice and `logout` reducer key.
+      api.dispatch({ type: 'auth/logout' });
     }
   }
 

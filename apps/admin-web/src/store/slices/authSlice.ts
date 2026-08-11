@@ -1,69 +1,64 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
 import type { RootState } from '../index';
+import { authApi } from '../api/endpoints/authApi';
 
 export interface AuthUser {
   id: string;
   email: string;
-  name: string;
+  firstName: string | null;
+  lastName: string | null;
   role: string;
+}
+
+export interface AuthTenant {
+  id: string;
+  name: string;
 }
 
 export interface AuthState {
   user: AuthUser | null;
-  tenantId: string | null;
+  tenant: AuthTenant | null;
   isAuthenticated: boolean;
-  status: 'idle' | 'loading' | 'succeeded' | 'failed';
-  error: string | null;
 }
 
 const initialState: AuthState = {
   user: null,
-  tenantId: null,
+  tenant: null,
   isAuthenticated: false,
-  status: 'idle',
-  error: null,
 };
 
 export const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    loginStart: (state) => {
-      state.status = 'loading';
-      state.error = null;
-    },
-    loginSuccess: (
-      state,
-      action: PayloadAction<{
-        user: AuthUser;
-        tenantId: string;
-      }>,
-    ) => {
-      state.status = 'succeeded';
-      state.user = action.payload.user;
-      state.tenantId = action.payload.tenantId;
-      state.isAuthenticated = true;
-      state.error = null;
-    },
-    loginFailure: (state, action: PayloadAction<string>) => {
-      state.status = 'failed';
-      state.error = action.payload;
-    },
     logout: (state) => {
       state.user = null;
-      state.tenantId = null;
+      state.tenant = null;
       state.isAuthenticated = false;
-      state.status = 'idle';
-      state.error = null;
     },
-    clearError: (state) => {
-      state.error = null;
-    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addMatcher(authApi.endpoints.getMe.matchFulfilled, (state, action) => {
+        state.user = {
+          id: action.payload.user.id,
+          email: action.payload.user.email,
+          firstName: action.payload.user.firstName,
+          lastName: action.payload.user.lastName,
+          role: action.payload.user.role,
+        };
+        state.tenant = action.payload.tenant;
+        state.isAuthenticated = true;
+      })
+      .addMatcher(authApi.endpoints.getMe.matchRejected, (state) => {
+        state.user = null;
+        state.tenant = null;
+        state.isAuthenticated = false;
+      });
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout, clearError } =
-  authSlice.actions;
+export const { logout } = authSlice.actions;
 
 export const selectAuth = (state: RootState) => state.auth;
 
