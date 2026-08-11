@@ -9,8 +9,20 @@ export interface LoginResponse {
   accessToken: string;
 }
 
+export interface GetMeResponse {
+  user: {
+    id: string;
+    role: string;
+    tenantId: string;
+  };
+}
+
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getMe: builder.query<GetMeResponse, void>({
+      query: () => '/merchant-admins/auth/me',
+      providesTags: ['Auth'],
+    }),
     login: builder.mutation<LoginResponse, LoginRequest>({
       query: (credentials) => ({
         url: '/merchant-admins/auth/login',
@@ -37,6 +49,8 @@ export const authApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetMeQuery,
+  useLazyGetMeQuery,
   useLoginMutation,
   useRefreshMutation,
   useLogoutMutation,

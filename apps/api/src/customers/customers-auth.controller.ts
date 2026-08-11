@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   Post,
   Req,
@@ -32,9 +33,12 @@ import { ResetCustomerPasswordDto } from './dto/reset-customer-password.dto';
 import { EnvironmentVariables } from '../config/env.validation';
 import {
   API_ROUTE_PREFIX,
+  AUTH_ACCESS_COOKIE_OPTIONS,
   AUTH_REFRESH_COOKIE_OPTIONS,
 } from '../common/constants';
 
+const ACCESS_COOKIE_NAME = 'customer_access_token';
+const ACCESS_COOKIE_PATH = '/';
 const REFRESH_COOKIE_NAME = 'customer_refresh_token';
 const REFRESH_COOKIE_PATH = `${API_ROUTE_PREFIX}/customers/auth`;
 
@@ -71,9 +75,27 @@ export class CustomersAuthController {
   }
 
   @ApiOperation({
+    summary: 'Get authenticated customer profile',
+    description:
+      'Returns the current authenticated customer identity from the verified session.',
+  })
+  @ApiBearerAuth()
+  @UseGuards(CustomerJwtAuthGuard)
+  @Get('me')
+  getMe(@Req() req: Request) {
+    const user = req.user as { sub: string; tenantId: string };
+    return {
+      user: {
+        id: user.sub,
+        tenantId: user.tenantId,
+      },
+    };
+  }
+
+  @ApiOperation({
     summary: 'Log in a customer',
     description:
-      'Authenticates a customer by email/password, returns an access token, and sets a refresh token cookie.',
+      'Authenticates a customer by email/password, sets cookies, and returns an access token.',
   })
   @ApiBody({ type: LoginCustomerDto })
   @UseGuards(CustomerLocalAuthGuard)
@@ -83,6 +105,10 @@ export class CustomersAuthController {
       accessToken: string;
       refreshToken: string;
     };
+    res.cookie(ACCESS_COOKIE_NAME, accessToken, {
+      ...AUTH_ACCESS_COOKIE_OPTIONS,
+      path: ACCESS_COOKIE_PATH,
+    });
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       ...AUTH_REFRESH_COOKIE_OPTIONS,
       path: REFRESH_COOKIE_PATH,
@@ -93,18 +119,13 @@ export class CustomersAuthController {
   @ApiOperation({
     summary: 'Refresh customer access token',
     description:
-      'Rotates the refresh token cookie and issues a new access token.',
+      'Rotates the refresh token cookie and issues a new access token and cookie.',
   })
   @Post('refresh')
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    // tenantId is resolved from CLS (set by TenantResolutionMiddleware from
-    // the subdomain), not from client input — the refresh cookie alone
-    // doesn't carry a tenant, and trusting a client-supplied body field here
-    // would let a caller point a stolen/guessed refresh token lookup at a
-    // different tenant than the one that actually issued it.
     const tenantId = this.cls.get<string>('tenantId');
     const rawRefreshToken = (
       req.cookies as Record<string, string> | undefined
@@ -119,6 +140,10 @@ export class CustomersAuthController {
       tenantId,
       rawRefreshToken,
     );
+    res.cookie(ACCESS_COOKIE_NAME, result.accessToken, {
+      ...AUTH_ACCESS_COOKIE_OPTIONS,
+      path: ACCESS_COOKIE_PATH,
+    });
     res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, {
       ...AUTH_REFRESH_COOKIE_OPTIONS,
       path: REFRESH_COOKIE_PATH,
@@ -129,7 +154,7 @@ export class CustomersAuthController {
   @ApiOperation({
     summary: 'Log out a customer',
     description:
-      "Revokes the customer's refresh token and clears the refresh token cookie.",
+      "Revokes the customer's refresh token and clears both access and refresh cookies.",
   })
   @Post('logout')
   @HttpCode(200)
@@ -141,6 +166,7 @@ export class CustomersAuthController {
     if (rawRefreshToken) {
       await this.customersAuthService.logout(tenantId, rawRefreshToken);
     }
+    res.clearCookie(ACCESS_COOKIE_NAME, { path: ACCESS_COOKIE_PATH });
     res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });
     return { success: true };
   }
@@ -173,10 +199,6 @@ export class CustomersAuthController {
   })
   @Post('google/initiate')
   initiateGoogle(@Req() req: Request, @Body() dto: CustomerOAuthInitiateDto) {
-    // This endpoint is unauthenticated and the returnUrl it accepts is where
-    // the callback later delivers a token-bearing one-time code — so it must
-    // be pinned to this request's own (tenant-validated) host, or it's an open
-    // redirect that hands victim sessions to an attacker. See return-url.ts.
     assertReturnUrlMatchesRequestHost(dto.returnUrl, req);
     const tenantId = this.cls.get<string>('tenantId');
     const state = this.oauthState.encode({
@@ -215,15 +237,10 @@ export class CustomersAuthController {
     return { redirectUrl: this.googleAuthorizeUrl(state) };
   }
 
-  // Exchanges the short-lived, single-use one-time code minted by
-  // GoogleOAuthController's callback for the real token pair — the code
-  // itself is safe to pass through a redirect URL (query param) since it's
-  // opaque, expires in 60s, and is deleted on first read; the tokens it
-  // unlocks never travel through a URL.
   @ApiOperation({
     summary: 'Exchange Google one-time code',
     description:
-      "Redeems the one-time code from the Google callback for the customer's access token and sets the refresh token cookie.",
+      "Redeems the one-time code from the Google callback for the customer's access token and sets the cookies.",
   })
   @Post('google/exchange')
   @HttpCode(200)
@@ -232,12 +249,6 @@ export class CustomersAuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const payload = this.oneTimeCodeService.redeem(dto.code);
-    // This route IS behind TenantResolutionMiddleware (unlike the Google
-    // callback), so the redeeming request's own tenant is available in CLS.
-    // A code is only honored if it was minted for THIS tenant — otherwise,
-    // within its 60s TTL, a code obtained on one tenant's domain (e.g. from
-    // a shared browser, a leaked Referer, or a race between tabs) could be
-    // redeemed against a different tenant's exchange endpoint.
     const tenantId = this.cls.get<string>('tenantId');
     if (
       !payload ||
@@ -249,6 +260,10 @@ export class CustomersAuthController {
         'Invalid or expired code',
       );
     }
+    res.cookie(ACCESS_COOKIE_NAME, payload.accessToken, {
+      ...AUTH_ACCESS_COOKIE_OPTIONS,
+      path: ACCESS_COOKIE_PATH,
+    });
     res.cookie(REFRESH_COOKIE_NAME, payload.refreshToken, {
       ...AUTH_REFRESH_COOKIE_OPTIONS,
       path: REFRESH_COOKIE_PATH,

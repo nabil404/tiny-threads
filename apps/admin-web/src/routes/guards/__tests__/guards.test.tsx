@@ -1,32 +1,41 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import authReducer, { AuthState } from '@store/slices/authSlice';
+import authReducer from '@store/slices/authSlice';
 import appReducer from '@store/slices/appSlice';
+import { baseApi } from '@store/api/baseApi';
+import * as authApiHooks from '@store/api/endpoints/authApi';
 import { RequireAuth, PublicOnlyRoute } from '../index';
 
 function renderWithAuth(
   initialEntries: (string | { pathname: string; state?: unknown })[],
   isAuthenticated: boolean,
+  isLoading = false,
 ) {
-  const authState: AuthState = {
-    user: isAuthenticated
-      ? { id: '1', email: 'a@b.com', name: 'User', role: 'admin' }
-      : null,
-    tenantId: isAuthenticated ? 'tenant-1' : null,
-    token: isAuthenticated ? 'valid-token' : null,
-    isAuthenticated,
-    status: 'idle',
-    error: null,
-  };
+  vi.spyOn(authApiHooks, 'useGetMeQuery').mockReturnValue({
+    data: isAuthenticated
+      ? {
+          user: {
+            id: 'usr_1',
+            role: 'owner',
+            tenantId: 'tenant-1',
+          },
+        }
+      : undefined,
+    isLoading,
+    isError: !isAuthenticated && !isLoading,
+    refetch: vi.fn(),
+  } as any);
 
   const store = configureStore({
-    reducer: { auth: authReducer, app: appReducer },
-    preloadedState: {
-      auth: authState,
+    reducer: {
+      auth: authReducer,
+      app: appReducer,
+      [baseApi.reducerPath]: baseApi.reducer,
     },
+    middleware: (gDM) => gDM().concat(baseApi.middleware),
   });
 
   const router = createMemoryRouter(
@@ -55,6 +64,15 @@ function renderWithAuth(
 }
 
 describe('Route Guards', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('RequireAuth renders loading state while session verification is in progress', () => {
+    renderWithAuth(['/protected'], false, true);
+    expect(screen.getByText(/verifying session/i)).toBeInTheDocument();
+  });
+
   it('RequireAuth redirects unauthenticated user to /login', () => {
     renderWithAuth(['/protected'], false);
     expect(screen.getByText('Login Page')).toBeInTheDocument();

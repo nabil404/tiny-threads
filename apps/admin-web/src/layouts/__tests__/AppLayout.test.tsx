@@ -41,7 +41,6 @@ function renderAppLayout({
       auth: {
         user,
         tenantId,
-        token: 'tok-123',
         isAuthenticated: true,
         status: 'succeeded' as const,
         error: null,

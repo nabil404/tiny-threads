@@ -1,8 +1,8 @@
 import { useAppDispatch, useAppSelector } from '@store/hooks';
 import { selectApp, setLocale } from '@store/slices/appSlice';
 import { selectAuth } from '@store/slices/authSlice';
+import { useUpdateLocaleMutation } from '@store/api/endpoints/localeApi';
 import { LocaleSelect } from '@components/ui/locale-select';
-import { updateLocale } from '@lib/api-client';
 import type { LocaleId } from '@i18n/locales';
 
 export interface LocaleSelectorProps {
@@ -12,14 +12,17 @@ export interface LocaleSelectorProps {
 export function LocaleSelector({ className = '' }: LocaleSelectorProps) {
   const dispatch = useAppDispatch();
   const { locale } = useAppSelector(selectApp);
-  const { token } = useAppSelector(selectAuth);
+  const { isAuthenticated } = useAppSelector(selectAuth);
+  const [updateLocaleApi] = useUpdateLocaleMutation();
 
   const handleChange = (newLocale: LocaleId) => {
     dispatch(setLocale(newLocale));
-    if (token) {
-      updateLocale(token, newLocale).catch((err: unknown) => {
-        console.error('Failed to persist locale preference', err);
-      });
+    if (isAuthenticated) {
+      updateLocaleApi({ locale: newLocale })
+        .unwrap()
+        .catch((err: unknown) => {
+          console.error('Failed to persist locale preference', err);
+        });
     }
   };
 

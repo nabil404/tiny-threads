@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { authApi } from '../authApi';
 
 describe('authApi endpoints', () => {
-  it('injects login, refresh, and logout endpoint mutations', () => {
+  it('injects getMe query, and login, refresh, and logout endpoint mutations', () => {
+    expect(authApi.endpoints.getMe).toBeDefined();
+    expect(typeof authApi.endpoints.getMe.useQuery).toBe('function');
+
     expect(authApi.endpoints.login).toBeDefined();
     expect(typeof authApi.endpoints.login.useMutation).toBe('function');
 

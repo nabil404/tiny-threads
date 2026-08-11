@@ -23,7 +23,6 @@ function renderWithStore(ui: React.ReactElement) {
           role: 'MERCHANT_ADMIN',
         },
         tenantId: 'tenant-1',
-        token: 'tok',
         isAuthenticated: true,
         status: 'succeeded' as const,
         error: null,

@@ -3,10 +3,13 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import type { Request } from 'express';
 import { ErrorCode } from '@tiny-threads/shared';
 import { CodedUnauthorizedException } from '../../common/errors/coded-exceptions';
 import { AccessTokenPayload } from '../../auth-core/services/token.service';
 import { EnvironmentVariables } from '../../config/env.validation';
+
+export const CUSTOMER_ACCESS_COOKIE_NAME = 'customer_access_token';
 
 @Injectable()
 export class CustomerJwtStrategy extends PassportStrategy(
@@ -18,7 +21,13 @@ export class CustomerJwtStrategy extends PassportStrategy(
     configService: ConfigService<EnvironmentVariables, true>,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        (req: Request) =>
+          (req?.cookies as Record<string, string> | undefined)?.[
+            CUSTOMER_ACCESS_COOKIE_NAME
+          ] ?? null,
+      ]),
       secretOrKey: configService.get('JWT_SECRET', { infer: true }),
     });
   }

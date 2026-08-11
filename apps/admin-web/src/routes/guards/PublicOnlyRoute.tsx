@@ -1,9 +1,8 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAppSelector } from '@store/hooks';
-import { selectAuth } from '@store/slices/authSlice';
+import { useGetMeQuery } from '@store/api/endpoints/authApi';
 
 export function PublicOnlyRoute() {
-  const { isAuthenticated } = useAppSelector(selectAuth);
+  const { data, isLoading } = useGetMeQuery();
   const location = useLocation();
   const fromState = (
     location.state as { from?: { pathname?: string; search?: string } }
@@ -12,7 +11,11 @@ export function PublicOnlyRoute() {
     ? `${fromState.pathname}${fromState.search ?? ''}`
     : '/';
 
-  if (isAuthenticated) {
+  if (isLoading) {
+    return null;
+  }
+
+  if (data?.user) {
     return <Navigate to={from} replace />;
   }
 

@@ -36,11 +36,10 @@ export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
     setError(null);
 
     try {
-      const { accessToken } = await loginMutation({ email, password }).unwrap();
+      await loginMutation({ email, password }).unwrap();
 
       dispatch(
         loginSuccess({
-          token: accessToken,
           user: {
             id: 'usr_m1',
             email,

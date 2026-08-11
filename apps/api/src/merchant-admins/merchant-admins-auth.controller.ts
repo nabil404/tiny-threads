@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   Post,
   Req,
@@ -36,9 +37,12 @@ import type { MerchantAdminAccessTokenPayload } from '../auth-core/services/toke
 import { EnvironmentVariables } from '../config/env.validation';
 import {
   API_ROUTE_PREFIX,
+  AUTH_ACCESS_COOKIE_OPTIONS,
   AUTH_REFRESH_COOKIE_OPTIONS,
 } from '../common/constants';
 
+const ACCESS_COOKIE_NAME = 'merchant_admin_access_token';
+const ACCESS_COOKIE_PATH = '/';
 const REFRESH_COOKIE_NAME = 'merchant_admin_refresh_token';
 const REFRESH_COOKIE_PATH = `${API_ROUTE_PREFIX}/merchant-admins/auth`;
 
@@ -74,14 +78,6 @@ export class MerchantAdminsAuthController {
     return this.merchantAdminsAuthService.verifyEmail(dto);
   }
 
-  // Only existing owners/admins can invite new members — this is now the
-  // ONLY path by which a role gets granted (register() derives email/role
-  // from the invite it redeems, never from client input). MerchantAdminJwtAuthGuard
-  // authenticates the caller; RolesGuard + @Roles enforces the caller
-  // already holds one of these roles for this tenant. RolesGuard alone
-  // doesn't stop an 'admin' from inviting someone in as 'owner' though —
-  // that's enforced by inviteMember() itself via the caller's own role
-  // (invitedByRole), passed through here from the verified JWT.
   @ApiOperation({
     summary: 'Invite a merchant admin member',
     description:
@@ -109,9 +105,28 @@ export class MerchantAdminsAuthController {
   }
 
   @ApiOperation({
+    summary: 'Get authenticated merchant admin profile',
+    description:
+      'Returns the current authenticated merchant admin identity from the verified session.',
+  })
+  @ApiBearerAuth()
+  @UseGuards(MerchantAdminJwtAuthGuard)
+  @Get('me')
+  getMe(@Req() req: Request) {
+    const user = req.user as MerchantAdminAccessTokenPayload;
+    return {
+      user: {
+        id: user.sub,
+        role: user.role,
+        tenantId: user.tenantId,
+      },
+    };
+  }
+
+  @ApiOperation({
     summary: 'Log in a merchant admin',
     description:
-      'Authenticates a merchant admin by email/password, returns an access token, and sets a refresh token cookie.',
+      'Authenticates a merchant admin by email/password, sets access and refresh cookies, and returns an access token.',
   })
   @ApiBody({ type: LoginMerchantUserDto })
   @UseGuards(MerchantAdminLocalAuthGuard)
@@ -121,6 +136,10 @@ export class MerchantAdminsAuthController {
       accessToken: string;
       refreshToken: string;
     };
+    res.cookie(ACCESS_COOKIE_NAME, accessToken, {
+      ...AUTH_ACCESS_COOKIE_OPTIONS,
+      path: ACCESS_COOKIE_PATH,
+    });
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       ...AUTH_REFRESH_COOKIE_OPTIONS,
       path: REFRESH_COOKIE_PATH,
@@ -131,18 +150,13 @@ export class MerchantAdminsAuthController {
   @ApiOperation({
     summary: 'Refresh merchant admin access token',
     description:
-      'Rotates the refresh token cookie and issues a new access token.',
+      'Rotates the refresh token cookie and issues a new access token and access cookie.',
   })
   @Post('refresh')
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    // tenantId is resolved from CLS (set by TenantResolutionMiddleware from
-    // the subdomain), not from client input — the refresh cookie alone
-    // doesn't carry a tenant, and trusting a client-supplied body field here
-    // would let a caller point a stolen/guessed refresh token lookup at a
-    // different tenant than the one that actually issued it.
     const tenantId = this.cls.get<string>('tenantId');
     const rawRefreshToken = (
       req.cookies as Record<string, string> | undefined
@@ -157,6 +171,10 @@ export class MerchantAdminsAuthController {
       tenantId,
       rawRefreshToken,
     );
+    res.cookie(ACCESS_COOKIE_NAME, result.accessToken, {
+      ...AUTH_ACCESS_COOKIE_OPTIONS,
+      path: ACCESS_COOKIE_PATH,
+    });
     res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, {
       ...AUTH_REFRESH_COOKIE_OPTIONS,
       path: REFRESH_COOKIE_PATH,
@@ -167,7 +185,7 @@ export class MerchantAdminsAuthController {
   @ApiOperation({
     summary: 'Log out a merchant admin',
     description:
-      "Revokes the merchant admin's refresh token and clears the refresh token cookie.",
+      "Revokes the merchant admin's refresh token and clears both access and refresh cookies.",
   })
   @Post('logout')
   @HttpCode(200)
@@ -179,6 +197,7 @@ export class MerchantAdminsAuthController {
     if (rawRefreshToken) {
       await this.merchantAdminsAuthService.logout(tenantId, rawRefreshToken);
     }
+    res.clearCookie(ACCESS_COOKIE_NAME, { path: ACCESS_COOKIE_PATH });
     res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });
     return { success: true };
   }
@@ -207,9 +226,6 @@ export class MerchantAdminsAuthController {
     );
   }
 
-  // Merchant admins don't self-register via OAuth (see
-  // MerchantAdminsAuthService.findOrCreateFromGoogle), so there's no
-  // link-initiate counterpart here — just login.
   @ApiOperation({
     summary: 'Start merchant admin Google sign-in',
     description:
@@ -220,10 +236,6 @@ export class MerchantAdminsAuthController {
     @Req() req: Request,
     @Body() dto: MerchantAdminOAuthInitiateDto,
   ) {
-    // This endpoint is unauthenticated and the returnUrl it accepts is where
-    // the callback later delivers a token-bearing one-time code — so it must
-    // be pinned to this request's own (tenant-validated) host, or it's an open
-    // redirect that hands victim sessions to an attacker. See return-url.ts.
     assertReturnUrlMatchesRequestHost(dto.returnUrl, req);
     const tenantId = this.cls.get<string>('tenantId');
     const state = this.oauthState.encode({
@@ -246,15 +258,10 @@ export class MerchantAdminsAuthController {
     };
   }
 
-  // Exchanges the short-lived, single-use one-time code minted by
-  // GoogleOAuthController's callback for the real token pair — mirrors
-  // CustomersAuthController#exchangeGoogleCode exactly (see there for the
-  // full rationale on why tokens travel via this code rather than the
-  // redirect URL itself).
   @ApiOperation({
     summary: 'Exchange Google one-time code',
     description:
-      "Redeems the one-time code from the Google callback for the merchant admin's access token and sets the refresh token cookie.",
+      "Redeems the one-time code from the Google callback for the merchant admin's access token and sets the cookies.",
   })
   @Post('google/exchange')
   @HttpCode(200)
@@ -263,11 +270,6 @@ export class MerchantAdminsAuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const payload = this.oneTimeCodeService.redeem(dto.code);
-    // This route IS behind TenantResolutionMiddleware (unlike the Google
-    // callback), so the redeeming request's own tenant is available in CLS.
-    // A code is only honored if it was minted for THIS tenant — otherwise,
-    // within its 60s TTL, a code obtained on one tenant's domain could be
-    // redeemed against a different tenant's exchange endpoint.
     const tenantId = this.cls.get<string>('tenantId');
     if (
       !payload ||
@@ -279,6 +281,10 @@ export class MerchantAdminsAuthController {
         'Invalid or expired code',
       );
     }
+    res.cookie(ACCESS_COOKIE_NAME, payload.accessToken, {
+      ...AUTH_ACCESS_COOKIE_OPTIONS,
+      path: ACCESS_COOKIE_PATH,
+    });
     res.cookie(REFRESH_COOKIE_NAME, payload.refreshToken, {
       ...AUTH_REFRESH_COOKIE_OPTIONS,
       path: REFRESH_COOKIE_PATH,

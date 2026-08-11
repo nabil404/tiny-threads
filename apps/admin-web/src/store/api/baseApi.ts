@@ -5,21 +5,11 @@ import {
   FetchArgs,
   FetchBaseQueryError,
 } from '@reduxjs/toolkit/query/react';
-import type { RootState } from '../index';
-import { loginSuccess, logout } from '../slices/authSlice';
-import { parseJwtPayload, MerchantJwtPayload } from '../../lib/jwt';
+import { logout } from '../slices/authSlice';
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
   credentials: 'include',
-  prepareHeaders: (headers, { getState }) => {
-    const state = getState() as RootState;
-    const token = state.auth?.token;
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-    return headers;
-  },
 });
 
 export const baseQueryWithReauth: BaseQueryFn<
@@ -45,23 +35,7 @@ export const baseQueryWithReauth: BaseQueryFn<
     );
 
     if (refreshResult.data) {
-      const { accessToken } = refreshResult.data as { accessToken: string };
-      const payload = parseJwtPayload<MerchantJwtPayload>(accessToken);
-      const tenantId = payload?.tenantId ?? 'tenant_demo_1';
-
-      api.dispatch(
-        loginSuccess({
-          token: accessToken,
-          user: {
-            id: payload?.sub ?? 'usr_m1',
-            email: 'Merchant Admin',
-            name: 'Merchant Admin',
-            role: payload?.role ?? 'MERCHANT_ADMIN',
-          },
-          tenantId,
-        }),
-      );
-
+      // Cookies are automatically updated by the response; retry the original query
       result = await rawBaseQuery(args, api, extraOptions);
     } else {
       api.dispatch(logout());

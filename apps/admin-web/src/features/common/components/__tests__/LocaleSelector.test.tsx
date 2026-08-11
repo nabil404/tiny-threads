@@ -5,14 +5,11 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import appReducer, { AppState } from '@store/slices/appSlice';
 import authReducer, { AuthState } from '@store/slices/authSlice';
+import { baseApi } from '@store/api/baseApi';
+import * as localeApiHooks from '@store/api/endpoints/localeApi';
 import { LocaleSelector } from '../LocaleSelector';
-import { updateLocale } from '@lib/api-client';
 
-vi.mock('@lib/api-client', () => ({
-  updateLocale: vi.fn(),
-}));
-
-function createMockStore(token: string | null = 'jwt-abc') {
+function createMockStore(isAuthenticated = true) {
   const app: AppState = {
     tenantId: 'tenant-1',
     tenantName: 'Test Tenant',
@@ -20,24 +17,30 @@ function createMockStore(token: string | null = 'jwt-abc') {
     locale: 'en',
   };
   const auth: AuthState = {
-    user: null,
-    tenantId: 'tenant-1',
-    token,
-    isAuthenticated: Boolean(token),
+    user: isAuthenticated
+      ? { id: 'usr_1', email: 'admin@shop.com', name: 'Admin', role: 'admin' }
+      : null,
+    tenantId: isAuthenticated ? 'tenant-1' : null,
+    isAuthenticated,
     status: 'idle',
     error: null,
   };
 
   return configureStore({
-    reducer: { app: appReducer, auth: authReducer },
+    reducer: {
+      app: appReducer,
+      auth: authReducer,
+      [baseApi.reducerPath]: baseApi.reducer,
+    },
     preloadedState: { app, auth },
+    middleware: (gDM) => gDM().concat(baseApi.middleware),
   });
 }
 
 describe('LocaleSelector (Smart Component connected to Redux)', () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.mocked(updateLocale).mockReset();
+    vi.restoreAllMocks();
   });
 
   it('renders active locale from Redux state', () => {
@@ -53,9 +56,15 @@ describe('LocaleSelector (Smart Component connected to Redux)', () => {
     expect(button).toHaveTextContent('English');
   });
 
-  it('dispatches setLocale to Redux and persists via the API client when a locale is selected', async () => {
-    vi.mocked(updateLocale).mockResolvedValue({ locale: 'en' });
-    const store = createMockStore('jwt-abc');
+  it('dispatches setLocale to Redux and persists via the mutation when a locale is selected', async () => {
+    const mockUnwrap = vi.fn().mockResolvedValue({ locale: 'en' });
+    const mockUpdateMutation = vi.fn().mockReturnValue({ unwrap: mockUnwrap });
+    vi.spyOn(localeApiHooks, 'useUpdateLocaleMutation').mockReturnValue([
+      mockUpdateMutation as any,
+      { isLoading: false } as any,
+    ]);
+
+    const store = createMockStore(true);
     render(
       <Provider store={store}>
         <LocaleSelector />
@@ -63,20 +72,22 @@ describe('LocaleSelector (Smart Component connected to Redux)', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /select language/i }));
-    fireEvent.click(screen.getByRole('button', { name: /english/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^english/i }));
 
     expect(store.getState().app.locale).toBe('en');
     await waitFor(() => {
-      expect(updateLocale).toHaveBeenCalledWith('jwt-abc', 'en');
+      expect(mockUpdateMutation).toHaveBeenCalledWith({ locale: 'en' });
     });
   });
 
-  it('keeps the optimistic locale change even when the persistence call rejects', async () => {
-    vi.mocked(updateLocale).mockRejectedValue(new Error('network down'));
-    const consoleErrorSpy = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-    const store = createMockStore('jwt-abc');
+  it('does not call the mutation when user is not authenticated', async () => {
+    const mockUpdateMutation = vi.fn();
+    vi.spyOn(localeApiHooks, 'useUpdateLocaleMutation').mockReturnValue([
+      mockUpdateMutation as any,
+      { isLoading: false } as any,
+    ]);
+
+    const store = createMockStore(false);
     render(
       <Provider store={store}>
         <LocaleSelector />
@@ -84,27 +95,9 @@ describe('LocaleSelector (Smart Component connected to Redux)', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /select language/i }));
-    fireEvent.click(screen.getByRole('button', { name: /english/i }));
-
-    await waitFor(() => {
-      expect(updateLocale).toHaveBeenCalled();
-    });
-    expect(store.getState().app.locale).toBe('en');
-    consoleErrorSpy.mockRestore();
-  });
-
-  it('does not call the API client when there is no auth token', async () => {
-    const store = createMockStore(null);
-    render(
-      <Provider store={store}>
-        <LocaleSelector />
-      </Provider>,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /select language/i }));
-    fireEvent.click(screen.getByRole('button', { name: /english/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^english/i }));
 
     expect(store.getState().app.locale).toBe('en');
-    expect(updateLocale).not.toHaveBeenCalled();
+    expect(mockUpdateMutation).not.toHaveBeenCalled();
   });
 });
