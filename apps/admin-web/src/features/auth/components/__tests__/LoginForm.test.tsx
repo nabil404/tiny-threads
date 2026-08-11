@@ -5,7 +5,6 @@ import { Provider } from 'react-redux';
 import { store } from '@store/index';
 import { LoginForm } from '../LoginForm';
 import * as authApiHooks from '@store/api/endpoints/authApi';
-import * as localeApiHooks from '@store/api/endpoints/localeApi';
 
 describe('LoginForm', () => {
   it('renders email and password inputs and sign-in button', () => {
@@ -33,16 +32,6 @@ describe('LoginForm', () => {
     vi.spyOn(authApiHooks, 'useLoginMutation').mockReturnValue([
       mockLoginMutation as any,
       { isLoading: false } as any,
-    ]);
-
-    const mockUnwrapLocale = vi.fn().mockResolvedValue({ locale: 'en' });
-    const mockFetchLocale = vi
-      .fn()
-      .mockReturnValue({ unwrap: mockUnwrapLocale });
-    vi.spyOn(localeApiHooks, 'useLazyGetLocaleQuery').mockReturnValue([
-      mockFetchLocale as any,
-      {} as any,
-      {} as any,
     ]);
 
     const onSuccess = vi.fn();
