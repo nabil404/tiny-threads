@@ -1,9 +1,10 @@
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '@store/hooks';
 import { selectApp } from '@store/slices/appSlice';
 import { selectAuth, logout } from '@store/slices/authSlice';
 import { useLogoutMutation } from '@store/api/endpoints/authApi';
+import { baseApi } from '@store/api/baseApi';
 import { ThemeSelector, LocaleSelector } from '@features/common';
 import { Button } from '@components/ui/button';
 import { Badge } from '@components/ui/badge';
@@ -19,6 +20,7 @@ import {
 export function AppLayout() {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { tenantId, tenantName } = useAppSelector(selectApp);
   const { user } = useAppSelector(selectAuth);
   const [logoutApi] = useLogoutMutation();
@@ -37,6 +39,8 @@ export function AppLayout() {
       // ignore server logout errors
     } finally {
       dispatch(logout());
+      dispatch(baseApi.util.resetApiState());
+      navigate('/login', { replace: true });
     }
   };
 

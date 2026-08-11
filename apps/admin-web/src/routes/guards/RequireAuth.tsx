@@ -1,11 +1,12 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAppDispatch } from '@store/hooks';
+import { useAppDispatch, useAppSelector } from '@store/hooks';
 import { useGetMeQuery } from '@store/api/endpoints/authApi';
-import { loginSuccess } from '@store/slices/authSlice';
+import { selectAuth, loginSuccess } from '@store/slices/authSlice';
 import { setTenant } from '@store/slices/appSlice';
 
 export function RequireAuth() {
+  const { isAuthenticated } = useAppSelector(selectAuth);
   const { data, isLoading, isError } = useGetMeQuery();
   const dispatch = useAppDispatch();
   const location = useLocation();
@@ -43,7 +44,7 @@ export function RequireAuth() {
     );
   }
 
-  if (isError || !data?.user) {
+  if (!isAuthenticated || isError || !data?.user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
