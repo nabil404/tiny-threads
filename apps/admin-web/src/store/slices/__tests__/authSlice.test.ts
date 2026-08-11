@@ -16,14 +16,12 @@ function buildStore() {
 }
 
 function mockFetchOnce(status: number, body: unknown) {
-  return vi
-    .fn()
-    .mockResolvedValue(
-      new Response(JSON.stringify(body), {
-        status,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    );
+  return vi.fn().mockResolvedValue(
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  );
 }
 
 describe('authSlice', () => {

@@ -17,9 +17,7 @@ describe('LoginForm', () => {
     expect(
       screen.getByPlaceholderText(/admin@merchant\.com/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(/password/i),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /sign in/i }),
     ).toBeInTheDocument();

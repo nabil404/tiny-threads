@@ -4,7 +4,9 @@ import { extractErrorMessage } from '../extract-error-message';
 describe('extractErrorMessage', () => {
   it('returns the coded API error message when present', () => {
     const err = {
-      data: { error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Coded failure' } },
+      data: {
+        error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Coded failure' },
+      },
     };
     expect(extractErrorMessage(err, 'fallback')).toBe('Coded failure');
   });

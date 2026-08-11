@@ -17,7 +17,9 @@ function TestForm({ defaultError = false }: { defaultError?: boolean }) {
   const form = useForm({
     defaultValues: { username: '' },
     errors: defaultError
-      ? ({ username: { type: 'manual', message: 'Username is required' } } as any)
+      ? ({
+          username: { type: 'manual', message: 'Username is required' },
+        } as any)
       : undefined,
   });
 
@@ -61,7 +63,10 @@ describe('Form UI Primitives', () => {
     const description = screen.getByText('Your unique username.');
 
     expect(label).toHaveAttribute('for', input.getAttribute('id'));
-    expect(input).toHaveAttribute('aria-describedby', description.getAttribute('id'));
+    expect(input).toHaveAttribute(
+      'aria-describedby',
+      description.getAttribute('id'),
+    );
     expect(input).toHaveAttribute('aria-invalid', 'false');
   });
 
@@ -73,6 +78,8 @@ describe('Form UI Primitives', () => {
 
     expect(errorMessage).toBeInTheDocument();
     expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(input.getAttribute('aria-describedby')).toContain(errorMessage.getAttribute('id'));
+    expect(input.getAttribute('aria-describedby')).toContain(
+      errorMessage.getAttribute('id'),
+    );
   });
 });

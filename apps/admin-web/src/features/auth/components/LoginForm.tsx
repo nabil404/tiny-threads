@@ -57,7 +57,11 @@ export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-4"
+          noValidate
+        >
           <FormField
             control={form.control}
             name="email"
@@ -98,11 +102,7 @@ export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <FormControl>
-                    <Input
-                      type="password"
-                      className="pl-9"
-                      {...field}
-                    />
+                    <Input type="password" className="pl-9" {...field} />
                   </FormControl>
                 </div>
                 <FormMessage />
