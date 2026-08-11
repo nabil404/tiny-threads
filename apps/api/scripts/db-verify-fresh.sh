@@ -16,5 +16,5 @@ trap cleanup EXIT
 psql "$BASE/postgres" -c "CREATE DATABASE \"$DB\" OWNER app_owner"
 DATABASE_URL_MIGRATIONS="$BASE/$DB" \
   typeorm-ts-node-commonjs migration:run -d ./src/db/data-source.ts
-DATABASE_URL="$BASE/$DB" pnpm db:verify-rls
+DATABASE_URL="$BASE/$DB" DATABASE_URL_MIGRATIONS="$BASE/$DB" pnpm db:verify-rls
 echo "fresh-database migration + RLS verification OK"
