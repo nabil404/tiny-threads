@@ -12,7 +12,9 @@ function renderWithAuth(
   isAuthenticated: boolean,
 ) {
   const authState: AuthState = {
-    user: isAuthenticated ? { id: '1', email: 'a@b.com', name: 'User', role: 'admin' } : null,
+    user: isAuthenticated
+      ? { id: '1', email: 'a@b.com', name: 'User', role: 'admin' }
+      : null,
     tenantId: isAuthenticated ? 'tenant-1' : null,
     token: isAuthenticated ? 'valid-token' : null,
     isAuthenticated,
@@ -75,6 +77,19 @@ describe('Route Guards', () => {
         {
           pathname: '/login',
           state: { from: { pathname: '/dashboard' } },
+        },
+      ],
+      true,
+    );
+    expect(screen.getByText('Dashboard Page')).toBeInTheDocument();
+  });
+
+  it('PublicOnlyRoute redirects authenticated user to state.from location with search parameters when provided', () => {
+    renderWithAuth(
+      [
+        {
+          pathname: '/login',
+          state: { from: { pathname: '/dashboard', search: '?tab=settings' } },
         },
       ],
       true,

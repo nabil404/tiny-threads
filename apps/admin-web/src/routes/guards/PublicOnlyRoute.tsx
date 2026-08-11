@@ -5,7 +5,12 @@ import { selectAuth } from '@store/slices/authSlice';
 export function PublicOnlyRoute() {
   const { isAuthenticated } = useAppSelector(selectAuth);
   const location = useLocation();
-  const from = (location.state as { from?: { pathname?: string } })?.from?.pathname ?? '/';
+  const fromState = (
+    location.state as { from?: { pathname?: string; search?: string } }
+  )?.from;
+  const from = fromState?.pathname
+    ? `${fromState.pathname}${fromState.search ?? ''}`
+    : '/';
 
   if (isAuthenticated) {
     return <Navigate to={from} replace />;
