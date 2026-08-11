@@ -7,6 +7,7 @@ import authReducer from '@store/slices/authSlice';
 import appReducer from '@store/slices/appSlice';
 import { baseApi } from '@store/api/baseApi';
 import * as authApiHooks from '@store/api/endpoints/authApi';
+import type { GetMeResponse } from '@store/api/endpoints/authApi';
 import { RequireAuth, PublicOnlyRoute } from '../index';
 
 function renderWithAuth(
@@ -16,13 +17,20 @@ function renderWithAuth(
 ) {
   vi.spyOn(authApiHooks, 'useGetMeQuery').mockReturnValue({
     data: isAuthenticated
-      ? {
+      ? ({
           user: {
             id: 'usr_1',
+            email: 'owner@shop.com',
+            firstName: null,
+            lastName: null,
             role: 'owner',
-            tenantId: 'tenant-1',
+            locale: null,
           },
-        }
+          tenant: {
+            id: 'tenant-1',
+            name: 'Test Tenant',
+          },
+        } satisfies GetMeResponse)
       : undefined,
     isLoading,
     isError: !isAuthenticated && !isLoading,

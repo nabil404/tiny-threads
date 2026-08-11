@@ -43,6 +43,23 @@ export const baseQueryWithReauth: BaseQueryFn<
       // back from authSlice. The action type must stay in sync with
       // authSlice's `name: 'auth'` slice and `logout` reducer key.
       api.dispatch({ type: 'auth/logout' });
+      // Clear the entire RTK Query cache (including the now-stale `getMe`
+      // fulfilled result) so `RequireAuth`, which gates purely on the
+      // `getMe` cache, stops treating this session as authenticated.
+      //
+      // Deferred to a macrotask: this base query is itself in the middle
+      // of resolving the very query whose cache entry is about to be
+      // wiped. Resetting synchronously here races that in-flight query's
+      // own rejection handling — the reducer has no entry left to write
+      // the rejected result into, and a still-mounted subscriber (e.g.
+      // `RequireAuth`) sees the cache flip back to "uninitialized" and
+      // immediately re-fires the query, causing a refetch loop. Deferring
+      // lets the current request finish updating its own cache entry (and
+      // any subscriber react to the resulting error, e.g. by unmounting)
+      // before the cache is cleared.
+      setTimeout(() => {
+        api.dispatch(baseApi.util.resetApiState());
+      }, 0);
     }
   }
 
