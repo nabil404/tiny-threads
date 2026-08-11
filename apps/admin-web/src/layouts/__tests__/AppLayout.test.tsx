@@ -43,7 +43,6 @@ function renderAppLayout({
         tenantId,
         token: 'tok-123',
         isAuthenticated: true,
-        isInitialized: true,
         status: 'succeeded' as const,
         error: null,
       },

@@ -25,7 +25,6 @@ function renderWithStore(ui: React.ReactElement) {
         tenantId: 'tenant-1',
         token: 'tok',
         isAuthenticated: true,
-        isInitialized: true,
         status: 'succeeded' as const,
         error: null,
       },

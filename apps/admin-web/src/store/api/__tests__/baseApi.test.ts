@@ -1,8 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { baseApi } from '../baseApi';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { baseApi, baseQueryWithReauth } from '../baseApi';
 import { store } from '../../index';
 
 describe('baseApi and store configuration', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('defines baseApi with expected reducerPath and tagTypes', () => {
     expect(baseApi.reducerPath).toBe('api');
     expect(baseApi.endpoints).toBeDefined();
@@ -28,5 +32,9 @@ describe('baseApi and store configuration', () => {
 
     expect(extendedApi.endpoints.getTest).toBeDefined();
     expect(typeof extendedApi.useGetTestQuery).toBe('function');
+  });
+
+  it('exports baseQueryWithReauth as a function', () => {
+    expect(typeof baseQueryWithReauth).toBe('function');
   });
 });

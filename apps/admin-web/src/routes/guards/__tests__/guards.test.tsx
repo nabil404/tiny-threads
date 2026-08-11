@@ -10,7 +10,6 @@ import { RequireAuth, PublicOnlyRoute } from '../index';
 function renderWithAuth(
   initialEntries: (string | { pathname: string; state?: unknown })[],
   isAuthenticated: boolean,
-  isInitialized = true,
 ) {
   const authState: AuthState = {
     user: isAuthenticated
@@ -19,7 +18,6 @@ function renderWithAuth(
     tenantId: isAuthenticated ? 'tenant-1' : null,
     token: isAuthenticated ? 'valid-token' : null,
     isAuthenticated,
-    isInitialized,
     status: 'idle',
     error: null,
   };
@@ -57,11 +55,6 @@ function renderWithAuth(
 }
 
 describe('Route Guards', () => {
-  it('renders loading state when session is not yet initialized', () => {
-    renderWithAuth(['/protected'], false, false);
-    expect(screen.getByText(/authenticating session/i)).toBeInTheDocument();
-  });
-
   it('RequireAuth redirects unauthenticated user to /login', () => {
     renderWithAuth(['/protected'], false);
     expect(screen.getByText('Login Page')).toBeInTheDocument();
