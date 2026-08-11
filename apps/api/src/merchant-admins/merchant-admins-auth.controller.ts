@@ -113,14 +113,8 @@ export class MerchantAdminsAuthController {
   @UseGuards(MerchantAdminJwtAuthGuard)
   @Get('me')
   getMe(@Req() req: Request) {
-    const user = req.user as MerchantAdminAccessTokenPayload;
-    return {
-      user: {
-        id: user.sub,
-        role: user.role,
-        tenantId: user.tenantId,
-      },
-    };
+    const { sub } = req.user as MerchantAdminAccessTokenPayload;
+    return this.merchantAdminsAuthService.getMe(sub);
   }
 
   @ApiOperation({

@@ -947,3 +947,90 @@ describe('MerchantAdminsAuthService.resetPassword', () => {
     expect(manager.update).not.toHaveBeenCalled();
   });
 });
+
+describe('MerchantAdminsAuthService.getMe', () => {
+  function buildService(merchantUser: Record<string, unknown> | null) {
+    const manager = {
+      findOne: jest.fn().mockResolvedValue(merchantUser),
+    };
+    const tenantDb = { run: jest.fn((work: any) => work(manager)) } as any;
+    const hashing = { hash: jest.fn(), verify: jest.fn() } as any;
+    const notifications = { sendEmail: jest.fn() } as any;
+    const tokenService = new TokenService({ sign: jest.fn() } as any);
+    const cls = { get: jest.fn().mockReturnValue('tenant-1') } as any;
+    const service = new MerchantAdminsAuthService(
+      tenantDb,
+      hashing,
+      notifications,
+      tokenService,
+      cls,
+    );
+    return { service, manager };
+  }
+
+  it('returns the merchant user profile joined with their tenant', async () => {
+    const { service } = buildService({
+      id: 'mu-1',
+      email: 'owner@shop.com',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      role: 'owner',
+      locale: 'en',
+      tenant: { id: 'tenant-1', name: 'Acme Store' },
+    });
+
+    const result = await service.getMe('mu-1');
+
+    expect(result).toEqual({
+      user: {
+        id: 'mu-1',
+        email: 'owner@shop.com',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        role: 'owner',
+        locale: 'en',
+      },
+      tenant: { id: 'tenant-1', name: 'Acme Store' },
+    });
+  });
+
+  it('returns null firstName/lastName/locale when they were never captured', async () => {
+    const { service } = buildService({
+      id: 'mu-1',
+      email: 'owner@shop.com',
+      firstName: null,
+      lastName: null,
+      role: 'owner',
+      locale: null,
+      tenant: { id: 'tenant-1', name: 'Acme Store' },
+    });
+
+    const result = await service.getMe('mu-1');
+
+    expect(result.user.firstName).toBeNull();
+    expect(result.user.lastName).toBeNull();
+    expect(result.user.locale).toBeNull();
+  });
+
+  it('throws when the merchant user no longer exists', async () => {
+    const { service } = buildService(null);
+
+    await expect(service.getMe('stale-user')).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+
+  it('throws when the merchant user has no resolvable tenant', async () => {
+    const { service } = buildService({
+      id: 'mu-1',
+      email: 'owner@shop.com',
+      firstName: null,
+      lastName: null,
+      role: 'owner',
+      locale: null,
+      tenant: undefined,
+    });
+
+    await expect(service.getMe('mu-1')).rejects.toThrow(UnauthorizedException);
+  });
+});

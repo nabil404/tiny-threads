@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { GUARDS_METADATA } from '@nestjs/common/constants';
+import type { Request } from 'express';
 import { MerchantAdminsAuthController } from '../merchant-admins-auth.controller';
+import { MerchantAdminsAuthService } from '../merchant-admins-auth.service';
 import { MerchantAdminJwtAuthGuard } from '../guards/merchant-admin-jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { ROLES_KEY } from '../decorators/roles.decorator';
@@ -40,5 +43,46 @@ describe('MerchantAdminsAuthController.invite route metadata', () => {
     ) as string[];
 
     expect(roles).toEqual(['owner', 'admin']);
+  });
+});
+
+describe('MerchantAdminsAuthController.getMe', () => {
+  it('delegates to the service using the JWT subject', async () => {
+    const service = {
+      getMe: jest.fn().mockResolvedValue({
+        user: {
+          id: 'mu-1',
+          email: 'owner@shop.com',
+          firstName: 'Ada',
+          lastName: 'Lovelace',
+          role: 'owner',
+          locale: 'en',
+        },
+        tenant: { id: 'tenant-1', name: 'Acme Store' },
+      }),
+    } as unknown as MerchantAdminsAuthService;
+    const controller = new MerchantAdminsAuthController(
+      service,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+    const req = { user: { sub: 'mu-1' } } as unknown as Request;
+
+    const result = await controller.getMe(req);
+
+    expect(service.getMe).toHaveBeenCalledWith('mu-1');
+    expect(result).toEqual({
+      user: {
+        id: 'mu-1',
+        email: 'owner@shop.com',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        role: 'owner',
+        locale: 'en',
+      },
+      tenant: { id: 'tenant-1', name: 'Acme Store' },
+    });
   });
 });

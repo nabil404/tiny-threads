@@ -44,6 +44,21 @@ interface GoogleProfile {
   emailVerified: boolean;
 }
 
+export interface GetMeResult {
+  user: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    role: string;
+    locale: string | null;
+  };
+  tenant: {
+    id: string;
+    name: string;
+  };
+}
+
 @Injectable()
 export class MerchantAdminsAuthService {
   constructor(
@@ -469,6 +484,35 @@ export class MerchantAdminsAuthService {
           { revokedAt: new Date() },
         );
       }
+    });
+  }
+
+  async getMe(merchantUserId: string): Promise<GetMeResult> {
+    return this.tenantDb.run(async (manager) => {
+      const merchantUser = await manager.findOne(MerchantUser, {
+        where: { id: merchantUserId },
+        relations: { tenant: true },
+      });
+      if (!merchantUser || !merchantUser.tenant) {
+        throw new CodedUnauthorizedException(
+          ErrorCode.MERCHANT_ADMIN_NO_LONGER_EXISTS,
+          'Merchant user no longer exists',
+        );
+      }
+      return {
+        user: {
+          id: merchantUser.id,
+          email: merchantUser.email,
+          firstName: merchantUser.firstName,
+          lastName: merchantUser.lastName,
+          role: merchantUser.role,
+          locale: merchantUser.locale,
+        },
+        tenant: {
+          id: merchantUser.tenant.id,
+          name: merchantUser.tenant.name,
+        },
+      };
     });
   }
 
