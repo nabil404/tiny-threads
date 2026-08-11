@@ -1,18 +1,21 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import authReducer, {
   loginSuccess,
   logout,
-  AUTH_STORAGE_KEY,
-  getSavedAuth,
+  setInitialized,
   AuthState,
 } from '../authSlice';
 
-describe('authSlice session persistence', () => {
-  beforeEach(() => {
-    localStorage.clear();
+describe('authSlice', () => {
+  it('initializes with unauthenticated, uninitialized state without reading from localStorage', () => {
+    const initialState: AuthState = authReducer(undefined, { type: 'unknown' });
+    expect(initialState.isAuthenticated).toBe(false);
+    expect(initialState.isInitialized).toBe(false);
+    expect(initialState.token).toBe(null);
+    expect(initialState.user).toBe(null);
   });
 
-  it('persists session to localStorage on loginSuccess and retrieves with getSavedAuth', () => {
+  it('updates state on loginSuccess and marks initialized', () => {
     const initialState: AuthState = authReducer(undefined, { type: 'unknown' });
     const payload = {
       user: { id: 'usr_1', email: 'owner@shop.com', name: 'Owner', role: 'owner' },
@@ -22,39 +25,31 @@ describe('authSlice session persistence', () => {
 
     const nextState = authReducer(initialState, loginSuccess(payload));
     expect(nextState.isAuthenticated).toBe(true);
+    expect(nextState.isInitialized).toBe(true);
     expect(nextState.token).toBe('jwt-access-token');
-
-    const stored = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || '{}');
-    expect(stored.token).toBe('jwt-access-token');
-    expect(stored.tenantId).toBe('tenant-123');
-    expect(stored.user.email).toBe('owner@shop.com');
-
-    const retrieved = getSavedAuth();
-    expect(retrieved?.token).toBe('jwt-access-token');
+    expect(nextState.user?.email).toBe('owner@shop.com');
   });
 
-  it('clears localStorage on logout', () => {
-    localStorage.setItem(
-      AUTH_STORAGE_KEY,
-      JSON.stringify({
-        user: { id: 'usr_1', email: 'owner@shop.com', name: 'Owner', role: 'owner' },
-        tenantId: 'tenant-123',
-        token: 'jwt-access-token',
-      }),
-    );
-
+  it('clears session on logout and keeps initialized true', () => {
     const activeState: AuthState = {
       user: { id: 'usr_1', email: 'owner@shop.com', name: 'Owner', role: 'owner' },
       tenantId: 'tenant-123',
       token: 'jwt-access-token',
       isAuthenticated: true,
+      isInitialized: true,
       status: 'succeeded',
       error: null,
     };
 
     const loggedOutState = authReducer(activeState, logout());
     expect(loggedOutState.isAuthenticated).toBe(false);
+    expect(loggedOutState.isInitialized).toBe(true);
     expect(loggedOutState.token).toBe(null);
-    expect(localStorage.getItem(AUTH_STORAGE_KEY)).toBe(null);
+  });
+
+  it('updates isInitialized on setInitialized action', () => {
+    const initialState: AuthState = authReducer(undefined, { type: 'unknown' });
+    const nextState = authReducer(initialState, setInitialized(true));
+    expect(nextState.isInitialized).toBe(true);
   });
 });

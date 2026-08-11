@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import appReducer from '@store/slices/appSlice';
 import authReducer from '@store/slices/authSlice';
+import { baseApi } from '@store/api/baseApi';
 import { AppLayout } from '../AppLayout';
 
 function renderAppLayout({
@@ -25,7 +26,11 @@ function renderAppLayout({
   initialPath = '/',
 } = {}) {
   const store = configureStore({
-    reducer: { app: appReducer, auth: authReducer },
+    reducer: {
+      app: appReducer,
+      auth: authReducer,
+      [baseApi.reducerPath]: baseApi.reducer,
+    },
     preloadedState: {
       app: {
         tenantId,
@@ -38,10 +43,13 @@ function renderAppLayout({
         tenantId,
         token: 'tok-123',
         isAuthenticated: true,
+        isInitialized: true,
         status: 'succeeded' as const,
         error: null,
       },
     },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware().concat(baseApi.middleware),
   });
 
   const router = createMemoryRouter(
@@ -96,6 +104,8 @@ describe('AppLayout', () => {
     const { store } = renderAppLayout();
     const logoutBtn = screen.getByRole('button', { name: /log out/i });
     await user.click(logoutBtn);
-    expect(store.getState().auth.isAuthenticated).toBe(false);
+    await waitFor(() => {
+      expect(store.getState().auth.isAuthenticated).toBe(false);
+    });
   });
 });

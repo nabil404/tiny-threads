@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '@store/hooks';
 import { selectApp } from '@store/slices/appSlice';
 import { selectAuth, logout } from '@store/slices/authSlice';
+import { useLogoutMutation } from '@store/api/endpoints/authApi';
 import { ThemeSelector, LocaleSelector } from '@features/common';
 import { Button } from '@components/ui/button';
 import { Badge } from '@components/ui/badge';
@@ -20,6 +21,7 @@ export function AppLayout() {
   const dispatch = useAppDispatch();
   const { tenantId, tenantName } = useAppSelector(selectApp);
   const { user } = useAppSelector(selectAuth);
+  const [logoutApi] = useLogoutMutation();
 
   const navItems = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -27,6 +29,16 @@ export function AppLayout() {
     { to: '/orders', label: 'Orders', icon: ShoppingCart, end: false },
     { to: '/settings', label: 'Settings', icon: Settings, end: false },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await logoutApi().unwrap();
+    } catch {
+      // ignore server logout errors
+    } finally {
+      dispatch(logout());
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-200">
@@ -79,7 +91,7 @@ export function AppLayout() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => dispatch(logout())}
+              onClick={handleLogout}
               className="gap-1.5 text-destructive border-destructive/20 hover:bg-destructive/10 cursor-pointer"
             >
               <LogOut className="h-3.5 w-3.5" />

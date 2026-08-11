@@ -24,6 +24,7 @@ function createMockStore(token: string | null = 'jwt-abc') {
     tenantId: 'tenant-1',
     token,
     isAuthenticated: Boolean(token),
+    isInitialized: true,
     status: 'idle',
     error: null,
   };
