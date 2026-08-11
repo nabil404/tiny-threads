@@ -1,13 +1,31 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import appReducer, {
-  setTheme,
-  setTenant,
-  setLocale,
-  AppState,
-} from '../appSlice';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { configureStore } from '@reduxjs/toolkit';
+import appReducer, { setTheme, setLocale, AppState } from '../appSlice';
+import { authApi } from '../../api/endpoints/authApi';
+import { baseApi } from '../../api/baseApi';
 import { THEME_STORAGE_KEY } from '@theme/themes';
 import { LOCALE_STORAGE_KEY } from '@i18n/locales';
 import i18n from '@i18n';
+
+function buildStore() {
+  return configureStore({
+    reducer: {
+      app: appReducer,
+      [baseApi.reducerPath]: baseApi.reducer,
+    },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware().concat(baseApi.middleware),
+  });
+}
+
+function mockFetchOnce(status: number, body: unknown) {
+  return vi.fn().mockResolvedValue(
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  );
+}
 
 describe('appSlice', () => {
   beforeEach(() => {
@@ -15,20 +33,13 @@ describe('appSlice', () => {
     document.documentElement.className = '';
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('should initialize state with default theme from getSavedTheme()', () => {
     const initialState: AppState = appReducer(undefined, { type: 'unknown' });
     expect(initialState.theme).toBe('dark');
-    expect(initialState.tenantName).toBe('Tiny Threads Admin');
-  });
-
-  it('should handle setTenant', () => {
-    const initialState: AppState = appReducer(undefined, { type: 'unknown' });
-    const nextState = appReducer(
-      initialState,
-      setTenant({ id: 'tenant-123', name: 'Acme Store' }),
-    );
-    expect(nextState.tenantId).toBe('tenant-123');
-    expect(nextState.tenantName).toBe('Acme Store');
   });
 
   it('should handle setTheme and update localStorage & document attribute', () => {
@@ -53,5 +64,51 @@ describe('appSlice', () => {
     expect(nextState.locale).toBe('en');
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en');
     expect(i18n.language).toBe('en');
+  });
+
+  it('applies the locale returned by getMe', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetchOnce(200, {
+        user: {
+          id: 'mu-1',
+          email: 'owner@shop.com',
+          firstName: null,
+          lastName: null,
+          role: 'owner',
+          locale: 'en',
+        },
+        tenant: { id: 'tenant-1', name: 'Acme Store' },
+      }),
+    );
+    const store = buildStore();
+
+    await store.dispatch(authApi.endpoints.getMe.initiate());
+
+    expect(store.getState().app.locale).toBe('en');
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en');
+  });
+
+  it('ignores a null locale from getMe', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetchOnce(200, {
+        user: {
+          id: 'mu-1',
+          email: 'owner@shop.com',
+          firstName: null,
+          lastName: null,
+          role: 'owner',
+          locale: null,
+        },
+        tenant: { id: 'tenant-1', name: 'Acme Store' },
+      }),
+    );
+    const store = buildStore();
+    const before = store.getState().app.locale;
+
+    await store.dispatch(authApi.endpoints.getMe.initiate());
+
+    expect(store.getState().app.locale).toBe(before);
   });
 });

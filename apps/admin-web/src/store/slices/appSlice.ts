@@ -10,55 +10,32 @@ import {
   LocaleId,
   getSavedLocale,
   LOCALE_STORAGE_KEY,
+  LOCALES,
 } from '../../i18n/locales';
-
-export const TENANT_STORAGE_KEY = 'tiny_threads_admin_tenant';
+import { authApi } from '../api/endpoints/authApi';
 
 export interface AppState {
-  tenantId: string | null;
-  tenantName: string;
   theme: ThemeId;
   locale: LocaleId;
 }
 
-export function getSavedTenant(): { id: string | null; name: string } {
-  if (typeof window === 'undefined') {
-    return { id: null, name: 'Tiny Threads Admin' };
-  }
-  try {
-    const raw = localStorage.getItem(TENANT_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.name === 'string') {
-        return { id: parsed.id ?? null, name: parsed.name };
-      }
-    }
-  } catch {
-    // ignore parse error
-  }
-  return { id: null, name: 'Tiny Threads Admin' };
-}
-
-const savedTenant = getSavedTenant();
-
 const initialState: AppState = {
-  tenantId: savedTenant.id,
-  tenantName: savedTenant.name,
   theme: getSavedTheme(),
   locale: getSavedLocale(),
 };
+
+function applyLocale(state: AppState, locale: LocaleId) {
+  state.locale = locale;
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  }
+  void i18n.changeLanguage(locale);
+}
 
 export const appSlice = createSlice({
   name: 'app',
   initialState,
   reducers: {
-    setTenant: (state, action: PayloadAction<{ id: string; name: string }>) => {
-      state.tenantId = action.payload.id;
-      state.tenantName = action.payload.name;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(TENANT_STORAGE_KEY, JSON.stringify(action.payload));
-      }
-    },
     setTheme: (state, action: PayloadAction<ThemeId>) => {
       state.theme = action.payload;
       if (typeof window !== 'undefined') {
@@ -67,15 +44,22 @@ export const appSlice = createSlice({
       applyThemeToDocument(action.payload);
     },
     setLocale: (state, action: PayloadAction<LocaleId>) => {
-      state.locale = action.payload;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(LOCALE_STORAGE_KEY, action.payload);
-      }
-      void i18n.changeLanguage(action.payload);
+      applyLocale(state, action.payload);
     },
+  },
+  extraReducers: (builder) => {
+    builder.addMatcher(
+      authApi.endpoints.getMe.matchFulfilled,
+      (state, action) => {
+        const { locale } = action.payload.user;
+        if (locale && LOCALES.some((l) => l.id === locale)) {
+          applyLocale(state, locale as LocaleId);
+        }
+      },
+    );
   },
 });
 
-export const { setTenant, setTheme, setLocale } = appSlice.actions;
+export const { setTheme, setLocale } = appSlice.actions;
 export const selectApp = (state: { app: AppState }) => state.app;
 export default appSlice.reducer;
