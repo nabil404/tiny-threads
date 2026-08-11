@@ -12,8 +12,15 @@ export interface LoginResponse {
 export interface GetMeResponse {
   user: {
     id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
     role: string;
-    tenantId: string;
+    locale: string | null;
+  };
+  tenant: {
+    id: string;
+    name: string;
   };
 }
 

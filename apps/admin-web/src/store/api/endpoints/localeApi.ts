@@ -1,6 +1,6 @@
 import { baseApi } from '../baseApi';
 
-export interface GetLocaleResponse {
+export interface LocaleResponse {
   locale: string | null;
 }
 
@@ -10,11 +10,7 @@ export interface UpdateLocaleRequest {
 
 export const localeApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getLocale: builder.query<GetLocaleResponse, void>({
-      query: () => '/merchant-admins/me/locale',
-      providesTags: ['Locale'],
-    }),
-    updateLocale: builder.mutation<GetLocaleResponse, UpdateLocaleRequest>({
+    updateLocale: builder.mutation<LocaleResponse, UpdateLocaleRequest>({
       query: (body) => ({
         url: '/merchant-admins/me/locale',
         method: 'PATCH',
@@ -25,8 +21,4 @@ export const localeApi = baseApi.injectEndpoints({
   }),
 });
 
-export const {
-  useGetLocaleQuery,
-  useLazyGetLocaleQuery,
-  useUpdateLocaleMutation,
-} = localeApi;
+export const { useUpdateLocaleMutation } = localeApi;
