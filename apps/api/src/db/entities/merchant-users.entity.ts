@@ -18,4 +18,10 @@ export class MerchantUser extends TenantEntityBase {
 
   @Column({ type: 'text', nullable: true })
   locale!: string | null;
+
+  @Column({ name: 'first_name', type: 'text', nullable: true })
+  firstName!: string | null;
+
+  @Column({ name: 'last_name', type: 'text', nullable: true })
+  lastName!: string | null;
 }
