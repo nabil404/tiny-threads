@@ -15,6 +15,11 @@ export function DashboardPage() {
   const { t } = useTranslation();
   const { user } = useAppSelector(selectAuth);
 
+  const displayName =
+    user && (user.firstName || user.lastName)
+      ? [user.firstName, user.lastName].filter(Boolean).join(' ')
+      : user?.email;
+
   return (
     <div className="space-y-6">
       <Card className="border-border bg-card text-card-foreground">
@@ -34,7 +39,8 @@ export function DashboardPage() {
                 <UserIcon className="h-3.5 w-3.5" /> {t('app.loggedInUser')}
               </span>
               <p className="text-base font-medium">
-                {user?.name} ({user?.email})
+                {displayName}
+                {displayName !== user?.email && ` (${user?.email})`}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {t('app.role', { role: user?.role })}

@@ -11,19 +11,21 @@ import { LocaleSelector } from '../LocaleSelector';
 
 function createMockStore(isAuthenticated = true) {
   const app: AppState = {
-    tenantId: 'tenant-1',
-    tenantName: 'Test Tenant',
     theme: 'dark',
     locale: 'en',
   };
   const auth: AuthState = {
     user: isAuthenticated
-      ? { id: 'usr_1', email: 'admin@shop.com', name: 'Admin', role: 'admin' }
+      ? {
+          id: 'usr_1',
+          email: 'admin@shop.com',
+          firstName: 'Admin',
+          lastName: null,
+          role: 'admin',
+        }
       : null,
-    tenantId: isAuthenticated ? 'tenant-1' : null,
+    tenant: isAuthenticated ? { id: 'tenant-1', name: 'Test Tenant' } : null,
     isAuthenticated,
-    status: 'idle',
-    error: null,
   };
 
   return configureStore({

@@ -1,7 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '@store/hooks';
-import { selectApp } from '@store/slices/appSlice';
 import { selectAuth, logout } from '@store/slices/authSlice';
 import { useLogoutMutation } from '@store/api/endpoints/authApi';
 import { baseApi } from '@store/api/baseApi';
@@ -21,8 +20,7 @@ export function AppLayout() {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { tenantId, tenantName } = useAppSelector(selectApp);
-  const { user } = useAppSelector(selectAuth);
+  const { user, tenant } = useAppSelector(selectAuth);
   const [logoutApi] = useLogoutMutation();
 
   const navItems = [
@@ -52,7 +50,7 @@ export function AppLayout() {
             <div className="flex items-center gap-2.5">
               <Store className="h-6 w-6 text-primary" />
               <span className="font-bold text-lg tracking-tight">
-                {tenantName}
+                {tenant?.name}
               </span>
             </div>
             <nav className="hidden md:flex items-center gap-1">
@@ -78,11 +76,11 @@ export function AppLayout() {
 
           <div className="flex items-center gap-2.5">
             <Badge
-              variant={tenantId ? 'default' : 'secondary'}
+              variant={tenant ? 'default' : 'secondary'}
               className="px-2.5 py-0.5 text-xs hidden sm:inline-flex"
             >
-              {tenantId
-                ? t('app.tenantBadge', { tenantId })
+              {tenant
+                ? t('app.tenantBadge', { tenantId: tenant.id })
                 : t('app.platformContext')}
             </Badge>
             <ThemeSelector />

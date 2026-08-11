@@ -10,17 +10,21 @@ import { baseApi } from '@store/api/baseApi';
 import { AppLayout } from '../AppLayout';
 
 function renderAppLayout({
-  tenantId = 'tenant-demo',
-  tenantName = 'Demo Store',
+  tenant = { id: 'tenant-demo', name: 'Demo Store' } as {
+    id: string;
+    name: string;
+  } | null,
   user = {
     id: 'usr_1',
     email: 'admin@demo.com',
-    name: 'Admin',
+    firstName: 'Admin',
+    lastName: null,
     role: 'admin',
   } as {
     id: string;
     email: string;
-    name: string;
+    firstName: string | null;
+    lastName: string | null;
     role: string;
   } | null,
   initialPath = '/',
@@ -33,17 +37,13 @@ function renderAppLayout({
     },
     preloadedState: {
       app: {
-        tenantId,
-        tenantName,
         theme: 'dark' as const,
         locale: 'en' as const,
       },
       auth: {
         user,
-        tenantId,
+        tenant,
         isAuthenticated: true,
-        status: 'succeeded' as const,
-        error: null,
       },
     },
     middleware: (getDefaultMiddleware) =>
@@ -89,11 +89,8 @@ describe('AppLayout', () => {
     expect(screen.getByText('admin@demo.com')).toBeInTheDocument();
   });
 
-  it('renders platform context badge when tenantId is null', () => {
-    renderAppLayout({
-      tenantId: null as unknown as string,
-      tenantName: 'Platform Console',
-    });
+  it('renders platform context badge when tenant is null', () => {
+    renderAppLayout({ tenant: null });
     expect(screen.getByText(/Platform Context/i)).toBeInTheDocument();
   });
 
