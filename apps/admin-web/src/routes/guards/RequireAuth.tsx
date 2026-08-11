@@ -1,37 +1,9 @@
-import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '@store/hooks';
 import { useGetMeQuery } from '@store/api/endpoints/authApi';
-import { selectAuth, loginSuccess } from '@store/slices/authSlice';
-import { setTenant } from '@store/slices/appSlice';
 
 export function RequireAuth() {
-  const { isAuthenticated } = useAppSelector(selectAuth);
   const { data, isLoading, isError } = useGetMeQuery();
-  const dispatch = useAppDispatch();
   const location = useLocation();
-
-  React.useEffect(() => {
-    if (data?.user) {
-      dispatch(
-        loginSuccess({
-          user: {
-            id: data.user.id,
-            email: 'Merchant Admin',
-            name: 'Merchant Admin',
-            role: data.user.role,
-          },
-          tenantId: data.user.tenantId,
-        }),
-      );
-      dispatch(
-        setTenant({
-          id: data.user.tenantId,
-          name: 'Tiny Threads Apparels',
-        }),
-      );
-    }
-  }, [data, dispatch]);
 
   if (isLoading) {
     return (
@@ -44,7 +16,7 @@ export function RequireAuth() {
     );
   }
 
-  if (!isAuthenticated || isError || !data?.user) {
+  if (isError || !data?.user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
