@@ -3,12 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { useAppDispatch } from '@store/hooks';
 import { setTenant, setLocale } from '@store/slices/appSlice';
 import { loginSuccess } from '@store/slices/authSlice';
+import { useLoginMutation } from '@store/api/endpoints/authApi';
+import { useLazyGetLocaleQuery } from '@store/api/endpoints/localeApi';
 import { Input } from '@components/ui/input';
 import { Label } from '@components/ui/label';
 import { Button } from '@components/ui/button';
-import { login, getLocale, ApiClientError } from '@lib/api-client';
 import type { LocaleId } from '@i18n/locales';
 import { LOCALES } from '@i18n/locales';
+import type { ErrorResponseBody } from '@tiny-threads/shared';
 import { ArrowRight, Lock, User, AlertCircle } from 'lucide-react';
 
 export interface LoginFormProps {
@@ -24,16 +26,17 @@ export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
 
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [loginMutation, { isLoading }] = useLoginMutation();
+  const [fetchLocale] = useLazyGetLocaleQuery();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
 
     try {
-      const { accessToken } = await login(email, password);
+      const { accessToken } = await loginMutation({ email, password }).unwrap();
 
       dispatch(
         loginSuccess({
@@ -56,19 +59,20 @@ export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
       );
 
       try {
-        const { locale } = await getLocale(accessToken);
-        if (locale && LOCALES.some((l) => l.id === locale)) {
-          dispatch(setLocale(locale as LocaleId));
+        const localeResult = await fetchLocale().unwrap();
+        if (localeResult.locale && LOCALES.some((l) => l.id === localeResult.locale)) {
+          dispatch(setLocale(localeResult.locale as LocaleId));
         }
       } catch (localeErr) {
         console.error('Failed to hydrate locale preference', localeErr);
       }
 
       onSuccess?.();
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t('auth.genericError'));
-    } finally {
-      setIsLoading(false);
+    } catch (err: unknown) {
+      const customErr = err as { data?: ErrorResponseBody; message?: string };
+      const errorMessage =
+        customErr.data?.error?.message ?? customErr.message ?? t('auth.genericError');
+      setError(errorMessage);
     }
   };
 

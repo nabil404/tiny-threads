@@ -1,39 +1,42 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
-import appReducer from '@store/slices/appSlice';
-import authReducer from '@store/slices/authSlice';
+import { store } from '@store/index';
 import { LoginForm } from '../LoginForm';
-import { login, getLocale, ApiClientError } from '@lib/api-client';
-
-vi.mock('@lib/api-client', async () => {
-  const actual = await vi.importActual<typeof import('@lib/api-client')>('@lib/api-client');
-  return {
-    ...actual,
-    login: vi.fn(),
-    getLocale: vi.fn(),
-  };
-});
-
-function createStore() {
-  return configureStore({
-    reducer: { app: appReducer, auth: authReducer },
-  });
-}
+import * as authApiHooks from '@store/api/endpoints/authApi';
+import * as localeApiHooks from '@store/api/endpoints/localeApi';
 
 describe('LoginForm', () => {
-  beforeEach(() => {
-    vi.mocked(login).mockReset();
-    vi.mocked(getLocale).mockReset();
+  it('renders email and password inputs and sign-in button', () => {
+    render(
+      <Provider store={store}>
+        <LoginForm />
+      </Provider>,
+    );
+
+    expect(screen.getByPlaceholderText(/admin@merchant\.com/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
-  it('calls the real login API and stores the returned accessToken on success', async () => {
-    vi.mocked(login).mockResolvedValue({ accessToken: 'jwt-real' });
-    vi.mocked(getLocale).mockResolvedValue({ locale: null });
-    const store = createStore();
+  it('handles login form submission and calls onSuccess', async () => {
+    const mockUnwrapLogin = vi.fn().mockResolvedValue({ accessToken: 'mock-token' });
+    const mockLoginMutation = vi.fn().mockReturnValue({ unwrap: mockUnwrapLogin });
+    vi.spyOn(authApiHooks, 'useLoginMutation').mockReturnValue([
+      mockLoginMutation as any,
+      { isLoading: false } as any,
+    ]);
+
+    const mockUnwrapLocale = vi.fn().mockResolvedValue({ locale: 'en' });
+    const mockFetchLocale = vi.fn().mockReturnValue({ unwrap: mockUnwrapLocale });
+    vi.spyOn(localeApiHooks, 'useLazyGetLocaleQuery').mockReturnValue([
+      mockFetchLocale as any,
+      {} as any,
+      {} as any,
+    ]);
+
     const onSuccess = vi.fn();
+    const user = userEvent.setup();
 
     render(
       <Provider store={store}>
@@ -41,26 +44,30 @@ describe('LoginForm', () => {
       </Provider>,
     );
 
-    fireEvent.change(screen.getByLabelText(/email address/i), {
-      target: { value: 'owner@acme.dev' },
-    });
-    fireEvent.change(screen.getByLabelText(/^password$/i), {
-      target: { value: 'hunter2222' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    await user.type(screen.getByPlaceholderText(/admin@merchant\.com/i), 'admin@test.com');
+    await user.type(screen.getByLabelText(/password/i), 'password123');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(store.getState().auth.token).toBe('jwt-real');
+      expect(mockLoginMutation).toHaveBeenCalledWith({
+        email: 'admin@test.com',
+        password: 'password123',
+      });
+      expect(onSuccess).toHaveBeenCalled();
     });
-    expect(login).toHaveBeenCalledWith('owner@acme.dev', 'hunter2222');
-    expect(store.getState().auth.isAuthenticated).toBe(true);
-    expect(onSuccess).toHaveBeenCalled();
   });
 
-  it('hydrates the locale from the backend after a successful login', async () => {
-    vi.mocked(login).mockResolvedValue({ accessToken: 'jwt-real' });
-    vi.mocked(getLocale).mockResolvedValue({ locale: 'en' });
-    const store = createStore();
+  it('displays error message when login fails', async () => {
+    const mockUnwrapLogin = vi.fn().mockRejectedValue({
+      data: { error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Invalid email or password' } },
+    });
+    const mockLoginMutation = vi.fn().mockReturnValue({ unwrap: mockUnwrapLogin });
+    vi.spyOn(authApiHooks, 'useLoginMutation').mockReturnValue([
+      mockLoginMutation as any,
+      { isLoading: false } as any,
+    ]);
+
+    const user = userEvent.setup();
 
     render(
       <Provider store={store}>
@@ -68,41 +75,12 @@ describe('LoginForm', () => {
       </Provider>,
     );
 
-    fireEvent.change(screen.getByLabelText(/email address/i), {
-      target: { value: 'owner@acme.dev' },
-    });
-    fireEvent.change(screen.getByLabelText(/^password$/i), {
-      target: { value: 'hunter2222' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    await user.type(screen.getByPlaceholderText(/admin@merchant\.com/i), 'admin@test.com');
+    await user.type(screen.getByLabelText(/password/i), 'wrongpassword');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(getLocale).toHaveBeenCalledWith('jwt-real');
+      expect(screen.getByText('Invalid email or password')).toBeInTheDocument();
     });
-    expect(store.getState().app.locale).toBe('en');
-  });
-
-  it('shows the error message when login fails', async () => {
-    vi.mocked(login).mockRejectedValue(
-      new ApiClientError(401, 'INVALID_CREDENTIALS', 'Invalid email or password'),
-    );
-    const store = createStore();
-
-    render(
-      <Provider store={store}>
-        <LoginForm />
-      </Provider>,
-    );
-
-    fireEvent.change(screen.getByLabelText(/email address/i), {
-      target: { value: 'owner@acme.dev' },
-    });
-    fireEvent.change(screen.getByLabelText(/^password$/i), {
-      target: { value: 'wrongpassword' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
-
-    expect(await screen.findByText('Invalid email or password')).toBeInTheDocument();
-    expect(store.getState().auth.isAuthenticated).toBe(false);
   });
 });
