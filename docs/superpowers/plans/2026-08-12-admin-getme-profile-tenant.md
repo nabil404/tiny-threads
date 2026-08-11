@@ -589,16 +589,70 @@ git commit -m "refactor(admin-web): RequireAuth gates purely on the getMe query 
 
 ---
 
-### Task 5: Simplify `LoginForm` — drop the fabricated dispatches and locale fetch
+### Task 5: Simplify `LoginForm` — drop the fabricated dispatches and locale fetch; extract error-message parsing
 
 **Files:**
+- Create: `apps/admin-web/src/lib/extract-error-message.ts`
+- Test: `apps/admin-web/src/lib/__tests__/extract-error-message.test.ts`
 - Modify: `apps/admin-web/src/features/auth/components/LoginForm.tsx`
 - Modify: `apps/admin-web/src/features/auth/components/__tests__/LoginForm.test.tsx`
 
 **Interfaces:**
 - Removes: `LoginForm`'s dependency on `authSlice.loginSuccess`, `appSlice.setTenant`/`setLocale`, and `localeApi.useLazyGetLocaleQuery`. After a successful `login` mutation, it only calls `onSuccess?.()` — real user/tenant/locale data populates once navigation lands on a `RequireAuth`-guarded route and `getMe` fires (wired in Task 7/8).
+- Produces: `extractErrorMessage(err: unknown, fallback: string): string` (`@lib/extract-error-message`) — pulls the coded API error message out of a caught RTK Query rejection, falling back to `err.message`, then the caller-supplied default. `LoginForm` is the only current call site; this is written as a standalone util (not inlined) because the user asked for it ahead of the next form that will need the same parsing.
 
-- [ ] **Step 1: Update the test to stop mocking the now-unused locale hook**
+- [ ] **Step 1: Write the failing util test**
+
+Create `apps/admin-web/src/lib/__tests__/extract-error-message.test.ts`:
+
+```ts
+import { describe, it, expect } from 'vitest';
+import { extractErrorMessage } from '../extract-error-message';
+
+describe('extractErrorMessage', () => {
+  it('returns the coded API error message when present', () => {
+    const err = {
+      data: { error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Coded failure' } },
+    };
+    expect(extractErrorMessage(err, 'fallback')).toBe('Coded failure');
+  });
+
+  it('falls back to err.message when there is no coded error body', () => {
+    const err = { message: 'Network error' };
+    expect(extractErrorMessage(err, 'fallback')).toBe('Network error');
+  });
+
+  it('falls back to the provided default when neither is present', () => {
+    expect(extractErrorMessage({}, 'fallback')).toBe('fallback');
+    expect(extractErrorMessage(null, 'fallback')).toBe('fallback');
+  });
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pnpm --filter @tiny-threads/admin-web test -- extract-error-message.test.ts`
+Expected: FAIL — the module doesn't exist yet.
+
+- [ ] **Step 3: Implement the util**
+
+Create `apps/admin-web/src/lib/extract-error-message.ts`:
+
+```ts
+import type { ErrorResponseBody } from '@tiny-threads/shared';
+
+export function extractErrorMessage(err: unknown, fallback: string): string {
+  const customErr = err as { data?: ErrorResponseBody; message?: string };
+  return customErr.data?.error?.message ?? customErr.message ?? fallback;
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pnpm --filter @tiny-threads/admin-web test -- extract-error-message.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: Update the `LoginForm` test to stop mocking the now-unused locale hook**
 
 In `apps/admin-web/src/features/auth/components/__tests__/LoginForm.test.tsx`:
 
@@ -621,12 +675,12 @@ In the `'handles login form submission and calls onSuccess'` test, remove this b
 
 ```
 
-- [ ] **Step 2: Run the test to verify it still passes against the OLD component**
+- [ ] **Step 6: Run the test to verify it still passes against the OLD component**
 
 Run: `pnpm --filter @tiny-threads/admin-web test -- LoginForm.test.tsx`
 Expected: PASS — removing an unused mock doesn't change behavior yet (the old component still calls the real `useLazyGetLocaleQuery`, which RTK Query resolves against the test's real store without a mocked `fetch`; this succeeds today because the existing tests already exercise this path without asserting on its outcome — confirm PASS before proceeding).
 
-- [ ] **Step 3: Simplify `LoginForm.tsx`**
+- [ ] **Step 7: Simplify `LoginForm.tsx` and use `extractErrorMessage`**
 
 Replace the full content of `apps/admin-web/src/features/auth/components/LoginForm.tsx`:
 
@@ -634,10 +688,10 @@ Replace the full content of `apps/admin-web/src/features/auth/components/LoginFo
 import { useState, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLoginMutation } from '@store/api/endpoints/authApi';
+import { extractErrorMessage } from '@lib/extract-error-message';
 import { Input } from '@components/ui/input';
 import { Label } from '@components/ui/label';
 import { Button } from '@components/ui/button';
-import type { ErrorResponseBody } from '@tiny-threads/shared';
 import { ArrowRight, Lock, User, AlertCircle } from 'lucide-react';
 
 export interface LoginFormProps {
@@ -664,12 +718,7 @@ export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
       await loginMutation({ email, password }).unwrap();
       onSuccess?.();
     } catch (err: unknown) {
-      const customErr = err as { data?: ErrorResponseBody; message?: string };
-      const errorMessage =
-        customErr.data?.error?.message ??
-        customErr.message ??
-        t('auth.genericError');
-      setError(errorMessage);
+      setError(extractErrorMessage(err, t('auth.genericError')));
     }
   };
 
@@ -742,16 +791,16 @@ export function LoginForm({ initialEmail = '', onSuccess }: LoginFormProps) {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [ ] **Step 8: Run the test to verify it passes**
 
 Run: `pnpm --filter @tiny-threads/admin-web test -- LoginForm.test.tsx`
-Expected: PASS — `mockLoginMutation` is still called with the right credentials and `onSuccess` still fires; the error-display test is unaffected since it never reached the removed code.
+Expected: PASS — `mockLoginMutation` is still called with the right credentials and `onSuccess` still fires; the error-display test now exercises `extractErrorMessage` instead of the inlined logic, with the same outcome.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add apps/admin-web/src/features/auth/components/LoginForm.tsx apps/admin-web/src/features/auth/components/__tests__/LoginForm.test.tsx
-git commit -m "refactor(admin-web): LoginForm no longer fabricates user/tenant/locale data"
+git add apps/admin-web/src/lib/extract-error-message.ts apps/admin-web/src/lib/__tests__/extract-error-message.test.ts apps/admin-web/src/features/auth/components/LoginForm.tsx apps/admin-web/src/features/auth/components/__tests__/LoginForm.test.tsx
+git commit -m "refactor(admin-web): LoginForm no longer fabricates user/tenant/locale data; extract error-message parsing"
 ```
 
 ---
