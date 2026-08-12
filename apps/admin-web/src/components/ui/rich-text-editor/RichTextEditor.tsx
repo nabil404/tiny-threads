@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@components/ui/button';
 import { cn } from '@/lib/utils';
+import { LinkPopover } from './LinkPopover';
+import { LinkBubbleMenu } from './LinkBubbleMenu';
 
 export interface RichTextEditorProps {
   value: string;
@@ -62,17 +64,6 @@ export function RichTextEditor({
   }, [value, editor]);
 
   if (!editor) return null;
-
-  const toggleLink = () => {
-    if (editor.isActive('link')) {
-      editor.chain().focus().unsetLink().run();
-    } else {
-      const url = window.prompt('Enter URL');
-      if (url) {
-        editor.chain().focus().setLink({ href: url }).run();
-      }
-    }
-  };
 
   return (
     <div
@@ -130,20 +121,22 @@ export function RichTextEditor({
         >
           <ListOrdered className="h-3.5 w-3.5" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className={cn(
-            'h-7 w-7',
-            editor.isActive('link') && 'bg-accent text-accent-foreground',
-          )}
-          onClick={toggleLink}
-        >
-          <LinkIcon className="h-3.5 w-3.5" />
-        </Button>
+        <LinkPopover editor={editor}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn(
+              'h-7 w-7',
+              editor.isActive('link') && 'bg-accent text-accent-foreground',
+            )}
+          >
+            <LinkIcon className="h-3.5 w-3.5" />
+          </Button>
+        </LinkPopover>
       </div>
       <EditorContent editor={editor} />
+      <LinkBubbleMenu editor={editor} />
     </div>
   );
 }
