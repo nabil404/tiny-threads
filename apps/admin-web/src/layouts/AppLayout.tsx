@@ -1,111 +1,54 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@store/hooks';
-import { selectAuth, logout } from '@store/slices/authSlice';
-import { useLogoutMutation } from '@store/api/endpoints/authApi';
-import { baseApi } from '@store/api/baseApi';
-import { ThemeSelector, LocaleSelector } from '@features/common';
-import { Button } from '@components/ui/button';
-import { Badge } from '@components/ui/badge';
 import {
-  Store,
-  LogOut,
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  Settings,
-} from 'lucide-react';
+  selectSidebarCollapsed,
+  setMobileNavOpen,
+} from '@store/slices/appSlice';
+import { Sidebar } from './components/Sidebar';
+import { Topbar } from './components/Topbar';
+import { MobileNavDrawer } from './components/MobileNavDrawer';
 
 export function AppLayout() {
-  const { t } = useTranslation();
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
-  const { user, tenant } = useAppSelector(selectAuth);
-  const [logoutApi] = useLogoutMutation();
+  const location = useLocation();
+  const isCollapsed = useAppSelector(selectSidebarCollapsed);
 
-  const navItems = [
-    { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { to: '/products', label: 'Products', icon: Package, end: false },
-    { to: '/orders', label: 'Orders', icon: ShoppingCart, end: false },
-    { to: '/settings', label: 'Settings', icon: Settings, end: false },
-  ];
+  // Auto-close mobile drawer on route change
+  useEffect(() => {
+    dispatch(setMobileNavOpen(false));
+  }, [location.pathname, dispatch]);
 
-  const handleLogout = async () => {
-    try {
-      await logoutApi().unwrap();
-    } catch {
-      // ignore server logout errors
-    } finally {
-      dispatch(logout());
-      dispatch(baseApi.util.resetApiState());
-      navigate('/login', { replace: true });
-    }
-  };
+  // Auto-close mobile drawer if viewport expands to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        dispatch(setMobileNavOpen(false));
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [dispatch]);
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-200">
-      <header className="border-b border-border bg-card/60 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2.5">
-              <Store className="h-6 w-6 text-primary" />
-              <span className="font-bold text-lg tracking-tight">
-                {tenant?.name}
-              </span>
-            </div>
-            <nav className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    `flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                      isActive
-                        ? 'bg-primary/10 text-primary font-semibold'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`
-                  }
-                >
-                  <item.icon className="h-3.5 w-3.5" />
-                  <span>{item.label}</span>
-                </NavLink>
-              ))}
-            </nav>
-          </div>
+      {/* Desktop Fixed Sidebar */}
+      <Sidebar />
 
-          <div className="flex items-center gap-2.5">
-            <Badge
-              variant={tenant ? 'default' : 'secondary'}
-              className="px-2.5 py-0.5 text-xs hidden sm:inline-flex"
-            >
-              {tenant
-                ? t('app.tenantBadge', { tenantId: tenant.id })
-                : t('app.platformContext')}
-            </Badge>
-            <ThemeSelector />
-            <LocaleSelector />
-            {user && (
-              <span className="text-xs text-muted-foreground hidden lg:inline-block">
-                {user.email}
-              </span>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              className="gap-1.5 text-destructive border-destructive/20 hover:bg-destructive/10 cursor-pointer"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span>{t('app.logOut')}</span>
-            </Button>
-          </div>
-        </div>
-      </header>
+      {/* Mobile Drawer */}
+      <MobileNavDrawer />
 
-      <main className="container mx-auto max-w-6xl p-6">
-        <Outlet />
-      </main>
+      {/* Main Content Area offset by Sidebar */}
+      <div
+        className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
+          isCollapsed ? 'md:pl-16' : 'md:pl-64'
+        }`}
+      >
+        <Topbar />
+        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
