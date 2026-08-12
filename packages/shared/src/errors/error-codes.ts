@@ -62,6 +62,12 @@ export enum ErrorCode {
   RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
   DUPLICATE_RESOURCE = 'DUPLICATE_RESOURCE',
 
+  // file & image
+  INVALID_FILE_TYPE = 'INVALID_FILE_TYPE',
+  FILE_TOO_LARGE = 'FILE_TOO_LARGE',
+  IMAGE_PROCESSING_FAILED = 'IMAGE_PROCESSING_FAILED',
+  PRODUCT_VARIANT_IMAGE_NOT_FOUND = 'PRODUCT_VARIANT_IMAGE_NOT_FOUND',
+
   // field-level validation — named after the class-validator constraint
   // they decode, uppercased/snake-cased (see fallbackCodeFor in
   // validation-field.ts, Task 3)

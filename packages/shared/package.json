@@ -6,13 +6,17 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "lint": "eslint \"src/**/*.ts\""
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "jest"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
+    "@types/jest": "^30.0.0",
     "eslint": "^9.18.0",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^17.0.0",
+    "jest": "^30.0.0",
+    "ts-jest": "^29.2.5",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   }
