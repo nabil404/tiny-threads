@@ -84,12 +84,7 @@ export class CustomersAuthController {
   @Get('me')
   getMe(@Req() req: Request) {
     const user = req.user as { sub: string; tenantId: string };
-    return {
-      user: {
-        id: user.sub,
-        tenantId: user.tenantId,
-      },
-    };
+    return this.customersAuthService.getMe(user.sub);
   }
 
   @ApiOperation({

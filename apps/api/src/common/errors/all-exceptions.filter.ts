@@ -33,6 +33,32 @@ export class AllExceptionsFilter implements ExceptionFilter {
       status: (code: number) => { json: (body: ErrorResponseBody) => void };
     }>();
 
+    if (
+      exception instanceof Error &&
+      (exception.name === 'MulterError' ||
+        exception.constructor.name === 'MulterError')
+    ) {
+      const multerErr = exception as { code?: string; message?: string };
+      if (multerErr.code === 'LIMIT_FILE_SIZE') {
+        response.status(400).json({
+          error: {
+            code: ErrorCode.FILE_TOO_LARGE,
+            message: 'File size exceeds 5MB limit',
+            params: {},
+          },
+        });
+        return;
+      }
+      response.status(400).json({
+        error: {
+          code: ErrorCode.INVALID_FILE_TYPE,
+          message: multerErr.message || 'File upload error',
+          params: {},
+        },
+      });
+      return;
+    }
+
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const body = exception.getResponse();

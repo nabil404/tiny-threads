@@ -41,6 +41,16 @@ interface GoogleProfile {
   emailVerified: boolean;
 }
 
+export interface GetCustomerMeResult {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    tenantId: string;
+    avatarUrl: string | null;
+  };
+}
+
 // TokenService isn't used by register()/verifyEmail() yet — it's accepted
 // here (rather than added later) because Task 10 adds login/refresh/logout
 // to this same class and needs it, and TokenService already exists from
@@ -491,6 +501,29 @@ export class CustomersAuthService {
         { customerId: identity.customerId },
         { revokedAt: new Date() },
       );
+    });
+  }
+
+  async getMe(customerId: string): Promise<GetCustomerMeResult> {
+    return this.tenantDb.run(async (manager) => {
+      const customer = await manager.findOne(Customer, {
+        where: { id: customerId },
+      });
+      if (!customer) {
+        throw new CodedUnauthorizedException(
+          ErrorCode.CUSTOMER_NO_LONGER_EXISTS,
+          'Customer no longer exists',
+        );
+      }
+      return {
+        user: {
+          id: customer.id,
+          email: customer.email,
+          name: customer.name,
+          tenantId: customer.tenantId,
+          avatarUrl: customer.avatarUrl ?? null,
+        },
+      };
     });
   }
 

@@ -989,6 +989,7 @@ describe('MerchantAdminsAuthService.getMe', () => {
         lastName: 'Lovelace',
         role: 'owner',
         locale: 'en',
+        avatarUrl: null,
       },
       tenant: { id: 'tenant-1', name: 'Acme Store' },
     });

@@ -8,15 +8,25 @@ import { CustomersAuthService } from './customers-auth.service';
 import { CustomerLocalStrategy } from './strategies/customer-local.strategy';
 import { CustomerJwtStrategy } from './strategies/customer-jwt.strategy';
 
+import { StorageModule } from '../storage/storage.module';
+import { CustomersAvatarController } from './customers-avatar.controller';
+import { CustomersAvatarService } from './customers-avatar.service';
+
 @Module({
   imports: [
     AuthCoreModule,
     NotificationsModule,
     PassportModule,
     OneTimeCodeModule,
+    StorageModule,
   ],
-  controllers: [CustomersAuthController],
-  providers: [CustomersAuthService, CustomerLocalStrategy, CustomerJwtStrategy],
-  exports: [CustomersAuthService],
+  controllers: [CustomersAuthController, CustomersAvatarController],
+  providers: [
+    CustomersAuthService,
+    CustomersAvatarService,
+    CustomerLocalStrategy,
+    CustomerJwtStrategy,
+  ],
+  exports: [CustomersAuthService, CustomersAvatarService],
 })
 export class CustomersAuthModule {}

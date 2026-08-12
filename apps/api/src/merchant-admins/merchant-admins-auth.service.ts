@@ -52,6 +52,7 @@ export interface GetMeResult {
     lastName: string | null;
     role: string;
     locale: string | null;
+    avatarUrl: string | null;
   };
   tenant: {
     id: string;
@@ -507,6 +508,7 @@ export class MerchantAdminsAuthService {
           lastName: merchantUser.lastName,
           role: merchantUser.role,
           locale: merchantUser.locale,
+          avatarUrl: merchantUser.avatarUrl ?? null,
         },
         tenant: {
           id: merchantUser.tenant.id,
