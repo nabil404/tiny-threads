@@ -21,6 +21,7 @@ import { PaymentsModule } from '../payments/payments.module';
 import { CheckoutModule } from '../checkout/checkout.module';
 import { OrdersModule } from '../orders/orders.module';
 import { SchedulerModule } from '../scheduler/scheduler.module';
+import { StorageModule } from '../storage/storage.module';
 import { validate } from '../config/env.validation';
 
 @Module({
@@ -43,6 +44,7 @@ import { validate } from '../config/env.validation';
     CheckoutModule,
     OrdersModule,
     SchedulerModule,
+    StorageModule,
   ],
   controllers: [AppController],
   providers: [AppService],
@@ -74,6 +76,9 @@ export class AppModule implements NestModule {
         { path: 'docs/{*path}', method: RequestMethod.GET },
         { path: 'docs-json', method: RequestMethod.GET },
         { path: 'docs-yaml', method: RequestMethod.GET },
+        // Public static uploads.
+        { path: 'uploads', method: RequestMethod.GET },
+        { path: 'uploads/{*path}', method: RequestMethod.GET },
       )
       .forRoutes('*');
   }

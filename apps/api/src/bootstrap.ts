@@ -5,6 +5,8 @@ import {
   VersioningType,
 } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
+import express from 'express';
+import path from 'path';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
 import { buildValidationException } from './common/errors/validation-field';
 import { API_PREFIX, API_VERSION } from './common/constants';
@@ -18,6 +20,13 @@ export function configureApp(app: INestApplication): void {
     credentials: true,
   });
   app.use(cookieParser());
+
+  const uploadDir = path.resolve(
+    process.cwd(),
+    process.env.STORAGE_LOCAL_ROOT || './uploads',
+  );
+  app.use('/uploads', express.static(uploadDir));
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -46,6 +55,8 @@ export function configureApp(app: INestApplication): void {
     exclude: [
       { path: '/', method: RequestMethod.ALL },
       { path: 'auth/google/callback', method: RequestMethod.ALL },
+      { path: 'uploads', method: RequestMethod.ALL },
+      { path: 'uploads/{*path}', method: RequestMethod.ALL },
     ],
   });
   app.enableVersioning({
