@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
@@ -65,6 +65,12 @@ export function ProductForm({
     resolver: zodResolver(productFormSchema) as unknown as Resolver<ProductFormData>,
     defaultValues: initialData ?? DEFAULT_FORM_DATA,
   });
+
+  useEffect(() => {
+    if (initialData) {
+      form.reset(initialData);
+    }
+  }, [initialData]);
 
   const handleSubmit = async (data: ProductFormData) => {
     await onSubmit(data, variantImages);

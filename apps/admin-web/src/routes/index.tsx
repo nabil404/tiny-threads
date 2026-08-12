@@ -4,6 +4,7 @@ import { PublicOnlyRoute } from './guards/PublicOnlyRoute';
 import { AppLayout } from '../layouts/AppLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { LoginPage } from '../features/auth';
+import { CreateProductPage, EditProductPage } from '../features/products';
 import { DashboardPage } from '../pages/dashboard/DashboardPage';
 import { ProductsPage } from '../pages/products/ProductsPage';
 import { OrdersPage } from '../pages/orders/OrdersPage';
@@ -20,6 +21,8 @@ export const router = createBrowserRouter([
         children: [
           { path: '/', element: <DashboardPage /> },
           { path: '/products', element: <ProductsPage /> },
+          { path: '/products/new', element: <CreateProductPage /> },
+          { path: '/products/:id/edit', element: <EditProductPage /> },
           { path: '/orders', element: <OrdersPage /> },
           { path: '/settings', element: <SettingsPage /> },
           {

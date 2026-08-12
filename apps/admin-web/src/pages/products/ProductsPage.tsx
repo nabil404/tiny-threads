@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import {
   Card,
   CardHeader,
@@ -5,16 +6,25 @@ import {
   CardDescription,
   CardContent,
 } from '@components/ui/card';
-import { Package } from 'lucide-react';
+import { Button } from '@components/ui/button';
+import { Package, Plus } from 'lucide-react';
 
 export function ProductsPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Products</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your store inventory, variants, and product catalog.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Products</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your store inventory, variants, and product catalog.
+          </p>
+        </div>
+        <Button asChild>
+          <Link to="/products/new">
+            <Plus className="h-4 w-4 mr-1" />
+            Add Product
+          </Link>
+        </Button>
       </div>
 
       <Card className="border-border bg-card">

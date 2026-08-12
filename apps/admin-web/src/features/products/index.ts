@@ -7,5 +7,7 @@ export { VariantRow, type VariantRowProps } from './components/VariantRow';
 export { VariantsSection, type VariantsSectionProps } from './components/VariantsSection';
 export { OrganizationSidebar } from './components/OrganizationSidebar';
 export { ProductForm, type ProductFormProps } from './components/ProductForm';
+export { CreateProductPage } from './pages/CreateProductPage';
+export { EditProductPage } from './pages/EditProductPage';
 
 
