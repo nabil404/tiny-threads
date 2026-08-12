@@ -7,3 +7,6 @@ allowBuilds:
   esbuild: true
   sharp: true
   unrs-resolver: true
+overrides:
+  typescript: '~5.7.3'
+
