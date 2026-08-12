@@ -6,6 +6,7 @@ import {
   Bold,
   Italic,
   List,
+  ListOrdered,
   Link as LinkIcon,
 } from 'lucide-react';
 import { Button } from '@components/ui/button';
@@ -116,6 +117,18 @@ export function RichTextEditor({
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         >
           <List className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={cn(
+            'h-7 w-7',
+            editor.isActive('orderedList') && 'bg-accent text-accent-foreground',
+          )}
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        >
+          <ListOrdered className="h-3.5 w-3.5" />
         </Button>
         <Button
           type="button"
