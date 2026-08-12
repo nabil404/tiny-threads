@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { BubbleMenu, type Editor } from '@tiptap/react';
+import { type Editor } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
 import { Button } from '@components/ui/button';
 import { ExternalLink, Pencil, Unlink } from 'lucide-react';
 import { LinkPopover } from './LinkPopover';
@@ -14,9 +15,9 @@ export function LinkBubbleMenu({ editor }: LinkBubbleMenuProps) {
   return (
     <BubbleMenu
       editor={editor}
-      tippyOptions={{
+      options={{
         placement: 'bottom-start',
-        onHidden: () => setIsEditOpen(false),
+        onHide: () => setIsEditOpen(false),
       }}
       shouldShow={({ editor: e }) => e.isActive('link') && !isEditOpen}
     >

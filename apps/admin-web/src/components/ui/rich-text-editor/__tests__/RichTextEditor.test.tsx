@@ -7,8 +7,6 @@ vi.mock('@tiptap/react', () => {
   const EditorContent = ({ editor }: { editor: unknown }) =>
     editor ? <div data-testid="editor-content">Editor Content</div> : null;
 
-  const BubbleMenu = () => null;
-
   return {
     useEditor: () => ({
       chain: () => ({
@@ -43,9 +41,12 @@ vi.mock('@tiptap/react', () => {
       commands: { setContent: vi.fn() },
     }),
     EditorContent,
-    BubbleMenu,
   };
 });
+
+vi.mock('@tiptap/react/menus', () => ({
+  BubbleMenu: () => null,
+}));
 
 vi.mock('@tiptap/starter-kit', () => ({
   default: { configure: () => ({}) },
