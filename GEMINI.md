@@ -14,7 +14,7 @@ This file provides guidance to Gemini / Antigravity AI agents working in the **T
   - **See detailed guide**: [`apps/admin-web/GEMINI.md`](apps/admin-web/GEMINI.md)
 - **`packages/shared`**: Shared TypeScript package (`@tiny-threads/shared`) containing error-envelope contracts, error codes, and shared schemas.
 - **`docs/`**: Architectural Decision Records (ADRs), database schema/ERD specifications, and feature design docs.
-- **`.agents/skills/`**: Repository skills (`backend-engineer`, `rest-api-design`, `docker-compose-orchestration`, `multi-stage-dockerfile`).
+- **`.agents/skills/`**: Repository skills (`backend-engineer`, `frontend-engineer`, `rest-api-design`, `docker-compose-orchestration`, `multi-stage-dockerfile`).
 
 ---
 
@@ -88,6 +88,7 @@ pnpm --filter @tiny-threads/api test:e2e         # Run backend E2E tests
 ## 5. Essential References
 
 - **Backend Operating Manual**: `.agents/skills/backend-engineer/SKILL.md`
+- **Frontend Operating Manual**: `.agents/skills/frontend-engineer/SKILL.md`
 - **REST API Guidelines**: `.agents/skills/rest-api-design/SKILL.md`
 - **Architecture Rationale**: `docs/architecture/architecture.md`
 - **Database ERD & Schema Spec**: `docs/architecture/database-schema.md`

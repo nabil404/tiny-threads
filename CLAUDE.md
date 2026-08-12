@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working in the 
   - **See detailed guide**: [`apps/admin-web/CLAUDE.md`](apps/admin-web/CLAUDE.md)
 - **`packages/shared`** — Shared TypeScript package (`@tiny-threads/shared`) containing error-envelope contracts, error codes, and shared schemas.
 - **`docs/`** — Architectural Decision Records (ADRs), database schema/ERD specifications, and feature design docs.
-- **`.claude/skills/`** — Repository skills (`backend-engineer`, `rest-api-design`, `docker-compose-orchestration`, `multi-stage-dockerfile`).
+- **`.claude/skills/`** — Repository skills (`backend-engineer`, `frontend-engineer`, `rest-api-design`, `docker-compose-orchestration`, `multi-stage-dockerfile`).
 
 ---
 
@@ -88,6 +88,7 @@ pnpm --filter @tiny-threads/api test:e2e         # Run backend E2E tests
 ## 5. Essential References
 
 - **Backend Operating Manual**: `.claude/skills/backend-engineer/SKILL.md`
+- **Frontend Operating Manual**: `.claude/skills/frontend-engineer/SKILL.md`
 - **REST API Guidelines**: `.claude/skills/rest-api-design/SKILL.md`
 - **Architecture Rationale**: `docs/architecture/architecture.md`
 - **Database ERD & Schema Spec**: `docs/architecture/database-schema.md`
