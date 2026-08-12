@@ -16,7 +16,7 @@ export class StorefrontProductsController {
   @ApiResponse({ status: 200, description: 'Paginated active product list.' })
   @Get()
   findAll(@Query() query: ProductQueryDto) {
-    return this.productsService.findAll(query, true);
+    return this.productsService.findStorefrontProducts(query);
   }
 
   @ApiOperation({
@@ -28,6 +28,6 @@ export class StorefrontProductsController {
   @ApiResponse({ status: 404, description: 'Product not found or not active.' })
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.productsService.findById(id, true);
+    return this.productsService.findStorefrontProductById(id);
   }
 }

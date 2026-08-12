@@ -37,3 +37,4 @@ apps/web/next-env.d.ts
 .superpowers
 .playwright-mcp
 stitch_downloads
+uploads/

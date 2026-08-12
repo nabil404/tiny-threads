@@ -50,7 +50,7 @@ export class MerchantProductVariantImagesController {
   @Roles('owner', 'admin')
   @Post()
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }),
+    FileInterceptor('image', { limits: { fileSize: 10 * 1024 * 1024 } }),
   )
   uploadImage(
     @Param('productId') productId: string,

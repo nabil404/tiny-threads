@@ -200,6 +200,7 @@ describe('ProductsService', () => {
         innerJoin: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
         getManyAndCount: jest.fn().mockResolvedValue([mockProducts, 1]),
@@ -246,6 +247,7 @@ describe('ProductsService', () => {
         innerJoin: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
         getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
@@ -269,6 +271,7 @@ describe('ProductsService', () => {
         innerJoin: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
         getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
@@ -320,6 +323,65 @@ describe('ProductsService', () => {
       await expect(service.findById('prod-1', true)).rejects.toThrow(
         CodedNotFoundException,
       );
+    });
+  });
+
+  describe('findStorefrontProducts and findStorefrontProductById', () => {
+    it('findStorefrontProducts delegates to findAll with storefront = true and loads variant images ordered by sortOrder ASC', async () => {
+      const mockQb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+      };
+
+      tenantDbService.run.mockImplementation(async (cb: any) => {
+        const em = { createQueryBuilder: jest.fn().mockReturnValue(mockQb) };
+        return await cb(em as any);
+      });
+
+      const res = await service.findStorefrontProducts({ page: 1, limit: 10 });
+      expect(res).toBeDefined();
+      expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith(
+        'variant.images',
+        'variantImage',
+      );
+      expect(mockQb.addOrderBy).toHaveBeenCalledWith(
+        'variantImage.sortOrder',
+        'ASC',
+      );
+    });
+
+    it('findStorefrontProductById delegates to findById with storefront = true', async () => {
+      const mockProduct = {
+        id: 'prod-100',
+        title: 'Storefront Item',
+        status: 'active',
+      };
+      let findOneOptions: any;
+      tenantDbService.run.mockImplementation(async (cb: any) => {
+        const em = {
+          findOne: jest.fn().mockImplementation((_, opts) => {
+            findOneOptions = opts;
+            return Promise.resolve(mockProduct);
+          }),
+        };
+        return await cb(em as any);
+      });
+
+      const res = await service.findStorefrontProductById('prod-100');
+      expect(res).toEqual(mockProduct);
+      expect(findOneOptions.relations).toEqual({
+        variants: { images: true },
+        productCategories: { category: true },
+      });
+      expect(findOneOptions.order).toEqual({
+        variants: { images: { sortOrder: 'ASC' } },
+      });
     });
   });
 

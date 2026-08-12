@@ -12,6 +12,8 @@ describe('Storefront Controllers', () => {
 
   beforeEach(() => {
     productsService = {
+      findStorefrontProducts: jest.fn(),
+      findStorefrontProductById: jest.fn(),
       findAll: jest.fn(),
       findById: jest.fn(),
     } as unknown as jest.Mocked<ProductsService>;
@@ -28,28 +30,32 @@ describe('Storefront Controllers', () => {
   });
 
   describe('StorefrontProductsController', () => {
-    it('calls productsService.findAll with isStorefront = true', async () => {
+    it('calls productsService.findStorefrontProducts', async () => {
       const mockResult = { items: [], total: 0, page: 1, limit: 20 };
-      productsService.findAll.mockResolvedValue(mockResult);
+      productsService.findStorefrontProducts.mockResolvedValue(mockResult);
 
       const query = { page: 1, limit: 20 };
       const result = await productsController.findAll(query);
 
-      expect(productsService.findAll).toHaveBeenCalledWith(query, true);
+      expect(productsService.findStorefrontProducts).toHaveBeenCalledWith(
+        query,
+      );
       expect(result).toBe(mockResult);
     });
 
-    it('calls productsService.findById with isStorefront = true', async () => {
+    it('calls productsService.findStorefrontProductById', async () => {
       const mockProduct = {
         id: 'prod-123',
         title: 'Test Product',
         status: 'active',
       } as any;
-      productsService.findById.mockResolvedValue(mockProduct);
+      productsService.findStorefrontProductById.mockResolvedValue(mockProduct);
 
       const result = await productsController.findOne('prod-123');
 
-      expect(productsService.findById).toHaveBeenCalledWith('prod-123', true);
+      expect(productsService.findStorefrontProductById).toHaveBeenCalledWith(
+        'prod-123',
+      );
       expect(result).toBe(mockProduct);
     });
   });

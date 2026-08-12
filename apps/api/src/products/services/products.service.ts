@@ -61,8 +61,17 @@ export class ProductsService {
     const product = await em.findOne(Product, {
       where: { id },
       relations: {
-        variants: true,
+        variants: {
+          images: true,
+        },
         productCategories: { category: true },
+      },
+      order: {
+        variants: {
+          images: {
+            sortOrder: 'ASC',
+          },
+        },
       },
     });
     if (!product || (isStorefront && product.status !== 'active')) {
@@ -192,6 +201,7 @@ export class ProductsService {
       const qb = em
         .createQueryBuilder(Product, 'product')
         .leftJoinAndSelect('product.variants', 'variant')
+        .leftJoinAndSelect('variant.images', 'variantImage')
         .leftJoinAndSelect('product.productCategories', 'productCategory')
         .leftJoinAndSelect('productCategory.category', 'category');
 
@@ -219,6 +229,7 @@ export class ProductsService {
       }
 
       qb.orderBy('product.createdAt', 'DESC');
+      qb.addOrderBy('variantImage.sortOrder', 'ASC');
       qb.skip((page - 1) * limit);
       qb.take(limit);
 
@@ -231,6 +242,16 @@ export class ProductsService {
         limit,
       };
     });
+  }
+
+  async findStorefrontProducts(
+    query: ProductQueryDto,
+  ): Promise<PaginatedProducts> {
+    return this.findAll(query, true);
+  }
+
+  async findStorefrontProductById(id: string): Promise<Product> {
+    return this.findById(id, true);
   }
 
   async findById(id: string, isStorefront: boolean = false): Promise<Product> {
