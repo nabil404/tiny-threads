@@ -100,6 +100,33 @@ describe('Merchant Controllers', () => {
       expect(res).toBe(expected);
     });
 
+    it('calls productsService.create when standard JSON body is passed directly', async () => {
+      const dto: CreateProductDto = { title: 'Direct Tee', status: 'active' };
+      const expected = {
+        id: 'p1',
+        title: 'Direct Tee',
+        status: 'active',
+      } as Product;
+      productsService.create.mockResolvedValue(expected);
+
+      const res = await productsController.create([], dto as any);
+      expect(productsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Direct Tee', status: 'active' }),
+      );
+      expect(res).toBe(expected);
+    });
+
+    it('collects nested DTO validation errors from dto.variants children', async () => {
+      const invalidDto = {
+        title: 'Tee',
+        status: 'active',
+        variants: [{ sku: '', priceCents: -50, stock: 10 }],
+      };
+      await expect(
+        productsController.create([], { data: JSON.stringify(invalidDto) }),
+      ).rejects.toThrow(CodedBadRequestException);
+    });
+
     it('throws CodedBadRequestException if body.data is missing or invalid JSON', async () => {
       await expect(productsController.create([], {})).rejects.toThrow(
         CodedBadRequestException,

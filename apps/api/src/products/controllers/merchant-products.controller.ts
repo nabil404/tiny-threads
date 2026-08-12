@@ -21,7 +21,7 @@ import {
   ApiConsumes,
 } from '@nestjs/swagger';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
-import { validate } from 'class-validator';
+import { validate, ValidationError } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { MerchantAdminJwtAuthGuard } from '../../merchant-admins/guards/merchant-admin-jwt-auth.guard';
 import { RolesGuard } from '../../merchant-admins/guards/roles.guard';
@@ -40,6 +40,19 @@ import { ErrorCode } from '@tiny-threads/shared';
 export class MerchantProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  private collectValidationErrors(errors: ValidationError[]): string[] {
+    const messages: string[] = [];
+    for (const error of errors) {
+      if (error.constraints) {
+        messages.push(...Object.values(error.constraints));
+      }
+      if (error.children && error.children.length > 0) {
+        messages.push(...this.collectValidationErrors(error.children));
+      }
+    }
+    return messages;
+  }
+
   private async validateDto<T extends object>(
     DtoClass: new () => T,
     plain: unknown,
@@ -47,12 +60,10 @@ export class MerchantProductsController {
     const instance = plainToInstance(DtoClass, plain);
     const errors = await validate(instance);
     if (errors.length > 0) {
+      const messages = this.collectValidationErrors(errors);
       throw new CodedBadRequestException(
         ErrorCode.VALIDATION_FAILED,
-        errors
-          .map((e) => Object.values(e.constraints ?? {}))
-          .flat()
-          .join('; '),
+        messages.join('; '),
       );
     }
     return instance;
@@ -61,9 +72,9 @@ export class MerchantProductsController {
   @ApiOperation({
     summary: 'Create a new product',
     description:
-      'Creates a new product with optional inline variants, categories, and variant images. Accepts multipart/form-data.',
+      'Creates a new product with optional inline variants, categories, and variant images. Accepts multipart/form-data or application/json.',
   })
-  @ApiConsumes('multipart/form-data')
+  @ApiConsumes('multipart/form-data', 'application/json')
   @ApiResponse({ status: 201, description: 'Product created successfully.' })
   @UseGuards(MerchantAdminJwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
@@ -73,22 +84,24 @@ export class MerchantProductsController {
   )
   async create(
     @UploadedFiles() files: Express.Multer.File[],
-    @Body() body: { data?: string },
+    @Body() body: Record<string, any>,
   ) {
-    if (!body.data) {
-      throw new CodedBadRequestException(
-        ErrorCode.VALIDATION_FAILED,
-        'Missing required "data" field in multipart request',
-      );
-    }
-
     let parsed: unknown;
-    try {
-      parsed = JSON.parse(body.data);
-    } catch {
+    if (body && typeof body.data === 'string') {
+      try {
+        parsed = JSON.parse(body.data);
+      } catch {
+        throw new CodedBadRequestException(
+          ErrorCode.VALIDATION_FAILED,
+          'Invalid JSON in "data" field',
+        );
+      }
+    } else if (body && typeof body === 'object' && 'title' in body) {
+      parsed = body;
+    } else {
       throw new CodedBadRequestException(
         ErrorCode.VALIDATION_FAILED,
-        'Invalid JSON in "data" field',
+        'Missing required "data" field or product payload',
       );
     }
 
