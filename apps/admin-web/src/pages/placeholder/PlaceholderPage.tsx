@@ -5,17 +5,20 @@ import { Button } from '@components/ui/button';
 import { Construction } from 'lucide-react';
 
 interface PlaceholderPageProps {
-  title: string;
+  title?: string;
+  titleKey?: string;
   description?: string;
 }
 
-export function PlaceholderPage({ title, description }: PlaceholderPageProps) {
+export function PlaceholderPage({ title, titleKey, description }: PlaceholderPageProps) {
   const { t } = useTranslation();
+
+  const resolvedTitle = titleKey ? t(titleKey, { defaultValue: title || '' }) : (title || '');
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{resolvedTitle}</h1>
         <p className="text-sm text-muted-foreground">
           {description || t('nav.placeholderDescription')}
         </p>
@@ -25,7 +28,7 @@ export function PlaceholderPage({ title, description }: PlaceholderPageProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Construction className="h-5 w-5 text-primary" />
-            <span>{t('nav.placeholderTitle', { title })}</span>
+            <span>{t('nav.placeholderTitle', { title: resolvedTitle })}</span>
           </CardTitle>
           <CardDescription>
             {description || t('nav.placeholderDescription')}

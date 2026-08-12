@@ -17,4 +17,25 @@ describe('PlaceholderPage', () => {
       '/',
     );
   });
+
+  it('renders translated title when titleKey is provided', () => {
+    render(
+      <MemoryRouter>
+        <PlaceholderPage titleKey="nav.customers" title="Customers" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: /customers/i, level: 1 })).toBeInTheDocument();
+  });
+
+  it('renders custom description when provided', () => {
+    const customDesc = 'Custom placeholder section description.';
+    render(
+      <MemoryRouter>
+        <PlaceholderPage title="Analytics" description={customDesc} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByText(customDesc).length).toBeGreaterThan(0);
+  });
 });
