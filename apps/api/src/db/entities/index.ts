@@ -12,6 +12,7 @@ export * from './merchant-user-refresh-tokens.entity';
 export * from './merchant-user-invites.entity';
 export * from './products.entity';
 export * from './product-variants.entity';
+export * from './product-variant-images.entity';
 export * from './categories.entity';
 export * from './product-categories.entity';
 export * from './customers.entity';

@@ -17,4 +17,7 @@ export class Customer extends TenantEntityBase {
 
   @Column({ type: 'text' })
   name!: string;
+
+  @Column({ name: 'avatar_url', type: 'text', nullable: true })
+  avatarUrl!: string | null;
 }

@@ -28,6 +28,7 @@ const TENANT_SCOPED_TABLES = [
   'payment_provider_configs',
   'shipments',
   'shipment_items',
+  'product_variant_images',
 ];
 
 const GLOBAL_TABLES = [

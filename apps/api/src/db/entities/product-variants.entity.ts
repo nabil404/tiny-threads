@@ -1,6 +1,15 @@
-import { Entity, Column, Index, Unique, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  Index,
+  Unique,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+} from 'typeorm';
 import { TenantEntityBase } from './base';
 import { Product } from './products.entity';
+import { ProductVariantImage } from './product-variant-images.entity';
 
 // Every product has at least one variant; simple goods get an
 // auto-created default (isDefault). Order/cart lines reference variantId only.
@@ -18,6 +27,9 @@ export class ProductVariant extends TenantEntityBase {
     { name: 'product_id', referencedColumnName: 'id' },
   ])
   product?: Product;
+
+  @OneToMany(() => ProductVariantImage, (image) => image.variant)
+  images?: ProductVariantImage[];
 
   @Column({ type: 'text' })
   sku!: string;

@@ -24,4 +24,7 @@ export class MerchantUser extends TenantEntityBase {
 
   @Column({ name: 'last_name', type: 'text', nullable: true })
   lastName!: string | null;
+
+  @Column({ name: 'avatar_url', type: 'text', nullable: true })
+  avatarUrl!: string | null;
 }
