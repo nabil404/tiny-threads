@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
-import { Button } from '@components/ui/button';
 import { Badge } from '@components/ui/badge';
 import {
   Popover,
@@ -74,12 +73,10 @@ export function CategoryMultiSelect({
     <div>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
+          <div
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between h-auto min-h-11 px-3.5 py-2"
+            className="flex h-auto min-h-11 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-within:ring-2 focus-within:ring-ring/20 focus-within:border-primary"
           >
             <div className="flex flex-wrap gap-1 flex-1">
               {selectedNames.length > 0 ? (
@@ -116,7 +113,7 @@ export function CategoryMultiSelect({
               )}
             </div>
             <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
-          </Button>
+          </div>
         </PopoverTrigger>
         <PopoverContent className="w-full p-0" align="start">
           <Command>

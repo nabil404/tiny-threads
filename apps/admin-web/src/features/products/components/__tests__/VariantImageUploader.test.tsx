@@ -14,9 +14,12 @@ describe('VariantImageUploader Component', () => {
     {} as any,
   ]);
 
-  // Mock URL.createObjectURL
+  // Mock URL.createObjectURL and URL.revokeObjectURL
   if (!globalThis.URL.createObjectURL) {
     globalThis.URL.createObjectURL = vi.fn().mockReturnValue('blob:test');
+  }
+  if (!globalThis.URL.revokeObjectURL) {
+    globalThis.URL.revokeObjectURL = vi.fn();
   }
 
   it('renders placeholder icon when no existing or local images', () => {
@@ -44,6 +47,25 @@ describe('VariantImageUploader Component', () => {
 
     const img = screen.getByAltText('test.png');
     expect(img).toBeInTheDocument();
+  });
+
+  it('cleans up object URLs on unmount', () => {
+    const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const file = new File(['dummy'], 'test.png', { type: 'image/png' });
+    const expectedUrl = URL.createObjectURL(file);
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue(expectedUrl);
+
+    const { unmount } = render(
+      <VariantImageUploader
+        mode="create"
+        localFiles={[file]}
+        onLocalFilesChange={vi.fn()}
+      />,
+    );
+
+    unmount();
+    expect(revokeSpy).toHaveBeenCalledWith(expectedUrl);
+    revokeSpy.mockRestore();
   });
 
   it('renders existing server images in edit mode', () => {

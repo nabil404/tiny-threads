@@ -51,7 +51,11 @@ export function RichTextEditor({
 
   // Sync external value changes (e.g. form reset)
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
+    if (!editor) return;
+    const isSame =
+      value === editor.getHTML() ||
+      (value === '' && editor.getHTML() === '<p></p>');
+    if (!isSame) {
       editor.commands.setContent(value);
     }
   }, [value, editor]);

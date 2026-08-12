@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { Plus, Image as ImageIcon, X } from 'lucide-react';
 import {
   useUploadVariantImageMutation,
@@ -29,6 +29,17 @@ export function VariantImageUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadImage] = useUploadVariantImageMutation();
   const [deleteImage] = useDeleteVariantImageMutation();
+
+  const objectUrls = useMemo(
+    () => localFiles.map((file) => URL.createObjectURL(file)),
+    [localFiles],
+  );
+
+  useEffect(() => {
+    return () => {
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [objectUrls]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -85,7 +96,7 @@ export function VariantImageUploader({
           className="relative w-10 h-10 shrink-0 border border-border rounded bg-muted group"
         >
           <img
-            src={URL.createObjectURL(file)}
+            src={objectUrls[idx]}
             alt={file.name}
             className="w-full h-full object-cover rounded"
           />

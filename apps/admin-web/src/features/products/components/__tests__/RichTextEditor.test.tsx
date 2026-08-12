@@ -18,5 +18,17 @@ describe('RichTextEditor Component', () => {
 
     expect(container.querySelector('.ProseMirror')).toBeInTheDocument();
   });
+
+  it('handles external value sync without re-setting content when empty', () => {
+    const handleChange = vi.fn();
+    const { rerender, container } = render(
+      <RichTextEditor value="<p>Initial</p>" onChange={handleChange} />,
+    );
+    expect(screen.getByText('Initial')).toBeInTheDocument();
+
+    // Rerender with empty string which matches <p></p> HTML parity
+    rerender(<RichTextEditor value="" onChange={handleChange} />);
+    expect(container.querySelector('.ProseMirror')).toBeInTheDocument();
+  });
 });
 
