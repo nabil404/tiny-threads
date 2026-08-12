@@ -8,6 +8,7 @@ import { DashboardPage } from '../pages/dashboard/DashboardPage';
 import { ProductsPage } from '../pages/products/ProductsPage';
 import { OrdersPage } from '../pages/orders/OrdersPage';
 import { SettingsPage } from '../pages/settings/SettingsPage';
+import { PlaceholderPage } from '../pages/placeholder/PlaceholderPage';
 import { NotFoundPage } from '../pages/not-found/NotFoundPage';
 
 export const router = createBrowserRouter([
@@ -21,6 +22,10 @@ export const router = createBrowserRouter([
           { path: '/products', element: <ProductsPage /> },
           { path: '/orders', element: <OrdersPage /> },
           { path: '/settings', element: <SettingsPage /> },
+          { path: '/categories', element: <PlaceholderPage title="Categories" /> },
+          { path: '/customers', element: <PlaceholderPage title="Customers" /> },
+          { path: '/analytics', element: <PlaceholderPage title="Analytics" /> },
+          { path: '/support', element: <PlaceholderPage title="Support" /> },
         ],
       },
     ],
