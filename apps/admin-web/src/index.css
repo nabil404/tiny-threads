@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/*
+ * Dark mode is toggled explicitly by `applyThemeToDocument` (src/theme/themes.ts),
+ * which sets both `data-theme="dark"` and a `.dark` class on <html> — it is not
+ * driven by `prefers-color-scheme`. Tailwind v4's `dark:` variant defaults to the
+ * media query, so point it at those selectors instead.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
