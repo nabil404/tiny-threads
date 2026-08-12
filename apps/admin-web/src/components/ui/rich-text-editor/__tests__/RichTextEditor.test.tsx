@@ -32,9 +32,13 @@ vi.mock('@tiptap/react', () => {
       isActive: () => false,
       getHTML: () => '<p></p>',
       getAttributes: () => ({ href: '' }),
+      schema: { marks: { link: {} } },
       state: {
         selection: { from: 0, to: 0 },
-        doc: { textBetween: () => '' },
+        doc: {
+          textBetween: () => '',
+          resolve: () => ({}),
+        },
       },
       commands: { setContent: vi.fn() },
     }),
@@ -49,6 +53,10 @@ vi.mock('@tiptap/starter-kit', () => ({
 
 vi.mock('@tiptap/extension-link', () => ({
   default: { configure: () => ({}) },
+}));
+
+vi.mock('@tiptap/core', () => ({
+  getMarkRange: () => null,
 }));
 
 describe('RichTextEditor', () => {
