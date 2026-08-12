@@ -20,7 +20,25 @@ vi.mock('@tiptap/core', () => ({
   getMarkRange: vi.fn(() => LINK_RANGE),
 }));
 
-function createEditorMock({ runResult = true }: { runResult?: boolean } = {}) {
+interface EditorMockOptions {
+  /** What the dispatched chain's `run()` reports. */
+  runResult?: boolean;
+  /** What the `editor.can().setLink()` dry run reports. */
+  canSetLinkResult?: boolean;
+  /**
+   * Whether `editor.isActive('link')` reports the caret as being inside a link.
+   * `false` models a caret at the link's *boundary*: `ResolvedPos.marks()` sees
+   * only the preceding plain text, even though `getMarkRange` (which uses
+   * `childAfter`) still reports the adjacent link's range.
+   */
+  isLinkActive?: boolean;
+}
+
+function createEditorMock({
+  runResult = true,
+  canSetLinkResult = true,
+  isLinkActive = true,
+}: EditorMockOptions = {}) {
   const chain = {
     focus: vi.fn(() => chain),
     setTextSelection: vi.fn(() => chain),
@@ -31,20 +49,22 @@ function createEditorMock({ runResult = true }: { runResult?: boolean } = {}) {
     run: vi.fn(() => runResult),
   };
 
-  const canSetLink = vi.fn(() => true);
+  const canSetLink = vi.fn(() => canSetLinkResult);
 
   const editor = {
     chain: vi.fn(() => chain),
     can: vi.fn(() => ({ setLink: canSetLink })),
-    // Caret is inside a link, so the Link mark is active.
-    isActive: vi.fn((name: string) => name === 'link'),
+    isActive: vi.fn((name: string) => (name === 'link' ? isLinkActive : false)),
     getAttributes: vi.fn(() => ({ href: EXISTING_HREF })),
     schema: { marks: { link: {} } },
     state: {
       selection: { from: CARET_POS, to: CARET_POS },
       doc: {
         resolve: vi.fn(() => ({})),
-        textBetween: vi.fn(() => LINK_TEXT),
+        // Mirrors the real API: a collapsed range yields no text.
+        textBetween: vi.fn((from: number, to: number) =>
+          from === to ? '' : LINK_TEXT,
+        ),
       },
     },
   } as unknown as Editor;
@@ -93,6 +113,74 @@ describe('LinkPopover', () => {
     expect(chain.setLink).toHaveBeenCalledWith({
       href: 'https://new.example.com',
     });
+  });
+
+  it('inserts a new link instead of retargeting an adjacent one when the caret sits at a link boundary', async () => {
+    // `getMarkRange` still reports the neighbouring link's range here (it reads
+    // `childAfter`), but `isActive('link')` is false because the caret is only
+    // at the boundary. The component must trust `isActive`.
+    const { editor, chain } = createEditorMock({ isLinkActive: false });
+    render(
+      <LinkPopover editor={editor}>
+        <button type="button">Edit link</button>
+      </LinkPopover>,
+    );
+
+    const user = await openPopover();
+
+    // The popover presents itself as "create a new link", confirming the premise.
+    const urlInput = await screen.findByPlaceholderText('https://example.com');
+    expect(urlInput).toHaveValue('');
+    expect(
+      screen.queryByRole('button', { name: /remove link/i }),
+    ).not.toBeInTheDocument();
+    // Display text is empty — it must not be pre-filled from the adjacent link.
+    expect(screen.getByPlaceholderText('Link text (optional)')).toHaveValue('');
+
+    await user.type(urlInput, 'https://new.example.com');
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+    // The adjacent link's href must be left completely alone.
+    expect(chain.setLink).not.toHaveBeenCalled();
+    expect(chain.setTextSelection).not.toHaveBeenCalled();
+    expect(chain.deleteRange).not.toHaveBeenCalled();
+    // A fresh link is inserted at the caret instead.
+    expect(chain.insertContent).toHaveBeenCalledWith({
+      type: 'text',
+      text: 'https://new.example.com',
+      marks: [{ type: 'link', attrs: { href: 'https://new.example.com' } }],
+    });
+  });
+
+  it('does not dispatch a focus-stealing chain when the href fails the dry run', async () => {
+    // Editing an existing link (collapsed caret inside it) to an invalid URL.
+    const { editor, chain, canSetLink } = createEditorMock({
+      canSetLinkResult: false,
+    });
+    render(
+      <LinkPopover editor={editor}>
+        <button type="button">Edit link</button>
+      </LinkPopover>,
+    );
+
+    const user = await openPopover();
+
+    const urlInput = await screen.findByPlaceholderText('https://example.com');
+    await user.clear(urlInput);
+    await user.type(urlInput, 'example.com:8080/x');
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(canSetLink).toHaveBeenCalled();
+    // No chain is dispatched at all, so `.focus()` never pulls DOM focus out of
+    // the popover — which Radix would treat as an outside interaction and use
+    // to dismiss the popover, hiding the error.
+    expect(editor.chain).not.toHaveBeenCalled();
+    expect(chain.focus).not.toHaveBeenCalled();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "That URL doesn't look valid.",
+    );
+    expect(screen.getByPlaceholderText('https://example.com')).toBeVisible();
   });
 
   it('keeps the popover open and reports an error when setLink is rejected', async () => {

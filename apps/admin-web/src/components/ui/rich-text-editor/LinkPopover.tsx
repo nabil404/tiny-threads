@@ -38,17 +38,24 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
    * A real text selection is used as-is. When the caret is merely placed inside
    * an existing link (a collapsed selection), it is expanded to the full extent
    * of that link's mark so edits replace the link instead of nesting inside it.
+   *
+   * The expansion is gated on `isEditing` because the two helpers disagree at a
+   * link's boundary: `getMarkRange` looks at `ResolvedPos.childAfter()`, so it
+   * reports the range of a link that *starts* at the caret, while `isActive`
+   * reads `ResolvedPos.marks()` (the node *before* the caret) and correctly
+   * reports no link there. Without the gate, a caret parked just before a link
+   * would silently retarget that neighbouring link instead of inserting a new one.
    */
   const getTargetRange = useCallback((): { from: number; to: number } => {
     const { from, to } = editor.state.selection;
-    if (from !== to) return { from, to };
+    if (from !== to || !isEditing) return { from, to };
 
     const range = getMarkRange(
       editor.state.doc.resolve(from),
       editor.schema.marks.link,
     );
     return range ? { from: range.from, to: range.to } : { from, to };
-  }, [editor]);
+  }, [editor, isEditing]);
 
   // Sync form fields when popover opens
   useEffect(() => {
@@ -85,12 +92,21 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
     if (hasRange && textUnchanged) {
       // Text is untouched — only (re)apply the href across the target range.
       // Keeping the existing text nodes avoids a needless delete/reinsert.
-      applied = editor
-        .chain()
-        .focus()
-        .setTextSelection({ from, to })
-        .setLink({ href: normalizedUrl })
-        .run();
+      //
+      // Validate before dispatching: even though `setLink` correctly refuses a
+      // rejected href, the chain's `.focus()` would still pull DOM focus into
+      // the editor, which Radix reads as an outside interaction and uses to
+      // dismiss the popover — hiding the error we are about to show.
+      applied = editor.can().setLink({ href: normalizedUrl });
+
+      if (applied) {
+        applied = editor
+          .chain()
+          .focus()
+          .setTextSelection({ from, to })
+          .setLink({ href: normalizedUrl })
+          .run();
+      }
     } else {
       // Every remaining path inserts brand new linked text. `insertContent`
       // builds the link mark from JSON, which bypasses the Link extension's
