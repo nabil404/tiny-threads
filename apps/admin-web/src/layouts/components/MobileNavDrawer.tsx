@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '@store/hooks';
@@ -30,6 +30,30 @@ export function MobileNavDrawer() {
   const { tenant } = useAppSelector(selectAuth);
   const [logoutApi] = useLogoutMutation();
 
+  const [isMounted, setIsMounted] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(isOpen);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      setIsMounted(true);
+      setIsVisible(true);
+    } else {
+      setIsVisible(false);
+      timeoutRef.current = setTimeout(() => {
+        setIsMounted(false);
+      }, 250);
+      return () => {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      };
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -43,7 +67,16 @@ export function MobileNavDrawer() {
     };
   }, [isOpen, dispatch]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
+
+  if (!isMounted) return null;
 
   const storeInitials = tenant?.name
     ? tenant.name
@@ -87,15 +120,20 @@ export function MobileNavDrawer() {
     <div className="md:hidden">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 animate-in fade-in-0"
+        className={`fixed inset-0 bg-black/50 backdrop-blur-xs z-50 ${
+          isVisible ? 'animate-backdrop-in' : 'animate-backdrop-out pointer-events-none'
+        }`}
         onClick={handleClose}
+        aria-hidden="true"
       />
 
       {/* Drawer */}
       <div
         role="dialog"
         aria-modal="true"
-        className="fixed inset-y-0 left-0 z-50 w-3/4 max-w-xs bg-card border-r border-border p-4 shadow-xl flex flex-col animate-in slide-in-from-left duration-200"
+        className={`fixed inset-y-0 left-0 z-50 w-3/4 max-w-xs bg-card border-r border-border p-4 shadow-2xl flex flex-col ${
+          isVisible ? 'animate-drawer-in' : 'animate-drawer-out'
+        }`}
       >
         <div className="flex items-center justify-between pb-4 border-b border-border">
           <div className="flex items-center gap-2.5">
@@ -110,7 +148,7 @@ export function MobileNavDrawer() {
             type="button"
             aria-label={t('nav.closeMenu')}
             onClick={handleClose}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -124,7 +162,7 @@ export function MobileNavDrawer() {
               end={item.end}
               onClick={handleClose}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+                `flex items-center gap-3 px-3 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
                   isActive
                     ? 'bg-primary/10 text-primary font-semibold'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -142,7 +180,7 @@ export function MobileNavDrawer() {
             to="/support"
             onClick={handleClose}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+              `flex items-center gap-3 px-3 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
                 isActive
                   ? 'bg-primary/10 text-primary font-semibold'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -156,7 +194,7 @@ export function MobileNavDrawer() {
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 text-xs font-medium rounded-lg text-destructive hover:bg-destructive/10 transition-colors text-left"
+            className="w-full flex items-center gap-3 px-3 py-2 text-xs font-medium rounded-lg text-destructive hover:bg-destructive/10 transition-colors text-left cursor-pointer"
           >
             <LogOut className="h-4 w-4" />
             <span>{t('nav.signOut')}</span>

@@ -69,7 +69,7 @@ export function UserNavDropdown() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 rounded-xl bg-card border border-border shadow-xl py-2 z-50 animate-in fade-in-0 zoom-in-95 duration-100">
+        <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-xl bg-card border border-border shadow-xl py-2 z-50 animate-in fade-in-0 zoom-in-95 duration-100">
           <div className="px-4 py-3 border-b border-border space-y-1.5">
             <div className="font-semibold text-sm text-foreground truncate">
               {displayName}
