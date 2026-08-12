@@ -17,7 +17,7 @@ function renderTopbar() {
       [baseApi.reducerPath]: baseApi.reducer,
     },
     preloadedState: {
-      app: { theme: 'dark', locale: 'en', sidebarCollapsed: false, mobileNavOpen: false },
+      app: { theme: 'dark' as const, locale: 'en' as const, sidebarCollapsed: false, mobileNavOpen: false },
       auth: {
         user: { id: '1', email: 'admin@demo.com', firstName: 'Admin', lastName: null, role: 'admin' },
         tenant: { id: 'tenant-demo', name: 'Demo Store' },

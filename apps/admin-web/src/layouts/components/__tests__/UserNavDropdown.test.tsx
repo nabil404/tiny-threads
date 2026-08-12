@@ -17,7 +17,7 @@ function renderDropdown(authOverrides = {}) {
       [baseApi.reducerPath]: baseApi.reducer,
     },
     preloadedState: {
-      app: { theme: 'dark', locale: 'en', sidebarCollapsed: false, mobileNavOpen: false },
+      app: { theme: 'dark' as const, locale: 'en' as const, sidebarCollapsed: false, mobileNavOpen: false },
       auth: {
         user: {
           id: 'usr_1',
