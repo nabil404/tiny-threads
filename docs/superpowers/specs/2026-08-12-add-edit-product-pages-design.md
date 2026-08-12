@@ -16,21 +16,36 @@ Add `description` column to `products` table:
 - **Entity** (`products.entity.ts`): Add `@Column({ type: 'text', nullable: true }) description: string | null`
 - **No RLS changes** — column is on the existing `products` table which already has tenant-scoped RLS policies.
 
-### 1.2 Migration
+### 1.2 ProductVariant Entity
+
+Add `name` column to `product_variants` table:
+
+- **Column**: `name text NULL`
+- **Entity** (`product-variants.entity.ts`): Add `@Column({ type: 'text', nullable: true }) name: string | null`
+- The Stitch design shows "Variant Name" in the variants table. The backend currently only has `sku`, `priceCents`, `stock`, `isDefault` — no display name.
+
+### 1.3 Migration
 
 ```sql
 ALTER TABLE products ADD COLUMN description text;
+ALTER TABLE product_variants ADD COLUMN name text;
 ```
 
-Single nullable column addition. No data backfill needed.
+Two nullable column additions. No data backfill needed.
 
-### 1.3 DTO Updates
+### 1.4 DTO Updates
 
 **`CreateProductDto`**:
 - Add `description?: string` — `@IsString()`, `@IsOptional()`, `@MaxLength(5000)`
 
 **`UpdateProductDto`**:
 - Add `description?: string` — same decorators
+
+**`CreateVariantDto`**:
+- Add `name?: string` — `@IsString()`, `@IsOptional()`, `@MaxLength(255)`
+
+**`UpdateVariantDto`**:
+- Add `name?: string` — same decorators
 
 **Response serialization**: Include `description` in all product responses (merchant admin and storefront).
 
