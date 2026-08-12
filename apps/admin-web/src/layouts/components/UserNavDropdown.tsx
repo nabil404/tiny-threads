@@ -82,7 +82,10 @@ export function UserNavDropdown() {
                 {tenant?.name || t('app.platformContext')}
               </Badge>
               {user?.role && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 capitalize flex items-center gap-1">
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 capitalize flex items-center gap-1"
+                >
                   <Shield className="h-2.5 w-2.5" />
                   {user.role}
                 </Badge>
@@ -92,11 +95,15 @@ export function UserNavDropdown() {
 
           <div className="px-4 py-2.5 border-b border-border space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{t('nav.theme')}</span>
+              <span className="text-xs text-muted-foreground">
+                {t('nav.theme')}
+              </span>
               <ThemeSelector />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{t('nav.language')}</span>
+              <span className="text-xs text-muted-foreground">
+                {t('nav.language')}
+              </span>
               <LocaleSelector />
             </div>
           </div>

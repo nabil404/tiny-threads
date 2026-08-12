@@ -109,6 +109,7 @@ describe('ProductVariantImagesService', () => {
         expect(err.getResponse().code).toBe(
           ErrorCode.PRODUCT_VARIANT_NOT_FOUND,
         );
+        expect(mockStoragePort.upload).not.toHaveBeenCalled();
       }
     });
 
@@ -354,14 +355,39 @@ describe('ProductVariantImagesService', () => {
       expect(result).toHaveLength(2);
     });
 
-    it('should throw CodedNotFoundException (PRODUCT_VARIANT_IMAGE_NOT_FOUND) if an imageId is invalid', async () => {
+    it('should throw CodedBadRequestException if imageIds contains duplicates or count mismatch', async () => {
       const img1 = { id: 'img-1', variantId, sortOrder: 0 };
+      const img2 = { id: 'img-2', variantId, sortOrder: 1 };
 
       mockEntityManager.findOne.mockResolvedValueOnce({
         id: variantId,
         productId,
       });
-      mockEntityManager.find.mockResolvedValueOnce([img1]);
+      mockEntityManager.find.mockResolvedValueOnce([img1, img2]);
+
+      try {
+        await service.reorderImages(productId, variantId, {
+          imageIds: ['img-1', 'img-1'],
+        });
+        fail('Should have thrown CodedBadRequestException');
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(CodedBadRequestException);
+        expect(err.getResponse().code).toBe(ErrorCode.VALIDATION_FAILED);
+        expect(err.getResponse().message).toBe(
+          'Image IDs must contain all and only existing images for this variant without duplicates',
+        );
+      }
+    });
+
+    it('should throw CodedNotFoundException (PRODUCT_VARIANT_IMAGE_NOT_FOUND) if an imageId is invalid', async () => {
+      const img1 = { id: 'img-1', variantId, sortOrder: 0 };
+      const img2 = { id: 'img-2', variantId, sortOrder: 1 };
+
+      mockEntityManager.findOne.mockResolvedValueOnce({
+        id: variantId,
+        productId,
+      });
+      mockEntityManager.find.mockResolvedValueOnce([img1, img2]);
 
       try {
         await service.reorderImages(productId, variantId, {

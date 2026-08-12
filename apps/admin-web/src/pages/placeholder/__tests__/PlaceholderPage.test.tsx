@@ -11,11 +11,12 @@ describe('PlaceholderPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: /categories/i, level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /back to dashboard/i })).toHaveAttribute(
-      'href',
-      '/',
-    );
+    expect(
+      screen.getByRole('heading', { name: /categories/i, level: 1 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /back to dashboard/i }),
+    ).toHaveAttribute('href', '/');
   });
 
   it('renders translated title when titleKey is provided', () => {
@@ -25,7 +26,9 @@ describe('PlaceholderPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: /customers/i, level: 1 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /customers/i, level: 1 }),
+    ).toBeInTheDocument();
   });
 
   it('renders custom description when provided', () => {

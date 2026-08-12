@@ -17,9 +17,20 @@ function renderTopbar() {
       [baseApi.reducerPath]: baseApi.reducer,
     },
     preloadedState: {
-      app: { theme: 'dark' as const, locale: 'en' as const, sidebarCollapsed: false, mobileNavOpen: false },
+      app: {
+        theme: 'dark' as const,
+        locale: 'en' as const,
+        sidebarCollapsed: false,
+        mobileNavOpen: false,
+      },
       auth: {
-        user: { id: '1', email: 'admin@demo.com', firstName: 'Admin', lastName: null, role: 'admin' },
+        user: {
+          id: '1',
+          email: 'admin@demo.com',
+          firstName: 'Admin',
+          lastName: null,
+          role: 'admin',
+        },
         tenant: { id: 'tenant-demo', name: 'Demo Store' },
         isAuthenticated: true,
       },
@@ -46,7 +57,9 @@ describe('Topbar', () => {
 
     expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
 
-    const collapseBtn = screen.getByRole('button', { name: /collapse sidebar|expand sidebar/i });
+    const collapseBtn = screen.getByRole('button', {
+      name: /collapse sidebar|expand sidebar/i,
+    });
     await user.click(collapseBtn);
     expect(store.getState().app.sidebarCollapsed).toBe(true);
 

@@ -24,4 +24,3 @@ export function getSavedLocale(): LocaleId {
   }
   return DEFAULT_LOCALE;
 }
-

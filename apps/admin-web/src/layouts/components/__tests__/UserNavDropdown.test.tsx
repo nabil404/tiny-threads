@@ -17,7 +17,12 @@ function renderDropdown(authOverrides = {}) {
       [baseApi.reducerPath]: baseApi.reducer,
     },
     preloadedState: {
-      app: { theme: 'dark' as const, locale: 'en' as const, sidebarCollapsed: false, mobileNavOpen: false },
+      app: {
+        theme: 'dark' as const,
+        locale: 'en' as const,
+        sidebarCollapsed: false,
+        mobileNavOpen: false,
+      },
       auth: {
         user: {
           id: 'usr_1',
@@ -64,11 +69,12 @@ describe('UserNavDropdown', () => {
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
     expect(screen.getByText('admin@demo.com')).toBeInTheDocument();
     expect(screen.getByText('Demo Store')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /account settings/i })).toHaveAttribute(
-      'href',
-      '/settings',
-    );
-    expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /account settings/i }),
+    ).toHaveAttribute('href', '/settings');
+    expect(
+      screen.getByRole('button', { name: /sign out/i }),
+    ).toBeInTheDocument();
   });
 
   it('renders fallback initials when user has no first or last name', async () => {

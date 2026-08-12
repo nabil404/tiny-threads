@@ -14,6 +14,7 @@ import {
   ApiBearerAuth,
   ApiConsumes,
   ApiOperation,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
@@ -36,6 +37,7 @@ export class CustomersAvatarController {
       'Uploads and processes an avatar image for the authenticated customer.',
   })
   @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: 'Avatar uploaded successfully.' })
   @Post('me/avatar')
   @UseInterceptors(
     FileInterceptor('avatar', { limits: { fileSize: 5 * 1024 * 1024 } }),
@@ -53,6 +55,7 @@ export class CustomersAvatarController {
     description:
       'Deletes the avatar image for the authenticated customer and removes it from storage.',
   })
+  @ApiResponse({ status: 204, description: 'Avatar deleted successfully.' })
   @Delete('me/avatar')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteAvatar(@Req() req: Request): Promise<void> {

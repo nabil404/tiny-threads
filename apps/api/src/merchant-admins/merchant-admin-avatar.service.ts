@@ -77,7 +77,7 @@ export class MerchantAdminAvatarService {
   async deleteAvatar(merchantUserId: string): Promise<void> {
     const tenantId = this.cls.get<string>('tenantId');
 
-    await this.tenantDb.run(async (manager) => {
+    const storageKey = await this.tenantDb.run(async (manager) => {
       const merchantUser = await manager.findOne(MerchantUser, {
         where: { id: merchantUserId },
       });
@@ -90,10 +90,16 @@ export class MerchantAdminAvatarService {
 
       if (merchantUser.avatarUrl) {
         const key = `tenants/${tenantId}/avatars/merchant-users/${merchantUserId}.webp`;
-        await this.storagePort.delete(key);
         merchantUser.avatarUrl = null;
         await manager.save(MerchantUser, merchantUser);
+        return key;
       }
+
+      return null;
     });
+
+    if (storageKey) {
+      await this.storagePort.delete(storageKey);
+    }
   }
 }

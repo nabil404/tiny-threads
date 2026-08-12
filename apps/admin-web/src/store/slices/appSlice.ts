@@ -113,4 +113,3 @@ export const selectMobileNavOpen = (state: { app: AppState }) =>
   state.app.mobileNavOpen;
 
 export default appSlice.reducer;
-

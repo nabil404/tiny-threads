@@ -76,6 +76,24 @@ describe('AllExceptionsFilter', () => {
     );
   });
 
+  it('handles Multer LIMIT_FILE_SIZE error with generalized message', () => {
+    const { host, status, json } = buildHost();
+    const exception = new Error('File too large');
+    exception.name = 'MulterError';
+    (exception as any).code = 'LIMIT_FILE_SIZE';
+
+    filter.catch(exception, host);
+
+    expect(status).toHaveBeenCalledWith(400);
+    expect(json).toHaveBeenCalledWith({
+      error: {
+        code: ErrorCode.FILE_TOO_LARGE,
+        message: 'File size exceeds the allowed limit',
+        params: {},
+      },
+    });
+  });
+
   it('never leaks a raw error and logs it server-side instead', () => {
     const { host, status, json } = buildHost();
     const exception = new Error('db exploded with secrets');

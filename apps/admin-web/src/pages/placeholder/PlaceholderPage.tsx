@@ -1,6 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@components/ui/card';
 import { Button } from '@components/ui/button';
 import { Construction } from 'lucide-react';
 
@@ -10,10 +16,16 @@ interface PlaceholderPageProps {
   description?: string;
 }
 
-export function PlaceholderPage({ title, titleKey, description }: PlaceholderPageProps) {
+export function PlaceholderPage({
+  title,
+  titleKey,
+  description,
+}: PlaceholderPageProps) {
   const { t } = useTranslation();
 
-  const resolvedTitle = titleKey ? t(titleKey, { defaultValue: title || '' }) : (title || '');
+  const resolvedTitle = titleKey
+    ? t(titleKey, { defaultValue: title || '' })
+    : title || '';
 
   return (
     <div className="space-y-6">

@@ -196,4 +196,3 @@ describe('appSlice layout actions', () => {
     expect(state.sidebarCollapsed).toBe(true);
   });
 });
-

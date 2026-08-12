@@ -2,10 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '@store/hooks';
-import {
-  selectMobileNavOpen,
-  setMobileNavOpen,
-} from '@store/slices/appSlice';
+import { selectMobileNavOpen, setMobileNavOpen } from '@store/slices/appSlice';
 import { selectAuth, logout } from '@store/slices/authSlice';
 import { useLogoutMutation } from '@store/api/endpoints/authApi';
 import { baseApi } from '@store/api/baseApi';
@@ -93,9 +90,19 @@ export function MobileNavDrawer() {
     { to: '/', label: t('nav.overview'), icon: LayoutDashboard, end: true },
     { to: '/orders', label: t('nav.orders'), icon: ShoppingCart, end: false },
     { to: '/products', label: t('nav.products'), icon: Package, end: false },
-    { to: '/categories', label: t('nav.categories'), icon: FolderTree, end: false },
+    {
+      to: '/categories',
+      label: t('nav.categories'),
+      icon: FolderTree,
+      end: false,
+    },
     { to: '/customers', label: t('nav.customers'), icon: Users, end: false },
-    { to: '/analytics', label: t('nav.analytics'), icon: BarChart3, end: false },
+    {
+      to: '/analytics',
+      label: t('nav.analytics'),
+      icon: BarChart3,
+      end: false,
+    },
     { to: '/settings', label: t('nav.settings'), icon: Settings, end: false },
   ];
 
@@ -121,7 +128,9 @@ export function MobileNavDrawer() {
       {/* Backdrop */}
       <div
         className={`fixed inset-0 bg-black/50 backdrop-blur-xs z-50 ${
-          isVisible ? 'animate-backdrop-in' : 'animate-backdrop-out pointer-events-none'
+          isVisible
+            ? 'animate-backdrop-in'
+            : 'animate-backdrop-out pointer-events-none'
         }`}
         onClick={handleClose}
         aria-hidden="true"

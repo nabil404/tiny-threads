@@ -12,7 +12,10 @@ import { MobileNavDrawer } from '../MobileNavDrawer';
 
 function renderMobileDrawer(
   mobileNavOpen = true,
-  tenant: { id: string; name: string } | null = { id: 'tenant-demo', name: 'Demo Store' },
+  tenant: { id: string; name: string } | null = {
+    id: 'tenant-demo',
+    name: 'Demo Store',
+  },
 ) {
   const store = configureStore({
     reducer: {
@@ -28,7 +31,13 @@ function renderMobileDrawer(
         mobileNavOpen,
       },
       auth: {
-        user: { id: '1', email: 'admin@demo.com', firstName: 'Admin', lastName: null, role: 'admin' },
+        user: {
+          id: '1',
+          email: 'admin@demo.com',
+          firstName: 'Admin',
+          lastName: null,
+          role: 'admin',
+        },
         tenant,
         isAuthenticated: true,
       },
@@ -102,7 +111,10 @@ describe('MobileNavDrawer', () => {
   });
 
   it('safely parses store initials with extra whitespace and leading/trailing spaces', () => {
-    renderMobileDrawer(true, { id: 'tenant-spaces', name: '   My   Awesome   Store  ' });
+    renderMobileDrawer(true, {
+      id: 'tenant-spaces',
+      name: '   My   Awesome   Store  ',
+    });
     expect(screen.getByText('MA')).toBeInTheDocument();
   });
 

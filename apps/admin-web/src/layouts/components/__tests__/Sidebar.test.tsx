@@ -17,9 +17,20 @@ function renderSidebar(sidebarCollapsed = false) {
       [baseApi.reducerPath]: baseApi.reducer,
     },
     preloadedState: {
-      app: { theme: 'dark' as const, locale: 'en' as const, sidebarCollapsed, mobileNavOpen: false },
+      app: {
+        theme: 'dark' as const,
+        locale: 'en' as const,
+        sidebarCollapsed,
+        mobileNavOpen: false,
+      },
       auth: {
-        user: { id: '1', email: 'admin@demo.com', firstName: 'Admin', lastName: null, role: 'admin' },
+        user: {
+          id: '1',
+          email: 'admin@demo.com',
+          firstName: 'Admin',
+          lastName: null,
+          role: 'admin',
+        },
         tenant: { id: 'tenant-demo', name: 'Demo Store' },
         isAuthenticated: true,
       },
@@ -46,12 +57,20 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: /overview/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /orders/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /products/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /categories/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /customers/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /analytics/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /categories/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /customers/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /analytics/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /support/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /sign out/i }),
+    ).toBeInTheDocument();
   });
 
   it('renders in compact mode with icon tooltips', () => {
@@ -78,9 +97,20 @@ describe('Sidebar', () => {
         [baseApi.reducerPath]: baseApi.reducer,
       },
       preloadedState: {
-        app: { theme: 'dark' as const, locale: 'en' as const, sidebarCollapsed: false, mobileNavOpen: false },
+        app: {
+          theme: 'dark' as const,
+          locale: 'en' as const,
+          sidebarCollapsed: false,
+          mobileNavOpen: false,
+        },
         auth: {
-          user: { id: '1', email: 'admin@demo.com', firstName: 'Admin', lastName: null, role: 'admin' },
+          user: {
+            id: '1',
+            email: 'admin@demo.com',
+            firstName: 'Admin',
+            lastName: null,
+            role: 'admin',
+          },
           tenant: { id: 'tenant-demo', name: '   Super   Awesome   Store  ' },
           isAuthenticated: true,
         },
@@ -99,4 +129,3 @@ describe('Sidebar', () => {
     expect(screen.getByText('SA')).toBeInTheDocument();
   });
 });
-

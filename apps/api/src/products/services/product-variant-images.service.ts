@@ -57,6 +57,10 @@ export class ProductVariantImagesService {
       );
     }
 
+    await this.tenantDb.run(async (em) => {
+      await this.validateVariant(em, productId, variantId);
+    });
+
     const tenantId = this.cls.get<string>('tenantId');
     const imageId = randomUUID();
     const storageKey = `tenants/${tenantId}/products/${variantId}/${imageId}.webp`;
@@ -73,8 +77,6 @@ export class ProductVariantImagesService {
     });
 
     return this.tenantDb.run(async (em) => {
-      await this.validateVariant(em, productId, variantId);
-
       const existingImages = await em.find(ProductVariantImage, {
         where: { variantId },
         order: { sortOrder: 'ASC' },
@@ -174,7 +176,7 @@ export class ProductVariantImagesService {
     variantId: string,
     imageId: string,
   ): Promise<void> {
-    return this.tenantDb.run(async (em) => {
+    const storageKey = await this.tenantDb.run(async (em) => {
       await this.validateVariant(em, productId, variantId);
 
       const image = await em.findOne(ProductVariantImage, {
@@ -189,9 +191,9 @@ export class ProductVariantImagesService {
       }
 
       const wasPrimary = image.isPrimary;
+      const key = image.storageKey;
 
       await em.remove(ProductVariantImage, image);
-      await this.storagePort.delete(image.storageKey);
 
       if (wasPrimary) {
         const remaining = await em.find(ProductVariantImage, {
@@ -204,7 +206,11 @@ export class ProductVariantImagesService {
           await em.save(ProductVariantImage, remaining[0]);
         }
       }
+
+      return key;
     });
+
+    await this.storagePort.delete(storageKey);
   }
 
   async reorderImages(
@@ -218,6 +224,17 @@ export class ProductVariantImagesService {
       const existingImages = await em.find(ProductVariantImage, {
         where: { variantId },
       });
+
+      const hasNoDuplicates =
+        new Set(dto.imageIds).size === dto.imageIds.length;
+      const isSameLength = dto.imageIds.length === existingImages.length;
+
+      if (!hasNoDuplicates || !isSameLength) {
+        throw new CodedBadRequestException(
+          ErrorCode.VALIDATION_FAILED,
+          'Image IDs must contain all and only existing images for this variant without duplicates',
+        );
+      }
 
       const imageMap = new Map(existingImages.map((img) => [img.id, img]));
 

@@ -40,9 +40,19 @@ export function Sidebar() {
     { to: '/', label: t('nav.overview'), icon: LayoutDashboard, end: true },
     { to: '/orders', label: t('nav.orders'), icon: ShoppingCart, end: false },
     { to: '/products', label: t('nav.products'), icon: Package, end: false },
-    { to: '/categories', label: t('nav.categories'), icon: FolderTree, end: false },
+    {
+      to: '/categories',
+      label: t('nav.categories'),
+      icon: FolderTree,
+      end: false,
+    },
     { to: '/customers', label: t('nav.customers'), icon: Users, end: false },
-    { to: '/analytics', label: t('nav.analytics'), icon: BarChart3, end: false },
+    {
+      to: '/analytics',
+      label: t('nav.analytics'),
+      icon: BarChart3,
+      end: false,
+    },
     { to: '/settings', label: t('nav.settings'), icon: Settings, end: false },
   ];
 

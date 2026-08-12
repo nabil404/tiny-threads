@@ -43,7 +43,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         response.status(400).json({
           error: {
             code: ErrorCode.FILE_TOO_LARGE,
-            message: 'File size exceeds 5MB limit',
+            message: 'File size exceeds the allowed limit',
             params: {},
           },
         });

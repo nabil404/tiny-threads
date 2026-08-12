@@ -77,7 +77,7 @@ export class CustomersAvatarService {
   async deleteAvatar(customerId: string): Promise<void> {
     const tenantId = this.cls.get<string>('tenantId');
 
-    await this.tenantDb.run(async (manager) => {
+    const storageKey = await this.tenantDb.run(async (manager) => {
       const customer = await manager.findOne(Customer, {
         where: { id: customerId },
       });
@@ -90,10 +90,16 @@ export class CustomersAvatarService {
 
       if (customer.avatarUrl) {
         const key = `tenants/${tenantId}/avatars/customers/${customerId}.webp`;
-        await this.storagePort.delete(key);
         customer.avatarUrl = null;
         await manager.save(Customer, customer);
+        return key;
       }
+
+      return null;
     });
+
+    if (storageKey) {
+      await this.storagePort.delete(storageKey);
+    }
   }
 }
