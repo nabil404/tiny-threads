@@ -9,6 +9,12 @@ import {
 } from 'class-validator';
 
 export class UpdateProductVariantDto {
+  @ApiPropertyOptional({ description: 'Display name for the variant' })
+  @IsString()
+  @IsNotEmpty()
+  @IsOptional()
+  name?: string;
+
   @ApiPropertyOptional({
     description: 'Unique SKU code for the variant',
     example: 'TEE-BLK-M',

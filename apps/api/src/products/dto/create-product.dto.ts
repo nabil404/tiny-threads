@@ -18,6 +18,11 @@ import type { ProductStatus } from '../../db/entities/products.entity';
 
 export class CreateVariantDto {
   @IsString({ message: field(ErrorCode.IS_STRING) })
+  @IsOptional()
+  @MaxLength(255, { message: field(ErrorCode.MAX_LENGTH) })
+  name?: string;
+
+  @IsString({ message: field(ErrorCode.IS_STRING) })
   @IsNotEmpty({ message: field(ErrorCode.IS_NOT_EMPTY) })
   @MaxLength(100, { message: field(ErrorCode.MAX_LENGTH) })
   sku!: string;
@@ -39,6 +44,11 @@ export class CreateProductDto {
   @IsString({ message: field(ErrorCode.IS_STRING) })
   @IsNotEmpty({ message: field(ErrorCode.IS_NOT_EMPTY) })
   title!: string;
+
+  @IsString({ message: field(ErrorCode.IS_STRING) })
+  @IsOptional()
+  @MaxLength(5000, { message: field(ErrorCode.MAX_LENGTH) })
+  description?: string;
 
   @IsIn(['draft', 'active', 'archived'], { message: field(ErrorCode.IS_IN) })
   status!: ProductStatus;

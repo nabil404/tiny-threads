@@ -22,6 +22,11 @@ export class UpdateVariantDto {
 
   @IsOptional()
   @IsString({ message: field(ErrorCode.IS_STRING) })
+  @MaxLength(255, { message: field(ErrorCode.MAX_LENGTH) })
+  name?: string;
+
+  @IsOptional()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
   @MaxLength(100, { message: field(ErrorCode.MAX_LENGTH) })
   sku?: string;
 

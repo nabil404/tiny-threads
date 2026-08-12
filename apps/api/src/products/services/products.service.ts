@@ -104,6 +104,7 @@ export class ProductsService {
       const product = em.create(Product, {
         tenantId,
         title: dto.title,
+        description: dto.description ?? null,
         status: dto.status,
       });
       const savedProduct = await this.saveWithUniqueCheck(() =>
@@ -145,6 +146,7 @@ export class ProductsService {
           return em.create(ProductVariant, {
             tenantId,
             productId: savedProduct.id,
+            name: v.name ?? null,
             sku: v.sku,
             priceCents: v.priceCents,
             stock: v.stock,
@@ -276,6 +278,7 @@ export class ProductsService {
       }
 
       if (dto.title !== undefined) product.title = dto.title;
+      if (dto.description !== undefined) product.description = dto.description;
       if (dto.status !== undefined) product.status = dto.status;
       await this.saveWithUniqueCheck(() => em.save(Product, product));
 
@@ -360,6 +363,7 @@ export class ProductsService {
 
             if (existing) {
               matchedIds.add(existing.id);
+              if (vDto.name !== undefined) existing.name = vDto.name;
               if (vDto.sku !== undefined) existing.sku = vDto.sku;
               if (vDto.priceCents !== undefined)
                 existing.priceCents = vDto.priceCents;
@@ -380,6 +384,7 @@ export class ProductsService {
               const newVar = em.create(ProductVariant, {
                 tenantId,
                 productId: id,
+                name: vDto.name ?? null,
                 sku: vDto.sku,
                 priceCents: vDto.priceCents,
                 stock: vDto.stock,
@@ -475,6 +480,7 @@ export class ProductsService {
       const variant = em.create(ProductVariant, {
         tenantId,
         productId,
+        name: dto.name ?? null,
         sku: dto.sku,
         priceCents: dto.priceCents,
         stock: dto.stock,
@@ -536,6 +542,7 @@ export class ProductsService {
         );
       }
 
+      if (dto.name !== undefined) variant.name = dto.name;
       if (dto.sku !== undefined && dto.sku !== variant.sku) {
         const existingSku = await em.findOne(ProductVariant, {
           where: { sku: dto.sku, id: Not(variantId) },

@@ -25,6 +25,9 @@ export class Product extends TenantEntityBase {
   @Column({ type: 'text' })
   title!: string;
 
+  @Column({ type: 'text', nullable: true })
+  description!: string | null;
+
   @Column({ type: 'text' })
   status!: ProductStatus;
 

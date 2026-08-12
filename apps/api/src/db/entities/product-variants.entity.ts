@@ -31,6 +31,9 @@ export class ProductVariant extends TenantEntityBase {
   @OneToMany(() => ProductVariantImage, (image) => image.variant)
   images?: ProductVariantImage[];
 
+  @Column({ type: 'text', nullable: true })
+  name!: string | null;
+
   @Column({ type: 'text' })
   sku!: string;
 
