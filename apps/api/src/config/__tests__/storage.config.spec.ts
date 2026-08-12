@@ -27,7 +27,7 @@ describe('storageConfig', () => {
     expect(config).toEqual({
       driver: 'local',
       localRoot: './uploads',
-      publicUrlBase: 'http://localhost:3000/uploads',
+      publicUrlBase: 'http://localhost:8000/uploads',
       aws: {
         region: 'us-east-1',
         bucket: '',

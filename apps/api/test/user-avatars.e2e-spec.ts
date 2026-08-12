@@ -154,6 +154,14 @@ describe('User Avatars E2E & Multi-Tenant Isolation', () => {
         .expect(201);
 
       expect(res.body.avatarUrl).toBeDefined();
+      expect(res.body.avatarUrl).toContain('http://localhost:8000/uploads/');
+
+      // Verify static image is publicly accessible via HTTP GET
+      const avatarPath = new URL(res.body.avatarUrl).pathname;
+      await request(app.getHttpServer())
+        .get(avatarPath)
+        .set('Host', tenantA.host)
+        .expect(200);
 
       // Verify DB record updated
       const updatedAdmin = await cls.run(() => {

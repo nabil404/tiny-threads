@@ -77,8 +77,8 @@ export class AppModule implements NestModule {
         { path: 'docs-json', method: RequestMethod.GET },
         { path: 'docs-yaml', method: RequestMethod.GET },
         // Public static uploads.
-        { path: 'uploads', method: RequestMethod.GET },
-        { path: 'uploads/{*path}', method: RequestMethod.GET },
+        { path: 'uploads', method: RequestMethod.ALL },
+        { path: 'uploads/{*path}', method: RequestMethod.ALL },
       )
       .forRoutes('*');
   }

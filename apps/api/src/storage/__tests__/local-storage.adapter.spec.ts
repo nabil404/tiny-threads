@@ -4,7 +4,7 @@ import { LocalStorageAdapter } from '../adapters/local-storage.adapter';
 
 describe('LocalStorageAdapter', () => {
   const tempDir = path.join(__dirname, 'tmp-local-storage');
-  const publicUrlBase = 'http://localhost:3000/uploads';
+  const publicUrlBase = 'http://localhost:8000/uploads';
   let adapter: LocalStorageAdapter;
 
   beforeEach(async () => {
@@ -44,7 +44,7 @@ describe('LocalStorageAdapter', () => {
       expect(fileContent.toString()).toBe('mock image data');
       expect(result).toEqual({
         key,
-        url: 'http://localhost:3000/uploads/tenants/tenant-1/products/item.png',
+        url: 'http://localhost:8000/uploads/tenants/tenant-1/products/item.png',
       });
     });
   });
@@ -55,19 +55,19 @@ describe('LocalStorageAdapter', () => {
       const url = adapter.getUrl(key);
 
       expect(url).toBe(
-        'http://localhost:3000/uploads/tenants/tenant-1/avatars/user.png',
+        'http://localhost:8000/uploads/tenants/tenant-1/avatars/user.png',
       );
     });
 
     it('handles leading and trailing slashes correctly', () => {
       const adapterWithSlashes = new LocalStorageAdapter({
         localRoot: tempDir,
-        publicUrlBase: 'http://localhost:3000/uploads/',
+        publicUrlBase: 'http://localhost:8000/uploads/',
       });
 
       const url = adapterWithSlashes.getUrl('/tenants/tenant-1/file.txt');
       expect(url).toBe(
-        'http://localhost:3000/uploads/tenants/tenant-1/file.txt',
+        'http://localhost:8000/uploads/tenants/tenant-1/file.txt',
       );
     });
   });
