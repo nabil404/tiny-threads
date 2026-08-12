@@ -17,12 +17,21 @@ import { authApi } from '../api/endpoints/authApi';
 export interface AppState {
   theme: ThemeId;
   locale: LocaleId;
+  sidebarCollapsed: boolean;
+  mobileNavOpen: boolean;
 }
 
-const initialState: AppState = {
+const getInitialSidebarCollapsed = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('tiny_threads_sidebar_collapsed') === 'true';
+};
+
+const getInitialState = (): AppState => ({
   theme: getSavedTheme(),
   locale: getSavedLocale(),
-};
+  sidebarCollapsed: getInitialSidebarCollapsed(),
+  mobileNavOpen: false,
+});
 
 function applyLocale(state: AppState, locale: LocaleId) {
   state.locale = locale;
@@ -34,7 +43,7 @@ function applyLocale(state: AppState, locale: LocaleId) {
 
 export const appSlice = createSlice({
   name: 'app',
-  initialState,
+  initialState: getInitialState,
   reducers: {
     setTheme: (state, action: PayloadAction<ThemeId>) => {
       state.theme = action.payload;
@@ -45,6 +54,30 @@ export const appSlice = createSlice({
     },
     setLocale: (state, action: PayloadAction<LocaleId>) => {
       applyLocale(state, action.payload);
+    },
+    toggleSidebar: (state) => {
+      state.sidebarCollapsed = !state.sidebarCollapsed;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          'tiny_threads_sidebar_collapsed',
+          String(state.sidebarCollapsed),
+        );
+      }
+    },
+    setSidebarCollapsed: (state, action: PayloadAction<boolean>) => {
+      state.sidebarCollapsed = action.payload;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          'tiny_threads_sidebar_collapsed',
+          String(action.payload),
+        );
+      }
+    },
+    toggleMobileNav: (state) => {
+      state.mobileNavOpen = !state.mobileNavOpen;
+    },
+    setMobileNavOpen: (state, action: PayloadAction<boolean>) => {
+      state.mobileNavOpen = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -60,6 +93,22 @@ export const appSlice = createSlice({
   },
 });
 
-export const { setTheme, setLocale } = appSlice.actions;
+export const {
+  setTheme,
+  setLocale,
+  toggleSidebar,
+  setSidebarCollapsed,
+  toggleMobileNav,
+  setMobileNavOpen,
+} = appSlice.actions;
+
 export const selectApp = (state: { app: AppState }) => state.app;
+export const selectTheme = (state: { app: AppState }) => state.app.theme;
+export const selectLocale = (state: { app: AppState }) => state.app.locale;
+export const selectSidebarCollapsed = (state: { app: AppState }) =>
+  state.app.sidebarCollapsed;
+export const selectMobileNavOpen = (state: { app: AppState }) =>
+  state.app.mobileNavOpen;
+
 export default appSlice.reducer;
+

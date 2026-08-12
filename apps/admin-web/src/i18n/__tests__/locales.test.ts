@@ -11,9 +11,9 @@ describe('Locale Registry', () => {
     localStorage.clear();
   });
 
-  it('should export registered locales list with en', () => {
+  it('should export registered locales list with en, es, fr, ar', () => {
     const ids = LOCALES.map((l) => l.id);
-    expect(ids).toEqual(['en']);
+    expect(ids).toEqual(['en', 'es', 'fr', 'ar']);
   });
 
   it('should fallback to DEFAULT_LOCALE when localStorage is empty', () => {

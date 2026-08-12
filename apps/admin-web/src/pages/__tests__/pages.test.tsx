@@ -29,6 +29,8 @@ function renderWithStore(ui: React.ReactElement) {
       app: {
         theme: 'dark' as const,
         locale: 'en' as const,
+        sidebarCollapsed: false,
+        mobileNavOpen: false,
       },
     },
   });

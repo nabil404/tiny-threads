@@ -1,11 +1,22 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
-import appReducer, { setTheme, setLocale, AppState } from '../appSlice';
+import appReducer, {
+  setTheme,
+  setLocale,
+  toggleSidebar,
+  setSidebarCollapsed,
+  toggleMobileNav,
+  setMobileNavOpen,
+  selectSidebarCollapsed,
+  selectMobileNavOpen,
+  AppState,
+} from '../appSlice';
 import { authApi } from '../../api/endpoints/authApi';
 import { baseApi } from '../../api/baseApi';
 import { THEME_STORAGE_KEY } from '@theme/themes';
 import { LOCALE_STORAGE_KEY } from '@i18n/locales';
 import i18n from '@i18n';
+import type { RootState } from '../../index';
 
 function buildStore() {
   return configureStore({
@@ -112,3 +123,76 @@ describe('appSlice', () => {
     expect(store.getState().app.locale).toBe(before);
   });
 });
+
+describe('appSlice layout actions', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('handles toggleSidebar and persists to localStorage', () => {
+    const initialState = {
+      theme: 'dark' as const,
+      locale: 'en' as const,
+      sidebarCollapsed: false,
+      mobileNavOpen: false,
+    };
+
+    const state1 = appReducer(initialState, toggleSidebar());
+    expect(state1.sidebarCollapsed).toBe(true);
+    expect(localStorage.getItem('tiny_threads_sidebar_collapsed')).toBe('true');
+
+    const state2 = appReducer(state1, toggleSidebar());
+    expect(state2.sidebarCollapsed).toBe(false);
+    expect(localStorage.getItem('tiny_threads_sidebar_collapsed')).toBe('false');
+  });
+
+  it('handles setSidebarCollapsed with explicit value', () => {
+    const initialState = {
+      theme: 'dark' as const,
+      locale: 'en' as const,
+      sidebarCollapsed: false,
+      mobileNavOpen: false,
+    };
+
+    const state = appReducer(initialState, setSidebarCollapsed(true));
+    expect(state.sidebarCollapsed).toBe(true);
+    expect(localStorage.getItem('tiny_threads_sidebar_collapsed')).toBe('true');
+  });
+
+  it('handles toggleMobileNav and setMobileNavOpen without localStorage persistence', () => {
+    const initialState = {
+      theme: 'dark' as const,
+      locale: 'en' as const,
+      sidebarCollapsed: false,
+      mobileNavOpen: false,
+    };
+
+    const state1 = appReducer(initialState, toggleMobileNav());
+    expect(state1.mobileNavOpen).toBe(true);
+
+    const state2 = appReducer(state1, setMobileNavOpen(false));
+    expect(state2.mobileNavOpen).toBe(false);
+  });
+
+  it('selects sidebarCollapsed and mobileNavOpen from RootState', () => {
+    const mockRootState = {
+      app: {
+        theme: 'dark' as const,
+        locale: 'en' as const,
+        sidebarCollapsed: true,
+        mobileNavOpen: true,
+      },
+    } as RootState;
+
+    expect(selectSidebarCollapsed(mockRootState)).toBe(true);
+    expect(selectMobileNavOpen(mockRootState)).toBe(true);
+  });
+
+  it('initializes sidebarCollapsed from localStorage when set to true', () => {
+    localStorage.setItem('tiny_threads_sidebar_collapsed', 'true');
+    const state: AppState = appReducer(undefined, { type: 'unknown' });
+    expect(state.sidebarCollapsed).toBe(true);
+  });
+});
+

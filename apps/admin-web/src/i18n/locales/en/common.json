@@ -29,5 +29,27 @@
     "signIn": "Sign In",
     "authenticating": "Authenticating...",
     "genericError": "Unable to sign in. Please try again."
+  },
+  "nav": {
+    "overview": "Overview",
+    "orders": "Orders",
+    "products": "Products",
+    "categories": "Categories",
+    "customers": "Customers",
+    "analytics": "Analytics",
+    "settings": "Settings",
+    "support": "Support",
+    "signOut": "Sign Out",
+    "searchPlaceholder": "Search...",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
+    "toggleMobileMenu": "Toggle menu",
+    "activeStatus": "Active",
+    "theme": "Theme",
+    "language": "Language",
+    "accountSettings": "Account Settings",
+    "placeholderTitle": "{{title}}",
+    "placeholderDescription": "This section is currently under development.",
+    "backToDashboard": "Back to Dashboard"
   }
 }

@@ -13,6 +13,8 @@ function createMockStore(isAuthenticated = true) {
   const app: AppState = {
     theme: 'dark',
     locale: 'en',
+    sidebarCollapsed: false,
+    mobileNavOpen: false,
   };
   const auth: AuthState = {
     user: isAuthenticated

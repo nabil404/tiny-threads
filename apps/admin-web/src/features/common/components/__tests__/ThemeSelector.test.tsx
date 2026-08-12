@@ -13,8 +13,10 @@ function createMockStore(initialTheme = 'dark') {
     },
     preloadedState: {
       app: {
-        theme: initialTheme,
+        theme: initialTheme as any,
         locale: 'en' as const,
+        sidebarCollapsed: false,
+        mobileNavOpen: false,
       },
     },
   });

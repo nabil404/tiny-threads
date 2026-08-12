@@ -1,4 +1,4 @@
-export type LocaleId = 'en';
+export type LocaleId = 'en' | 'es' | 'fr' | 'ar';
 
 export interface LocaleConfig {
   id: LocaleId;
@@ -8,6 +8,9 @@ export interface LocaleConfig {
 
 export const LOCALES: LocaleConfig[] = [
   { id: 'en', nativeName: 'English', englishName: 'English' },
+  { id: 'es', nativeName: 'Español', englishName: 'Spanish' },
+  { id: 'fr', nativeName: 'Français', englishName: 'French' },
+  { id: 'ar', nativeName: 'العربية', englishName: 'Arabic' },
 ];
 
 export const DEFAULT_LOCALE: LocaleId = 'en';
@@ -21,3 +24,4 @@ export function getSavedLocale(): LocaleId {
   }
   return DEFAULT_LOCALE;
 }
+

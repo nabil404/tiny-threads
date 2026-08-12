@@ -1,0 +1,55 @@
+{
+  "app": {
+    "subtitle": "لوحة تحكم التاجر",
+    "platformContext": "سياق المنصة",
+    "tenantBadge": "المتجر: {{tenantId}}",
+    "authenticatedSessionTitle": "جلسة تاجر مصادق عليها",
+    "authenticatedSessionDescription": "تم التحقق من React 19 + Redux Toolkit + البنية القائمة على الميزات",
+    "loggedInUser": "المستخدم المسجل",
+    "role": "الدور: {{role}}",
+    "sharedErrorCode": "رمز الخطأ المشترك",
+    "logOut": "تسجيل الخروج",
+    "signOut": "تسجيل الخروج"
+  },
+  "theme": {
+    "selectThemeLabel": "اختر المظهر",
+    "selectThemeAria": "اختر المظهر"
+  },
+  "locale": {
+    "selectLocaleLabel": "اختر اللغة",
+    "selectLocaleAria": "اختر اللغة"
+  },
+  "auth": {
+    "portalTitle": "بوابة التاجر",
+    "portalSubtitle": "سجل الدخول لإدارة متجرك",
+    "emailLabel": "البريد الإلكتروني",
+    "emailPlaceholder": "admin@merchant.com",
+    "passwordLabel": "كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "signIn": "تسجيل الدخول",
+    "authenticating": "جاري التحقق...",
+    "genericError": "تعذر تسجيل الدخول. يرجى المحاولة مرة أخرى."
+  },
+  "nav": {
+    "overview": "نظرة عامة",
+    "orders": "الطلبات",
+    "products": "المنتجات",
+    "categories": "الفئات",
+    "customers": "العملاء",
+    "analytics": "التحليلات",
+    "settings": "الإعدادات",
+    "support": "الدعم",
+    "signOut": "تسجيل الخروج",
+    "searchPlaceholder": "بحث...",
+    "collapseSidebar": "طي الشريط الجانبي",
+    "expandSidebar": "توسيع الشريط الجانبي",
+    "toggleMobileMenu": "تبديل القائمة",
+    "activeStatus": "نشط",
+    "theme": "المظهر",
+    "language": "اللغة",
+    "accountSettings": "إعدادات الحساب",
+    "placeholderTitle": "{{title}}",
+    "placeholderDescription": "هذا القسم قيد التطوير حالياً.",
+    "backToDashboard": "العودة إلى لوحة التحكم"
+  }
+}

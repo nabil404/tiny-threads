@@ -1,0 +1,55 @@
+{
+  "app": {
+    "subtitle": "Consola de administración de comerciantes",
+    "platformContext": "Contexto de la plataforma",
+    "tenantBadge": "Tienda: {{tenantId}}",
+    "authenticatedSessionTitle": "Sesión de comerciante autenticada",
+    "authenticatedSessionDescription": "React 19 + Redux Toolkit + Arquitectura basada en funciones verificada",
+    "loggedInUser": "Usuario autenticado",
+    "role": "Rol: {{role}}",
+    "sharedErrorCode": "Código de error compartido",
+    "logOut": "Cerrar sesión",
+    "signOut": "Cerrar sesión"
+  },
+  "theme": {
+    "selectThemeLabel": "Seleccionar tema",
+    "selectThemeAria": "Seleccionar tema"
+  },
+  "locale": {
+    "selectLocaleLabel": "Seleccionar idioma",
+    "selectLocaleAria": "Seleccionar idioma"
+  },
+  "auth": {
+    "portalTitle": "Portal de comerciantes",
+    "portalSubtitle": "Inicie sesión para administrar su tienda",
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "admin@comerciante.com",
+    "passwordLabel": "Contraseña",
+    "forgotPassword": "¿Olvidó su contraseña?",
+    "signIn": "Iniciar sesión",
+    "authenticating": "Autenticando...",
+    "genericError": "No se pudo iniciar sesión. Por favor, inténtelo de nuevo."
+  },
+  "nav": {
+    "overview": "Visión general",
+    "orders": "Pedidos",
+    "products": "Productos",
+    "categories": "Categorías",
+    "customers": "Clientes",
+    "analytics": "Analíticas",
+    "settings": "Configuración",
+    "support": "Soporte",
+    "signOut": "Cerrar sesión",
+    "searchPlaceholder": "Buscar...",
+    "collapseSidebar": "Contraer barra lateral",
+    "expandSidebar": "Expandir barra lateral",
+    "toggleMobileMenu": "Alternar menú",
+    "activeStatus": "Activo",
+    "theme": "Tema",
+    "language": "Idioma",
+    "accountSettings": "Configuración de la cuenta",
+    "placeholderTitle": "{{title}}",
+    "placeholderDescription": "Esta sección se encuentra actualmente en desarrollo.",
+    "backToDashboard": "Volver al panel"
+  }
+}
