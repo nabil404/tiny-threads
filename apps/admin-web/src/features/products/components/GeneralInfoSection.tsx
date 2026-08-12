@@ -8,7 +8,7 @@ import {
 } from '@components/ui/form';
 import { Input } from '@components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
-import { RichTextEditor } from './RichTextEditor';
+import { RichTextEditor } from '@components/ui/rich-text-editor';
 import { CategoryMultiSelect } from './CategoryMultiSelect';
 import type { ProductFormData } from '../schemas/product-form.schema';
 
