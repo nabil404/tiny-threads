@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Editor } from '@tiptap/react';
+import { getMarkRange } from '@tiptap/core';
 import {
   Popover,
   PopoverTrigger,
@@ -28,9 +29,12 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
     if (isEditing) {
       const attrs = editor.getAttributes('link');
       setUrl(attrs.href || '');
-      // Get the selected/link text
-      const { from, to } = editor.state.selection;
-      const text = editor.state.doc.textBetween(from, to, '');
+      // Expand from/to to the full extent of the link mark
+      const { from } = editor.state.selection;
+      const linkType = editor.schema.marks.link;
+      const range = getMarkRange(editor.state.doc.resolve(from), linkType);
+      const [rangeFrom, rangeTo] = range ? [range.from, range.to] : [from, from];
+      const text = editor.state.doc.textBetween(rangeFrom, rangeTo, '');
       setDisplayText(text);
     } else {
       setUrl('');
@@ -43,8 +47,8 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
   const normalizeUrl = (input: string): string => {
     const trimmed = input.trim();
     if (!trimmed) return '';
-    if (/^https?:\/\//i.test(trimmed)) return trimmed;
-    if (/^mailto:/i.test(trimmed)) return trimmed;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return trimmed; // already has an explicit scheme
+    if (trimmed.startsWith('/') || trimmed.startsWith('#')) return trimmed; // relative path / anchor
     return `https://${trimmed}`;
   };
 
