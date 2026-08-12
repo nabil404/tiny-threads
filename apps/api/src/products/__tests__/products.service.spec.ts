@@ -8,10 +8,15 @@ import {
   CodedNotFoundException,
 } from '../../common/errors/coded-exceptions';
 
+import { StoragePort } from '../../storage/storage.port';
+import { ImageProcessingService } from '../../storage/image-processing.service';
+
 describe('ProductsService', () => {
   let service: ProductsService;
   let tenantDbService: jest.Mocked<TenantDbService>;
   let clsService: jest.Mocked<ClsService>;
+  let storagePort: jest.Mocked<StoragePort>;
+  let imageProcessingService: jest.Mocked<ImageProcessingService>;
 
   beforeEach(() => {
     tenantDbService = {
@@ -20,7 +25,24 @@ describe('ProductsService', () => {
     clsService = {
       get: jest.fn().mockReturnValue('tenant-123'),
     } as unknown as jest.Mocked<ClsService>;
-    service = new ProductsService(tenantDbService, clsService);
+    storagePort = {
+      upload: jest.fn().mockResolvedValue({ url: 'http://cdn.test/img.webp' }),
+      getSignedUrl: jest.fn(),
+      delete: jest.fn(),
+    } as unknown as jest.Mocked<StoragePort>;
+    imageProcessingService = {
+      processVariantImage: jest.fn().mockResolvedValue({
+        buffer: Buffer.from('processed'),
+        contentType: 'image/webp',
+      }),
+    } as unknown as jest.Mocked<ImageProcessingService>;
+
+    service = new ProductsService(
+      tenantDbService,
+      clsService,
+      storagePort,
+      imageProcessingService,
+    );
   });
 
   describe('create', () => {
@@ -189,6 +211,66 @@ describe('ProductsService', () => {
       });
 
       expect(result).toEqual(mockProduct);
+    });
+  });
+
+  describe('createWithImages', () => {
+    it('processes images, creates product, uploads to storage, and saves ProductVariantImage entities', async () => {
+      const mockProduct = {
+        id: 'prod-1',
+        title: 'Tee with images',
+        status: 'active',
+        variants: [{ id: 'var-1', sku: 'SKU-IMG-1' }],
+      };
+
+      const savedVariantImages: any[] = [];
+      tenantDbService.run.mockImplementation(async (cb: any) => {
+        const em = {
+          find: jest.fn().mockResolvedValue([]),
+          create: jest.fn().mockImplementation((_, entity) => entity),
+          save: jest.fn().mockImplementation((entityClassOrObject, entity) => {
+            const target = entity || entityClassOrObject;
+            if (target.storageKey) {
+              savedVariantImages.push(target);
+            }
+            if (Array.isArray(target) && target.length > 0 && target[0].sku) {
+              return Promise.resolve(target);
+            }
+            return Promise.resolve({ id: 'prod-1', ...target });
+          }),
+          findOne: jest.fn().mockImplementation((entityClass, options) => {
+            if (options?.where?.sku) return Promise.resolve(null);
+            return Promise.resolve(mockProduct);
+          }),
+        };
+        return await cb(em as any);
+      });
+
+      const fileMap = new Map<number, Express.Multer.File[]>();
+      fileMap.set(0, [
+        { buffer: Buffer.from('img1'), originalname: '1.jpg' } as any,
+        { buffer: Buffer.from('img2'), originalname: '2.jpg' } as any,
+      ]);
+
+      const result = await service.createWithImages(
+        {
+          title: 'Tee with images',
+          status: 'active',
+          variants: [{ sku: 'SKU-IMG-1', priceCents: 1000, stock: 5 }],
+        },
+        fileMap,
+      );
+
+      expect(result).toEqual(mockProduct);
+      expect(imageProcessingService.processVariantImage).toHaveBeenCalledTimes(
+        2,
+      );
+      expect(storagePort.upload).toHaveBeenCalledTimes(2);
+      expect(savedVariantImages).toHaveLength(2);
+      expect(savedVariantImages[0].isPrimary).toBe(true);
+      expect(savedVariantImages[0].sortOrder).toBe(0);
+      expect(savedVariantImages[1].isPrimary).toBe(false);
+      expect(savedVariantImages[1].sortOrder).toBe(1);
     });
   });
 

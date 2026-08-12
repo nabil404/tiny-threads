@@ -15,12 +15,14 @@ import { CreateCategoryDto } from '../dto/create-category.dto';
 import { UpdateCategoryDto } from '../dto/update-category.dto';
 import { Product } from '../../db/entities/products.entity';
 import { Category } from '../../db/entities/categories.entity';
+import { CodedBadRequestException } from '../../common/errors/coded-exceptions';
 
 describe('Merchant Controllers', () => {
   let productsController: MerchantProductsController;
   let categoriesController: MerchantCategoriesController;
   let productsService: {
     create: jest.Mock;
+    createWithImages: jest.Mock;
     findAll: jest.Mock;
     findById: jest.Mock;
     update: jest.Mock;
@@ -37,6 +39,7 @@ describe('Merchant Controllers', () => {
   beforeEach(() => {
     productsService = {
       create: jest.fn(),
+      createWithImages: jest.fn(),
       findAll: jest.fn(),
       findById: jest.fn(),
       update: jest.fn(),
@@ -60,14 +63,50 @@ describe('Merchant Controllers', () => {
   });
 
   describe('MerchantProductsController', () => {
-    it('calls productsService.create on POST', async () => {
+    it('calls productsService.create when multipart data JSON has no images', async () => {
       const dto: CreateProductDto = { title: 'Tee', status: 'active' };
       const expected = { id: 'p1', title: 'Tee', status: 'active' } as Product;
       productsService.create.mockResolvedValue(expected);
 
-      const res = await productsController.create(dto);
-      expect(productsService.create).toHaveBeenCalledWith(dto);
+      const res = await productsController.create([], {
+        data: JSON.stringify(dto),
+      });
+      expect(productsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Tee', status: 'active' }),
+      );
       expect(res).toBe(expected);
+    });
+
+    it('calls productsService.createWithImages when variant images are uploaded', async () => {
+      const dto: CreateProductDto = { title: 'Tee', status: 'active' };
+      const expected = { id: 'p1', title: 'Tee', status: 'active' } as Product;
+      productsService.createWithImages.mockResolvedValue(expected);
+
+      const mockFile = {
+        fieldname: 'variants[0].images[0]',
+        buffer: Buffer.from('abc'),
+      } as Express.Multer.File;
+      const res = await productsController.create([mockFile], {
+        data: JSON.stringify(dto),
+      });
+
+      expect(productsService.createWithImages).toHaveBeenCalled();
+      const [calledDto, fileMap] =
+        productsService.createWithImages.mock.calls[0];
+      expect(calledDto).toEqual(
+        expect.objectContaining({ title: 'Tee', status: 'active' }),
+      );
+      expect(fileMap.get(0)).toEqual([mockFile]);
+      expect(res).toBe(expected);
+    });
+
+    it('throws CodedBadRequestException if body.data is missing or invalid JSON', async () => {
+      await expect(productsController.create([], {})).rejects.toThrow(
+        CodedBadRequestException,
+      );
+      await expect(
+        productsController.create([], { data: 'invalid-json' }),
+      ).rejects.toThrow(CodedBadRequestException);
     });
 
     it('calls productsService.findAll on GET with includeDrafts=false', async () => {

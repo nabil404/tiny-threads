@@ -10,13 +10,19 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
+  ApiConsumes,
 } from '@nestjs/swagger';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
 import { MerchantAdminJwtAuthGuard } from '../../merchant-admins/guards/merchant-admin-jwt-auth.guard';
 import { RolesGuard } from '../../merchant-admins/guards/roles.guard';
 import { Roles } from '../../merchant-admins/decorators/roles.decorator';
@@ -24,6 +30,8 @@ import { ProductsService } from '../services/products.service';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { ProductQueryDto } from '../dto/product-query.dto';
+import { CodedBadRequestException } from '../../common/errors/coded-exceptions';
+import { ErrorCode } from '@tiny-threads/shared';
 
 @ApiTags('Merchant Products')
 @ApiBearerAuth()
@@ -32,16 +40,76 @@ import { ProductQueryDto } from '../dto/product-query.dto';
 export class MerchantProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  private async validateDto<T extends object>(
+    DtoClass: new () => T,
+    plain: unknown,
+  ): Promise<T> {
+    const instance = plainToInstance(DtoClass, plain);
+    const errors = await validate(instance);
+    if (errors.length > 0) {
+      throw new CodedBadRequestException(
+        ErrorCode.VALIDATION_FAILED,
+        errors
+          .map((e) => Object.values(e.constraints ?? {}))
+          .flat()
+          .join('; '),
+      );
+    }
+    return instance;
+  }
+
   @ApiOperation({
     summary: 'Create a new product',
     description:
-      'Creates a new product with options, variants, and categories.',
+      'Creates a new product with optional inline variants, categories, and variant images. Accepts multipart/form-data.',
   })
+  @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 201, description: 'Product created successfully.' })
   @UseGuards(MerchantAdminJwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
   @Post()
-  create(@Body() dto: CreateProductDto) {
+  @UseInterceptors(
+    AnyFilesInterceptor({ limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async create(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: { data?: string },
+  ) {
+    if (!body.data) {
+      throw new CodedBadRequestException(
+        ErrorCode.VALIDATION_FAILED,
+        'Missing required "data" field in multipart request',
+      );
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body.data);
+    } catch {
+      throw new CodedBadRequestException(
+        ErrorCode.VALIDATION_FAILED,
+        'Invalid JSON in "data" field',
+      );
+    }
+
+    const dto = await this.validateDto(CreateProductDto, parsed);
+
+    // Map files to variant indices
+    const variantImageFiles = new Map<number, Express.Multer.File[]>();
+    if (files && files.length > 0) {
+      for (const file of files) {
+        const match = file.fieldname.match(/^variants\[(\d+)]\.images\[\d+]$/);
+        if (match) {
+          const idx = parseInt(match[1], 10);
+          if (!variantImageFiles.has(idx)) variantImageFiles.set(idx, []);
+          variantImageFiles.get(idx)!.push(file);
+        }
+      }
+    }
+
+    if (variantImageFiles.size > 0) {
+      return this.productsService.createWithImages(dto, variantImageFiles);
+    }
     return this.productsService.create(dto);
   }
 

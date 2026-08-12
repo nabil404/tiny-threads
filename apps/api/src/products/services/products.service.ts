@@ -1,11 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { TenantDbService } from '../../db/tenant-db.service';
+import { STORAGE_PORT } from '../../storage/storage.port';
+import type { StoragePort } from '../../storage/storage.port';
+import { ImageProcessingService } from '../../storage/image-processing.service';
 import { Product } from '../../db/entities/products.entity';
 import { ProductVariant } from '../../db/entities/product-variants.entity';
+import { ProductVariantImage } from '../../db/entities/product-variant-images.entity';
 import { Category } from '../../db/entities/categories.entity';
 import { ProductCategory } from '../../db/entities/product-categories.entity';
-import { CreateProductDto } from '../dto/create-product.dto';
+import { CreateProductDto, CreateVariantDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { ProductQueryDto } from '../dto/product-query.dto';
 import { CreateProductVariantDto } from '../dto/create-product-variant.dto';
@@ -17,6 +21,7 @@ import {
 } from '../../common/errors/coded-exceptions';
 import { ErrorCode } from '@tiny-threads/shared';
 import { In, Not, EntityManager } from 'typeorm';
+import { randomUUID } from 'crypto';
 
 export interface PaginatedProducts {
   items: Product[];
@@ -30,6 +35,8 @@ export class ProductsService {
   constructor(
     private readonly tenantDb: TenantDbService,
     private readonly cls: ClsService,
+    @Inject(STORAGE_PORT) private readonly storagePort: StoragePort,
+    private readonly imageProcessingService: ImageProcessingService,
   ) {}
 
   private async saveWithUniqueCheck<T>(saveFn: () => Promise<T>): Promise<T> {
@@ -83,6 +90,68 @@ export class ProductsService {
     return product;
   }
 
+  private async createVariantsForProduct(
+    em: EntityManager,
+    tenantId: string,
+    productId: string,
+    variants?: CreateVariantDto[],
+  ): Promise<ProductVariant[]> {
+    if (variants && variants.length > 0) {
+      const skus = variants.map((v) => v.sku);
+      if (new Set(skus).size !== skus.length) {
+        throw new CodedBadRequestException(
+          ErrorCode.VALIDATION_FAILED,
+          'Duplicate SKU detected in request variants',
+        );
+      }
+      const existingVariant = await em.findOne(ProductVariant, {
+        where: { sku: In(skus) },
+      });
+      if (existingVariant) {
+        throw new CodedConflictException(
+          ErrorCode.DUPLICATE_RESOURCE,
+          `Variant SKU ${existingVariant.sku} already exists`,
+        );
+      }
+      let defaultSet = false;
+      const variantsToSave = variants.map((v) => {
+        let isDefault = v.isDefault ?? false;
+        if (isDefault) {
+          if (defaultSet) isDefault = false;
+          else defaultSet = true;
+        }
+        return em.create(ProductVariant, {
+          tenantId,
+          productId,
+          name: v.name ?? null,
+          sku: v.sku,
+          priceCents: v.priceCents,
+          stock: v.stock,
+          isDefault,
+        });
+      });
+      if (!defaultSet && variantsToSave.length > 0)
+        variantsToSave[0].isDefault = true;
+      const saved = await this.saveWithUniqueCheck(() =>
+        em.save(ProductVariant, variantsToSave),
+      );
+      return saved;
+    } else {
+      const defaultVariant = em.create(ProductVariant, {
+        tenantId,
+        productId,
+        sku: `SKU-${productId}`,
+        priceCents: 0,
+        stock: 0,
+        isDefault: true,
+      });
+      const saved = await this.saveWithUniqueCheck(() =>
+        em.save(ProductVariant, defaultVariant),
+      );
+      return [saved];
+    }
+  }
+
   async create(dto: CreateProductDto): Promise<Product> {
     return this.tenantDb.run(async (em) => {
       const tenantId = this.cls.get<string>('tenantId');
@@ -112,69 +181,12 @@ export class ProductsService {
       );
 
       // 3. Create Variants
-      if (dto.variants && dto.variants.length > 0) {
-        // Validate SKUs unique in payload
-        const skus = dto.variants.map((v) => v.sku);
-        if (new Set(skus).size !== skus.length) {
-          throw new CodedBadRequestException(
-            ErrorCode.VALIDATION_FAILED,
-            'Duplicate SKU detected in request variants',
-          );
-        }
-
-        // Check SKU conflicts in DB
-        const existingVariant = await em.findOne(ProductVariant, {
-          where: { sku: In(skus) },
-        });
-        if (existingVariant) {
-          throw new CodedConflictException(
-            ErrorCode.DUPLICATE_RESOURCE,
-            `Variant SKU ${existingVariant.sku} already exists`,
-          );
-        }
-
-        let defaultSet = false;
-        const variantsToSave = dto.variants.map((v) => {
-          let isDefault = v.isDefault ?? false;
-          if (isDefault) {
-            if (defaultSet) {
-              isDefault = false;
-            } else {
-              defaultSet = true;
-            }
-          }
-          return em.create(ProductVariant, {
-            tenantId,
-            productId: savedProduct.id,
-            name: v.name ?? null,
-            sku: v.sku,
-            priceCents: v.priceCents,
-            stock: v.stock,
-            isDefault,
-          });
-        });
-
-        if (!defaultSet && variantsToSave.length > 0) {
-          variantsToSave[0].isDefault = true;
-        }
-
-        await this.saveWithUniqueCheck(() =>
-          em.save(ProductVariant, variantsToSave),
-        );
-      } else {
-        // Auto-create default variant
-        const defaultVariant = em.create(ProductVariant, {
-          tenantId,
-          productId: savedProduct.id,
-          sku: `SKU-${savedProduct.id}`,
-          priceCents: 0,
-          stock: 0,
-          isDefault: true,
-        });
-        await this.saveWithUniqueCheck(() =>
-          em.save(ProductVariant, defaultVariant),
-        );
-      }
+      await this.createVariantsForProduct(
+        em,
+        tenantId,
+        savedProduct.id,
+        dto.variants,
+      );
 
       // 4. Create Product-Category Associations
       if (dto.categoryIds && dto.categoryIds.length > 0) {
@@ -186,6 +198,114 @@ export class ProductsService {
           }),
         );
         await em.save(ProductCategory, productCategories);
+      }
+
+      return this.findProductById(em, savedProduct.id);
+    });
+  }
+
+  async createWithImages(
+    dto: CreateProductDto,
+    variantImageFiles: Map<number, Express.Multer.File[]>,
+  ): Promise<Product> {
+    // Process images outside the transaction to avoid holding the DB connection during I/O
+    const processedImages = new Map<
+      number,
+      Array<{ imageId: string; buffer: Buffer; contentType: string }>
+    >();
+
+    for (const [variantIndex, files] of variantImageFiles) {
+      const processed: Array<{
+        imageId: string;
+        buffer: Buffer;
+        contentType: string;
+      }> = [];
+      for (const file of files) {
+        const imageId = randomUUID();
+        const result = await this.imageProcessingService.processVariantImage(
+          file.buffer,
+        );
+        processed.push({
+          imageId,
+          buffer: result.buffer,
+          contentType: result.contentType,
+        });
+      }
+      processedImages.set(variantIndex, processed);
+    }
+
+    return this.tenantDb.run(async (em) => {
+      const tenantId = this.cls.get<string>('tenantId');
+
+      // Validate categories
+      if (dto.categoryIds && dto.categoryIds.length > 0) {
+        const found = await em.find(Category, {
+          where: { id: In(dto.categoryIds) },
+        });
+        if (found.length !== dto.categoryIds.length) {
+          throw new CodedBadRequestException(
+            ErrorCode.VALIDATION_FAILED,
+            'One or more provided category IDs do not exist',
+          );
+        }
+      }
+
+      // Create product
+      const product = em.create(Product, {
+        tenantId,
+        title: dto.title,
+        description: dto.description ?? null,
+        status: dto.status,
+      });
+      const savedProduct = await this.saveWithUniqueCheck(() =>
+        em.save(Product, product),
+      );
+
+      // Create variants
+      const savedVariants = await this.createVariantsForProduct(
+        em,
+        tenantId,
+        savedProduct.id,
+        dto.variants,
+      );
+
+      // Create category associations
+      if (dto.categoryIds && dto.categoryIds.length > 0) {
+        const pcs = dto.categoryIds.map((catId) =>
+          em.create(ProductCategory, {
+            tenantId,
+            productId: savedProduct.id,
+            categoryId: catId,
+          }),
+        );
+        await em.save(ProductCategory, pcs);
+      }
+
+      // Upload images and create records
+      for (const [variantIndex, images] of processedImages) {
+        if (variantIndex >= savedVariants.length) continue;
+        const variant = savedVariants[variantIndex];
+        for (let i = 0; i < images.length; i++) {
+          const { imageId, buffer, contentType } = images[i];
+          const storageKey = `tenants/${tenantId}/products/${variant.id}/${imageId}.webp`;
+          const { url } = await this.storagePort.upload({
+            key: storageKey,
+            buffer,
+            contentType,
+            tenantId,
+          });
+          const image = em.create(ProductVariantImage, {
+            id: imageId,
+            tenantId,
+            variantId: variant.id,
+            storageKey,
+            url,
+            altText: null,
+            sortOrder: i,
+            isPrimary: i === 0,
+          });
+          await em.save(ProductVariantImage, image);
+        }
       }
 
       return this.findProductById(em, savedProduct.id);

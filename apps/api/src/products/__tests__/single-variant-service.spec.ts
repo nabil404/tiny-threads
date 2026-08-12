@@ -9,6 +9,9 @@ import {
 } from '../../common/errors/coded-exceptions';
 import { ProductVariant } from '../../db/entities/product-variants.entity';
 
+import { STORAGE_PORT } from '../../storage/storage.port';
+import { ImageProcessingService } from '../../storage/image-processing.service';
+
 describe('ProductsService - Single Variant Operations', () => {
   let service: ProductsService;
   let mockEntityManager: any;
@@ -42,6 +45,18 @@ describe('ProductsService - Single Variant Operations', () => {
         ProductsService,
         { provide: TenantDbService, useValue: mockTenantDb },
         { provide: ClsService, useValue: mockCls },
+        {
+          provide: STORAGE_PORT,
+          useValue: {
+            upload: jest.fn(),
+            getSignedUrl: jest.fn(),
+            delete: jest.fn(),
+          },
+        },
+        {
+          provide: ImageProcessingService,
+          useValue: { processVariantImage: jest.fn() },
+        },
       ],
     }).compile();
 
