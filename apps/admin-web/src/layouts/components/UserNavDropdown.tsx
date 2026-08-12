@@ -60,7 +60,7 @@ export function UserNavDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
-        aria-label="User menu"
+        aria-label={t('nav.userMenu')}
         aria-expanded={isOpen}
         onClick={() => setIsOpen((prev) => !prev)}
         className="w-9 h-9 rounded-full bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center font-bold text-sm border border-border cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"

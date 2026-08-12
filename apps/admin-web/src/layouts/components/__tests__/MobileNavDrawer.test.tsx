@@ -86,10 +86,24 @@ describe('MobileNavDrawer', () => {
     expect(store.getState().app.mobileNavOpen).toBe(false);
   });
 
+  it('closes on Escape key press', async () => {
+    const user = userEvent.setup();
+    const { store } = renderMobileDrawer(true);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(store.getState().app.mobileNavOpen).toBe(false);
+  });
+
   it('renders fallback store initials when tenant is null', () => {
     renderMobileDrawer(true, null);
     expect(screen.getByText('TT')).toBeInTheDocument();
     expect(screen.getByText('Tiny Threads')).toBeInTheDocument();
+  });
+
+  it('safely parses store initials with extra whitespace and leading/trailing spaces', () => {
+    renderMobileDrawer(true, { id: 'tenant-spaces', name: '   My   Awesome   Store  ' });
+    expect(screen.getByText('MA')).toBeInTheDocument();
   });
 
   it('handles logout flow correctly', async () => {

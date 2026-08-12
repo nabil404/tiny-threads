@@ -9,6 +9,7 @@ import appReducer, {
   setMobileNavOpen,
   selectSidebarCollapsed,
   selectMobileNavOpen,
+  SIDEBAR_COLLAPSED_STORAGE_KEY,
   AppState,
 } from '../appSlice';
 import { authApi } from '../../api/endpoints/authApi';
@@ -140,11 +141,11 @@ describe('appSlice layout actions', () => {
 
     const state1 = appReducer(initialState, toggleSidebar());
     expect(state1.sidebarCollapsed).toBe(true);
-    expect(localStorage.getItem('tiny_threads_sidebar_collapsed')).toBe('true');
+    expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
 
     const state2 = appReducer(state1, toggleSidebar());
     expect(state2.sidebarCollapsed).toBe(false);
-    expect(localStorage.getItem('tiny_threads_sidebar_collapsed')).toBe('false');
+    expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('false');
   });
 
   it('handles setSidebarCollapsed with explicit value', () => {
@@ -157,7 +158,7 @@ describe('appSlice layout actions', () => {
 
     const state = appReducer(initialState, setSidebarCollapsed(true));
     expect(state.sidebarCollapsed).toBe(true);
-    expect(localStorage.getItem('tiny_threads_sidebar_collapsed')).toBe('true');
+    expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
   });
 
   it('handles toggleMobileNav and setMobileNavOpen without localStorage persistence', () => {
@@ -190,7 +191,7 @@ describe('appSlice layout actions', () => {
   });
 
   it('initializes sidebarCollapsed from localStorage when set to true', () => {
-    localStorage.setItem('tiny_threads_sidebar_collapsed', 'true');
+    localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
     const state: AppState = appReducer(undefined, { type: 'unknown' });
     expect(state.sidebarCollapsed).toBe(true);
   });

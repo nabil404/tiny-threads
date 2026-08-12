@@ -44,6 +44,8 @@
     "collapseSidebar": "Collapse sidebar",
     "expandSidebar": "Expand sidebar",
     "toggleMobileMenu": "Toggle menu",
+    "userMenu": "User menu",
+    "closeMenu": "Close menu",
     "activeStatus": "Active",
     "theme": "Theme",
     "language": "Language",

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '@store/hooks';
@@ -29,11 +30,26 @@ export function MobileNavDrawer() {
   const { tenant } = useAppSelector(selectAuth);
   const [logoutApi] = useLogoutMutation();
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        dispatch(setMobileNavOpen(false));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, dispatch]);
+
   if (!isOpen) return null;
 
   const storeInitials = tenant?.name
     ? tenant.name
-        .split(' ')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
         .map((w) => w[0])
         .slice(0, 2)
         .join('')
@@ -92,7 +108,7 @@ export function MobileNavDrawer() {
           </div>
           <button
             type="button"
-            aria-label="Close menu"
+            aria-label={t('nav.closeMenu')}
             onClick={handleClose}
             className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
           >

@@ -27,7 +27,9 @@ export function Sidebar() {
 
   const storeInitials = tenant?.name
     ? tenant.name
-        .split(' ')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
         .map((w) => w[0])
         .slice(0, 2)
         .join('')

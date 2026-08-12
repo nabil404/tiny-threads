@@ -44,6 +44,8 @@
     "collapseSidebar": "Réduire la barre latérale",
     "expandSidebar": "Développer la barre latérale",
     "toggleMobileMenu": "Basculer le menu",
+    "userMenu": "Menu utilisateur",
+    "closeMenu": "Fermer le menu",
     "activeStatus": "Actif",
     "theme": "Thème",
     "language": "Langue",

@@ -69,5 +69,34 @@ describe('Sidebar', () => {
       expect(store.getState().auth.isAuthenticated).toBe(false);
     });
   });
+
+  it('safely parses store initials with extra whitespace and leading/trailing spaces', () => {
+    const store = configureStore({
+      reducer: {
+        app: appReducer,
+        auth: authReducer,
+        [baseApi.reducerPath]: baseApi.reducer,
+      },
+      preloadedState: {
+        app: { theme: 'dark' as const, locale: 'en' as const, sidebarCollapsed: false, mobileNavOpen: false },
+        auth: {
+          user: { id: '1', email: 'admin@demo.com', firstName: 'Admin', lastName: null, role: 'admin' },
+          tenant: { id: 'tenant-demo', name: '   Super   Awesome   Store  ' },
+          isAuthenticated: true,
+        },
+      },
+      middleware: (gdm) => gdm().concat(baseApi.middleware),
+    });
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/products']}>
+          <Sidebar />
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    expect(screen.getByText('SA')).toBeInTheDocument();
+  });
 });
 

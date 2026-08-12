@@ -14,6 +14,8 @@ import {
 } from '../../i18n/locales';
 import { authApi } from '../api/endpoints/authApi';
 
+export const SIDEBAR_COLLAPSED_STORAGE_KEY = 'tiny_threads_sidebar_collapsed';
+
 export interface AppState {
   theme: ThemeId;
   locale: LocaleId;
@@ -23,7 +25,7 @@ export interface AppState {
 
 const getInitialSidebarCollapsed = (): boolean => {
   if (typeof window === 'undefined') return false;
-  return localStorage.getItem('tiny_threads_sidebar_collapsed') === 'true';
+  return localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
 };
 
 const getInitialState = (): AppState => ({
@@ -59,7 +61,7 @@ export const appSlice = createSlice({
       state.sidebarCollapsed = !state.sidebarCollapsed;
       if (typeof window !== 'undefined') {
         localStorage.setItem(
-          'tiny_threads_sidebar_collapsed',
+          SIDEBAR_COLLAPSED_STORAGE_KEY,
           String(state.sidebarCollapsed),
         );
       }
@@ -68,7 +70,7 @@ export const appSlice = createSlice({
       state.sidebarCollapsed = action.payload;
       if (typeof window !== 'undefined') {
         localStorage.setItem(
-          'tiny_threads_sidebar_collapsed',
+          SIDEBAR_COLLAPSED_STORAGE_KEY,
           String(action.payload),
         );
       }
