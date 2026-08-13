@@ -19,28 +19,38 @@ describe('TenantSettingsService', () => {
   });
 
   describe('getSettings', () => {
-    it('should return existing tenant settings when found', async () => {
-      const existingSettings = {
-        tenantId: 'tenant-123',
-        id: 'settings-1',
-        allowGuestCheckout: true,
-        platformFeePercent: 2.5,
-        defaultCurrencyCode: 'USD',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+    const existingSettings = {
+      tenantId: 'tenant-123',
+      id: 'settings-1',
+      allowGuestCheckout: true,
+      platformFeePercent: 2.5,
+      defaultCurrencyCode: 'USD',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const usdCurrency = { code: 'USD', name: 'US Dollar', symbol: '$' };
 
+    function findOneMock(settings: unknown, currency: unknown) {
+      return jest.fn().mockImplementation((entityClass, options) => {
+        if (options.where?.code !== undefined) {
+          return Promise.resolve(currency);
+        }
+        return Promise.resolve(settings);
+      });
+    }
+
+    it('should return existing tenant settings with the currency symbol when found', async () => {
       tenantDbService.run.mockImplementation(async (cb: any) => {
-        const em = { findOne: jest.fn().mockResolvedValue(existingSettings) };
+        const em = { findOne: findOneMock(existingSettings, usdCurrency) };
         return await cb(em as any);
       });
 
       const result = await service.getSettings();
-      expect(result).toEqual(existingSettings);
+      expect(result).toEqual({ ...existingSettings, defaultCurrencySymbol: '$' });
       expect(tenantDbService.run).toHaveBeenCalledTimes(1);
     });
 
-    it('should throw CodedNotFoundException when no row exists', async () => {
+    it('should throw CodedNotFoundException when no settings row exists', async () => {
       tenantDbService.run.mockImplementation(async (cb: any) => {
         const em = {
           findOne: jest.fn().mockResolvedValue(null),
@@ -53,24 +63,25 @@ describe('TenantSettingsService', () => {
       );
     });
 
-    it('should use the provided manager directly and never open a new tenantDb.run transaction (R3)', async () => {
-      const existingSettings = {
-        tenantId: 'tenant-123',
-        id: 'settings-1',
-        allowGuestCheckout: true,
-        platformFeePercent: 2.5,
-        defaultCurrencyCode: 'USD',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+    it('should throw CodedNotFoundException when the currency row is missing', async () => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
+        const em = { findOne: findOneMock(existingSettings, null) };
+        return await cb(em as any);
+      });
 
+      await expect(service.getSettings()).rejects.toThrow(
+        CodedNotFoundException,
+      );
+    });
+
+    it('should use the provided manager directly and never open a new tenantDb.run transaction (R3)', async () => {
       const em = {
-        findOne: jest.fn().mockResolvedValue(existingSettings),
+        findOne: findOneMock(existingSettings, usdCurrency),
       } as unknown as EntityManager;
 
       const result = await service.getSettings(em);
 
-      expect(result).toEqual(existingSettings);
+      expect(result).toEqual({ ...existingSettings, defaultCurrencySymbol: '$' });
       expect(tenantDbService.run).not.toHaveBeenCalled();
     });
   });

@@ -15,6 +15,7 @@ function renderTable(
       <ProductInventoryTable
         products={products}
         lowStockThreshold={10}
+        currencySymbol="$"
         expandedIds={new Set()}
         onToggleExpand={vi.fn()}
         onDelete={vi.fn()}
@@ -85,6 +86,15 @@ describe('ProductInventoryTable', () => {
     };
     renderTable([single]);
     expect(screen.getByText('$199.00')).toBeInTheDocument();
+  });
+
+  it('formats prices using the provided currency symbol', () => {
+    const single: Product = {
+      ...headphones,
+      variants: [{ ...headphones.variants![0], priceCents: 19900 }],
+    };
+    renderTable([single], { currencySymbol: '€' });
+    expect(screen.getByText('€199.00')).toBeInTheDocument();
   });
 
   it('sums variant stock for the row-level stock indicator', () => {

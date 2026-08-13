@@ -10,11 +10,17 @@ import {
   CodedNotFoundException,
 } from '../common/errors/coded-exceptions';
 
+export type TenantSettingsWithCurrency = Omit<TenantSettings, 'generateId'> & {
+  defaultCurrencySymbol: string;
+};
+
 @Injectable()
 export class TenantSettingsService {
   constructor(private readonly tenantDb: TenantDbService) {}
 
-  async getSettings(manager?: EntityManager): Promise<TenantSettings> {
+  async getSettings(
+    manager?: EntityManager,
+  ): Promise<TenantSettingsWithCurrency> {
     const work = async (em: EntityManager) => {
       const settings = await em.findOne(TenantSettings, { where: {} });
       if (!settings) {
@@ -23,7 +29,16 @@ export class TenantSettingsService {
           'Tenant settings not found',
         );
       }
-      return settings;
+      const currency = await em.findOne(Currency, {
+        where: { code: settings.defaultCurrencyCode },
+      });
+      if (!currency) {
+        throw new CodedNotFoundException(
+          ErrorCode.RESOURCE_NOT_FOUND,
+          'Currency not found',
+        );
+      }
+      return { ...settings, defaultCurrencySymbol: currency.symbol };
     };
 
     return manager ? work(manager) : this.tenantDb.run(work);

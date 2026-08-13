@@ -19,6 +19,9 @@ import {
 import { VariantRow } from './VariantRow';
 import type { ProductFormData } from '../schemas/product-form.schema';
 import type { ProductVariantImage } from '@store/api/endpoints/productsApi';
+import { useGetTenantSettingsQuery } from '@store/api/endpoints/settingsApi';
+
+const DEFAULT_CURRENCY_SYMBOL = '$';
 
 export interface VariantsSectionProps {
   mode: 'create' | 'edit';
@@ -39,6 +42,8 @@ export function VariantsSection({
 }: VariantsSectionProps) {
   const { control, formState } = useFormContext<ProductFormData>();
   const { t } = useTranslation();
+  const { data: settings } = useGetTenantSettingsQuery();
+  const currencySymbol = settings?.defaultCurrencySymbol ?? DEFAULT_CURRENCY_SYMBOL;
   const { fields, append, remove } = useFieldArray({
     control,
     name: 'variants',
@@ -94,7 +99,9 @@ export function VariantsSection({
                 <TableHead className="w-[130px]">{t('products.variantImageHeader')}</TableHead>
                 <TableHead>{t('products.variantNameHeader')}</TableHead>
                 <TableHead>{t('products.variantSkuHeader')}</TableHead>
-                <TableHead className="w-[120px]">{t('products.variantPriceHeader')}</TableHead>
+                <TableHead className="w-[120px]">
+                  {t('products.variantPriceHeader', { symbol: currencySymbol })}
+                </TableHead>
                 <TableHead className="w-[100px]">{t('products.variantStockHeader')}</TableHead>
                 <TableHead className="w-[50px]" />
               </TableRow>

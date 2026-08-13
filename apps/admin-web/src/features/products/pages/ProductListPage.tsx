@@ -28,6 +28,7 @@ import { extractErrorMessage } from '@lib/extract-error-message';
 
 const PAGE_SIZE = 20;
 const DEFAULT_LOW_STOCK_THRESHOLD = 10;
+const DEFAULT_CURRENCY_SYMBOL = '$';
 const SEARCH_DEBOUNCE_MS = 500;
 
 type StatusFilter = 'all' | 'draft' | 'active' | 'archived';
@@ -85,6 +86,7 @@ export function ProductListPage() {
   const [deleteProduct] = useDeleteProductMutation();
 
   const lowStockThreshold = settings?.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD;
+  const currencySymbol = settings?.defaultCurrencySymbol ?? DEFAULT_CURRENCY_SYMBOL;
   const flatCategories = useMemo(() => flattenCategories(categoryTree), [categoryTree]);
 
   const toggleExpand = (id: string) => {
@@ -179,6 +181,7 @@ export function ProductListPage() {
           <ProductInventoryTable
             products={products}
             lowStockThreshold={lowStockThreshold}
+            currencySymbol={currencySymbol}
             expandedIds={expandedIds}
             onToggleExpand={toggleExpand}
             onDelete={handleDelete}

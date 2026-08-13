@@ -6,6 +6,7 @@ export interface TenantSettings {
   allowGuestCheckout: boolean;
   platformFeePercent: number;
   defaultCurrencyCode: string;
+  defaultCurrencySymbol: string;
   captureMode: string;
   lowStockThreshold: number;
 }

@@ -157,7 +157,7 @@
     "variantImageHeader": "Image",
     "variantNameHeader": "Variant Name",
     "variantSkuHeader": "SKU",
-    "variantPriceHeader": "Price ($)",
+    "variantPriceHeader": "Price ({{symbol}})",
     "variantStockHeader": "Stock",
     "addVariant": "Add Variant",
     "variantMinNotice": "At least one variant is required. The last remaining variant cannot be deleted."

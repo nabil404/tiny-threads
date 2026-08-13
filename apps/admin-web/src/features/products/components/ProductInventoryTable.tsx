@@ -12,27 +12,26 @@ import {
 import { Badge } from '@components/ui/badge';
 import { Button } from '@components/ui/button';
 import { StockIndicator } from './StockIndicator';
-import { priceCentsToDollars } from '../schemas/product-form.schema';
+import { formatCurrency } from '@lib/format-currency';
 import type { Product, ProductVariant } from '@store/api/endpoints/productsApi';
 
 export interface ProductInventoryTableProps {
   products: Product[];
   lowStockThreshold: number;
+  currencySymbol: string;
   expandedIds: Set<string>;
   onToggleExpand: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-function formatPrice(cents: number): string {
-  return `$${priceCentsToDollars(cents).toFixed(2)}`;
-}
-
-function priceRange(variants: ProductVariant[]): string {
+function priceRange(variants: ProductVariant[], currencySymbol: string): string {
   if (variants.length === 0) return '—';
   const prices = variants.map((v) => v.priceCents);
   const min = Math.min(...prices);
   const max = Math.max(...prices);
-  return min === max ? formatPrice(min) : `${formatPrice(min)} - ${formatPrice(max)}`;
+  return min === max
+    ? formatCurrency(min, currencySymbol)
+    : `${formatCurrency(min, currencySymbol)} - ${formatCurrency(max, currencySymbol)}`;
 }
 
 function totalStock(variants: ProductVariant[]): number {
@@ -61,6 +60,7 @@ function primaryImageUrl(variants: ProductVariant[]): string | undefined {
 export function ProductInventoryTable({
   products,
   lowStockThreshold,
+  currencySymbol,
   expandedIds,
   onToggleExpand,
   onDelete,
@@ -122,7 +122,7 @@ export function ProductInventoryTable({
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">—</TableCell>
-                <TableCell>{priceRange(variants)}</TableCell>
+                <TableCell>{priceRange(variants, currencySymbol)}</TableCell>
                 <TableCell className="text-muted-foreground">{variants.length}</TableCell>
                 <TableCell>
                   <StockIndicator
@@ -162,7 +162,7 @@ export function ProductInventoryTable({
                       {variant.sku}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {formatPrice(variant.priceCents)}
+                      {formatCurrency(variant.priceCents, currencySymbol)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">—</TableCell>
                     <TableCell>
