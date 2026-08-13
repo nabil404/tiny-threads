@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { Editor } from '@tiptap/react';
 import { getMarkRange } from '@tiptap/core';
 import {
@@ -58,14 +58,16 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
   }, [editor, isEditing]);
 
   // Sync form fields when popover opens
-  useEffect(() => {
-    if (!open) return;
-
-    setUrlError(null);
-    const { from, to } = getTargetRange();
-    setDisplayText(editor.state.doc.textBetween(from, to, ''));
-    setUrl(isEditing ? editor.getAttributes('link').href || '' : '');
-  }, [open, isEditing, editor, getTargetRange]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) {
+      setUrlError(null);
+      const { from, to } = getTargetRange();
+      setDisplayText(editor.state.doc.textBetween(from, to, ''));
+      setUrl(isEditing ? editor.getAttributes('link').href || '' : '');
+    }
+  }
 
   const normalizeUrl = (input: string): string => {
     const trimmed = input.trim();

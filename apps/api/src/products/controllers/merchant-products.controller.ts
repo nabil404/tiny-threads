@@ -137,6 +137,17 @@ export class MerchantProductsController {
   }
 
   @ApiOperation({
+    summary: 'Get product inventory stats',
+    description:
+      'Returns aggregate counts (total products, active listings, low stock, out of stock) for the merchant catalog.',
+  })
+  @ApiResponse({ status: 200, description: 'Product stats.' })
+  @Get('stats')
+  getStats() {
+    return this.productsService.getStats();
+  }
+
+  @ApiOperation({
     summary: 'Get product by ID',
     description: 'Retrieves a single product by ID.',
   })

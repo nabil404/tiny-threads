@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../db/database.module';
 import { StorageModule } from '../storage/storage.module';
+import { TenantSettingsModule } from '../tenant-settings/tenant-settings.module';
 import { ProductsService } from './services/products.service';
 import { CategoriesService } from './services/categories.service';
 import { ProductVariantImagesService } from './services/product-variant-images.service';
@@ -12,7 +13,7 @@ import { StorefrontProductsController } from './controllers/storefront-products.
 import { StorefrontCategoriesController } from './controllers/storefront-categories.controller';
 
 @Module({
-  imports: [DatabaseModule, StorageModule],
+  imports: [DatabaseModule, StorageModule, TenantSettingsModule],
   controllers: [
     MerchantProductsController,
     MerchantProductVariantsController,

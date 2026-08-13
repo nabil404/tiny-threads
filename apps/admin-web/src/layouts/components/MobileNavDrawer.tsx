@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppDispatch, useAppSelector } from '@store/hooks';
@@ -28,27 +28,17 @@ export function MobileNavDrawer() {
   const [logoutApi] = useLogoutMutation();
 
   const [isMounted, setIsMounted] = useState(isOpen);
-  const [isVisible, setIsVisible] = useState(isOpen);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) setIsMounted(true);
+  }
 
   useEffect(() => {
-    if (isOpen) {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      setIsMounted(true);
-      setIsVisible(true);
-    } else {
-      setIsVisible(false);
-      timeoutRef.current = setTimeout(() => {
-        setIsMounted(false);
-      }, 250);
-      return () => {
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
-      };
-    }
+    if (isOpen) return;
+    const timeoutId = setTimeout(() => setIsMounted(false), 250);
+    return () => clearTimeout(timeoutId);
   }, [isOpen]);
 
   useEffect(() => {
@@ -128,7 +118,7 @@ export function MobileNavDrawer() {
       {/* Backdrop */}
       <div
         className={`fixed inset-0 bg-black/50 backdrop-blur-xs z-50 ${
-          isVisible
+          isOpen
             ? 'animate-backdrop-in'
             : 'animate-backdrop-out pointer-events-none'
         }`}
@@ -141,7 +131,7 @@ export function MobileNavDrawer() {
         role="dialog"
         aria-modal="true"
         className={`fixed inset-y-0 left-0 z-50 w-3/4 max-w-xs bg-card border-r border-border p-4 shadow-2xl flex flex-col ${
-          isVisible ? 'animate-drawer-in' : 'animate-drawer-out'
+          isOpen ? 'animate-drawer-in' : 'animate-drawer-out'
         }`}
       >
         <div className="flex items-center justify-between pb-4 border-b border-border">

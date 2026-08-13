@@ -30,4 +30,7 @@ export class TenantSettings extends TenantEntityBase {
     default: 'immediate',
   })
   captureMode!: string;
+
+  @Column({ name: 'low_stock_threshold', type: 'int', default: 10 })
+  lowStockThreshold!: number;
 }

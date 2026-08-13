@@ -195,5 +195,37 @@ describe('TenantSettingsService', () => {
         CodedNotFoundException,
       );
     });
+
+    it('should update lowStockThreshold on existing settings and leave allowGuestCheckout untouched', async () => {
+      const existingSettings = {
+        tenantId: 'tenant-123',
+        id: 'settings-1',
+        allowGuestCheckout: true,
+        platformFeePercent: 2.5,
+        defaultCurrencyCode: 'USD',
+        lowStockThreshold: 10,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      tenantDbService.run.mockImplementation(async (cb: any) => {
+        const em = {
+          findOne: jest.fn().mockResolvedValue(existingSettings),
+          save: jest
+            .fn()
+            .mockImplementation((entity) => Promise.resolve(entity)),
+        };
+        return await cb(em as any);
+      });
+
+      const dto = {
+        lowStockThreshold: 25,
+      };
+
+      const result = await service.updateSettings(dto);
+
+      expect(result.lowStockThreshold).toBe(25);
+      expect(result.allowGuestCheckout).toBe(true);
+    });
   });
 });

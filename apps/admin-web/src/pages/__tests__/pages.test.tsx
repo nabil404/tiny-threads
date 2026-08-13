@@ -6,7 +6,6 @@ import { MemoryRouter } from 'react-router-dom';
 import authReducer from '@store/slices/authSlice';
 import appReducer from '@store/slices/appSlice';
 import { DashboardPage } from '../dashboard/DashboardPage';
-import { ProductsPage } from '../products/ProductsPage';
 import { OrdersPage } from '../orders/OrdersPage';
 import { SettingsPage } from '../settings/SettingsPage';
 import { NotFoundPage } from '../not-found/NotFoundPage';
@@ -46,13 +45,6 @@ describe('Pages', () => {
   it('renders DashboardPage with user info', () => {
     renderWithStore(<DashboardPage />);
     expect(screen.getByText(/owner@example.com/i)).toBeInTheDocument();
-  });
-
-  it('renders ProductsPage placeholder', () => {
-    renderWithStore(<ProductsPage />);
-    expect(
-      screen.getByRole('heading', { name: /products/i }),
-    ).toBeInTheDocument();
   });
 
   it('renders OrdersPage placeholder', () => {

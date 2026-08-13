@@ -22,12 +22,20 @@ import {
 import { ErrorCode } from '@tiny-threads/shared';
 import { In, Not, EntityManager } from 'typeorm';
 import { randomUUID } from 'crypto';
+import { TenantSettingsService } from '../../tenant-settings/tenant-settings.service';
 
 export interface PaginatedProducts {
   items: Product[];
   total: number;
   page: number;
   limit: number;
+}
+
+export interface ProductStats {
+  totalProducts: number;
+  activeListings: number;
+  lowStock: number;
+  outOfStock: number;
 }
 
 @Injectable()
@@ -37,6 +45,7 @@ export class ProductsService {
     private readonly cls: ClsService,
     @Inject(STORAGE_PORT) private readonly storagePort: StoragePort,
     private readonly imageProcessingService: ImageProcessingService,
+    private readonly tenantSettingsService: TenantSettingsService,
   ) {}
 
   private async saveWithUniqueCheck<T>(saveFn: () => Promise<T>): Promise<T> {
@@ -362,6 +371,41 @@ export class ProductsService {
         total,
         page,
         limit,
+      };
+    });
+  }
+
+  async getStats(): Promise<ProductStats> {
+    return this.tenantDb.run(async (em) => {
+      const settings = await this.tenantSettingsService.getSettings(em);
+
+      const rows = await em
+        .createQueryBuilder(Product, 'product')
+        .leftJoin('product.variants', 'variant')
+        .select('product.id', 'id')
+        .addSelect('product.status', 'status')
+        .addSelect('COALESCE(SUM(variant.stock), 0)', 'totalStock')
+        .groupBy('product.id')
+        .addGroupBy('product.tenantId')
+        .getRawMany<{ id: string; status: string; totalStock: string }>();
+
+      let activeListings = 0;
+      let lowStock = 0;
+      let outOfStock = 0;
+
+      for (const row of rows) {
+        if (row.status !== 'active') continue;
+        activeListings++;
+        const stock = Number(row.totalStock);
+        if (stock === 0) outOfStock++;
+        else if (stock <= settings.lowStockThreshold) lowStock++;
+      }
+
+      return {
+        totalProducts: rows.length,
+        activeListings,
+        lowStock,
+        outOfStock,
       };
     });
   }

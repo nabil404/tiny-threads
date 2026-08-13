@@ -70,7 +70,7 @@ export function ProductForm({
     if (initialData) {
       form.reset(initialData);
     }
-  }, [initialData]);
+  }, [initialData, form]);
 
   const handleSubmit = async (data: ProductFormData) => {
     await onSubmit(data, variantImages);

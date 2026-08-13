@@ -11,6 +11,7 @@ import { ProductVariant } from '../../db/entities/product-variants.entity';
 
 import { STORAGE_PORT } from '../../storage/storage.port';
 import { ImageProcessingService } from '../../storage/image-processing.service';
+import { TenantSettingsService } from '../../tenant-settings/tenant-settings.service';
 
 describe('ProductsService - Single Variant Operations', () => {
   let service: ProductsService;
@@ -56,6 +57,10 @@ describe('ProductsService - Single Variant Operations', () => {
         {
           provide: ImageProcessingService,
           useValue: { processVariantImage: jest.fn() },
+        },
+        {
+          provide: TenantSettingsService,
+          useValue: { getSettings: jest.fn(), updateSettings: jest.fn() },
         },
       ],
     }).compile();

@@ -57,6 +57,28 @@ export interface UpdateProductBody {
   }>;
 }
 
+export interface ProductListParams {
+  page?: number;
+  limit?: number;
+  status?: 'draft' | 'active' | 'archived';
+  categoryId?: string;
+  q?: string;
+}
+
+export interface PaginatedProducts {
+  items: Product[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface ProductStats {
+  totalProducts: number;
+  activeListings: number;
+  lowStock: number;
+  outOfStock: number;
+}
+
 export const productsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     createProduct: builder.mutation<Product, FormData>({
@@ -83,6 +105,33 @@ export const productsApi = baseApi.injectEndpoints({
         'Products',
       ],
     }),
+    getProducts: builder.query<PaginatedProducts, ProductListParams | void>({
+      query: (params) => ({
+        url: '/merchant-admins/products',
+        params: params ?? undefined,
+      }),
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.items.map(({ id }) => ({ type: 'Products' as const, id })),
+              { type: 'Products' as const, id: 'LIST' },
+            ]
+          : [{ type: 'Products' as const, id: 'LIST' }],
+    }),
+    getProductStats: builder.query<ProductStats, void>({
+      query: () => '/merchant-admins/products/stats',
+      providesTags: ['Products'],
+    }),
+    deleteProduct: builder.mutation<void, string>({
+      query: (id) => ({
+        url: `/merchant-admins/products/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _error, id) => [
+        { type: 'Products', id },
+        'Products',
+      ],
+    }),
   }),
 });
 
@@ -90,4 +139,7 @@ export const {
   useCreateProductMutation,
   useGetProductQuery,
   useUpdateProductMutation,
+  useGetProductsQuery,
+  useGetProductStatsQuery,
+  useDeleteProductMutation,
 } = productsApi;

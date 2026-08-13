@@ -3,6 +3,7 @@ import { MerchantCategoriesController } from '../controllers/merchant-categories
 import {
   ProductsService,
   PaginatedProducts,
+  ProductStats,
 } from '../services/products.service';
 import {
   CategoriesService,
@@ -24,6 +25,7 @@ describe('Merchant Controllers', () => {
     create: jest.Mock;
     createWithImages: jest.Mock;
     findAll: jest.Mock;
+    getStats: jest.Mock;
     findById: jest.Mock;
     update: jest.Mock;
     delete: jest.Mock;
@@ -41,6 +43,7 @@ describe('Merchant Controllers', () => {
       create: jest.fn(),
       createWithImages: jest.fn(),
       findAll: jest.fn(),
+      getStats: jest.fn(),
       findById: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -148,6 +151,20 @@ describe('Merchant Controllers', () => {
 
       const res = await productsController.findAll(query);
       expect(productsService.findAll).toHaveBeenCalledWith(query, false);
+      expect(res).toBe(expected);
+    });
+
+    it('calls productsService.getStats on GET /stats', async () => {
+      const expected: ProductStats = {
+        totalProducts: 4,
+        activeListings: 3,
+        lowStock: 1,
+        outOfStock: 1,
+      };
+      productsService.getStats.mockResolvedValue(expected);
+
+      const res = await productsController.getStats();
+      expect(productsService.getStats).toHaveBeenCalledWith();
       expect(res).toBe(expected);
     });
 

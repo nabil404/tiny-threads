@@ -10,6 +10,7 @@ import {
 
 import { StoragePort } from '../../storage/storage.port';
 import { ImageProcessingService } from '../../storage/image-processing.service';
+import { TenantSettingsService } from '../../tenant-settings/tenant-settings.service';
 
 describe('ProductsService', () => {
   let service: ProductsService;
@@ -17,6 +18,7 @@ describe('ProductsService', () => {
   let clsService: jest.Mocked<ClsService>;
   let storagePort: jest.Mocked<StoragePort>;
   let imageProcessingService: jest.Mocked<ImageProcessingService>;
+  let tenantSettingsService: jest.Mocked<TenantSettingsService>;
 
   beforeEach(() => {
     tenantDbService = {
@@ -36,12 +38,17 @@ describe('ProductsService', () => {
         contentType: 'image/webp',
       }),
     } as unknown as jest.Mocked<ImageProcessingService>;
+    tenantSettingsService = {
+      getSettings: jest.fn(),
+      updateSettings: jest.fn(),
+    } as unknown as jest.Mocked<TenantSettingsService>;
 
     service = new ProductsService(
       tenantDbService,
       clsService,
       storagePort,
       imageProcessingService,
+      tenantSettingsService,
     );
   });
 
@@ -369,6 +376,72 @@ describe('ProductsService', () => {
         'product.status = :activeStatus',
         { activeStatus: 'active' },
       );
+    });
+  });
+
+  describe('getStats', () => {
+    it('sums variant stock per product and buckets active products by the tenant low-stock threshold', async () => {
+      const mockQb = {
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          { id: 'p1', status: 'active', totalStock: '145' },
+          { id: 'p2', status: 'active', totalStock: '8' },
+          { id: 'p3', status: 'active', totalStock: '0' },
+          { id: 'p4', status: 'draft', totalStock: '0' },
+        ]),
+      };
+
+      tenantDbService.run.mockImplementation(async (cb: any) => {
+        const em = { createQueryBuilder: jest.fn().mockReturnValue(mockQb) };
+        return await cb(em as any);
+      });
+      tenantSettingsService.getSettings.mockResolvedValue({
+        lowStockThreshold: 10,
+      } as any);
+
+      const result = await service.getStats();
+
+      expect(result).toEqual({
+        totalProducts: 4,
+        activeListings: 3,
+        lowStock: 1,
+        outOfStock: 1,
+      });
+    });
+
+    it('ignores draft/archived products when counting lowStock and outOfStock', async () => {
+      const mockQb = {
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          { id: 'p1', status: 'draft', totalStock: '0' },
+          { id: 'p2', status: 'archived', totalStock: '0' },
+        ]),
+      };
+
+      tenantDbService.run.mockImplementation(async (cb: any) => {
+        const em = { createQueryBuilder: jest.fn().mockReturnValue(mockQb) };
+        return await cb(em as any);
+      });
+      tenantSettingsService.getSettings.mockResolvedValue({
+        lowStockThreshold: 10,
+      } as any);
+
+      const result = await service.getStats();
+
+      expect(result).toEqual({
+        totalProducts: 2,
+        activeListings: 0,
+        lowStock: 0,
+        outOfStock: 0,
+      });
     });
   });
 

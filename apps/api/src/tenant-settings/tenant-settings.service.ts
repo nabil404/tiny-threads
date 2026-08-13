@@ -56,6 +56,10 @@ export class TenantSettingsService {
         settings.allowGuestCheckout = dto.allowGuestCheckout;
       }
 
+      if (dto.lowStockThreshold !== undefined) {
+        settings.lowStockThreshold = dto.lowStockThreshold;
+      }
+
       return em.save(settings);
     });
   }
