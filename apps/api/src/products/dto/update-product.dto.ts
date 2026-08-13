@@ -43,6 +43,11 @@ export class UpdateVariantDto {
   @IsOptional()
   @IsBoolean({ message: field(ErrorCode.IS_BOOLEAN) })
   isDefault?: boolean;
+
+  @IsOptional()
+  @IsString({ message: field(ErrorCode.IS_STRING) })
+  @MaxLength(64, { message: field(ErrorCode.MAX_LENGTH) })
+  clientKey?: string;
 }
 
 export class UpdateProductDto extends PartialType(

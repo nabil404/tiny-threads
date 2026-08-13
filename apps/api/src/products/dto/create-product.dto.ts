@@ -39,6 +39,11 @@ export class CreateVariantDto {
   @IsBoolean({ message: field(ErrorCode.IS_BOOLEAN) })
   @IsOptional()
   isDefault?: boolean;
+
+  @IsString({ message: field(ErrorCode.IS_STRING) })
+  @IsOptional()
+  @MaxLength(64, { message: field(ErrorCode.MAX_LENGTH) })
+  clientKey?: string;
 }
 
 export class CreateProductDto {

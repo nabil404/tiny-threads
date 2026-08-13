@@ -99,6 +99,20 @@ export class ProductsService {
     return product;
   }
 
+  private attachClientKeys(
+    product: Product,
+    clientKeyByVariantId: Map<string, string>,
+  ): Product {
+    for (const variant of product.variants ?? []) {
+      const clientKey = clientKeyByVariantId.get(variant.id);
+      if (clientKey !== undefined) {
+        (variant as ProductVariant & { clientKey?: string }).clientKey =
+          clientKey;
+      }
+    }
+    return product;
+  }
+
   private async createVariantsForProduct(
     em: EntityManager,
     tenantId: string,
@@ -190,12 +204,18 @@ export class ProductsService {
       );
 
       // 3. Create Variants
-      await this.createVariantsForProduct(
+      const savedVariants = await this.createVariantsForProduct(
         em,
         tenantId,
         savedProduct.id,
         dto.variants,
       );
+      const clientKeyByVariantId = new Map<string, string>();
+      (dto.variants ?? []).forEach((v, i) => {
+        if (v.clientKey && savedVariants[i]) {
+          clientKeyByVariantId.set(savedVariants[i].id, v.clientKey);
+        }
+      });
 
       // 4. Create Product-Category Associations
       if (dto.categoryIds && dto.categoryIds.length > 0) {
@@ -209,7 +229,10 @@ export class ProductsService {
         await em.save(ProductCategory, productCategories);
       }
 
-      return this.findProductById(em, savedProduct.id);
+      return this.attachClientKeys(
+        await this.findProductById(em, savedProduct.id),
+        clientKeyByVariantId,
+      );
     });
   }
 
@@ -277,6 +300,12 @@ export class ProductsService {
         savedProduct.id,
         dto.variants,
       );
+      const clientKeyByVariantId = new Map<string, string>();
+      (dto.variants ?? []).forEach((v, i) => {
+        if (v.clientKey && savedVariants[i]) {
+          clientKeyByVariantId.set(savedVariants[i].id, v.clientKey);
+        }
+      });
 
       // Create category associations
       if (dto.categoryIds && dto.categoryIds.length > 0) {
@@ -317,7 +346,10 @@ export class ProductsService {
         }
       }
 
-      return this.findProductById(em, savedProduct.id);
+      return this.attachClientKeys(
+        await this.findProductById(em, savedProduct.id),
+        clientKeyByVariantId,
+      );
     });
   }
 
@@ -429,6 +461,7 @@ export class ProductsService {
   async update(id: string, dto: UpdateProductDto): Promise<Product> {
     return this.tenantDb.run(async (em) => {
       const tenantId = this.cls.get<string>('tenantId');
+      const clientKeyByVariantId = new Map<string, string>();
       const product = await em.findOne(Product, {
         where: { id },
         relations: { variants: true, productCategories: true },
@@ -570,9 +603,14 @@ export class ProductsService {
             await em.delete(ProductVariant, { id: In(removeIds) });
           }
 
-          await this.saveWithUniqueCheck(() =>
+          const savedVariants = await this.saveWithUniqueCheck(() =>
             em.save(ProductVariant, variantsToSave),
           );
+          dto.variants.forEach((vDto, i) => {
+            if (vDto.clientKey && savedVariants[i]) {
+              clientKeyByVariantId.set(savedVariants[i].id, vDto.clientKey);
+            }
+          });
         } else {
           // If all variants removed, delete existing and auto-create default variant
           if (currentVariants.length > 0) {
@@ -592,7 +630,10 @@ export class ProductsService {
         }
       }
 
-      return this.findProductById(em, id);
+      return this.attachClientKeys(
+        await this.findProductById(em, id),
+        clientKeyByVariantId,
+      );
     });
   }
 

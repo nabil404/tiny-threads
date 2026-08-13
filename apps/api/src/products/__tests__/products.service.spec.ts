@@ -219,6 +219,58 @@ describe('ProductsService', () => {
 
       expect(result).toEqual(mockProduct);
     });
+
+    it('attaches submitted clientKey onto the matching variant in the create response', async () => {
+      tenantDbService.run.mockImplementation(async (cb: any) => {
+        const em = {
+          save: jest.fn().mockImplementation((entityOrClass, entity) => {
+            const item = entity || entityOrClass;
+            if (Array.isArray(item)) {
+              return Promise.resolve(
+                item.map((v, i) => ({ ...v, id: `variant-${i}` })),
+              );
+            }
+            return Promise.resolve({ id: 'prod-1', ...item });
+          }),
+          create: jest.fn().mockImplementation((entityClass, entity) => entity),
+          findOne: jest.fn().mockImplementation((entityClass, options) => {
+            if (options.where?.sku) return Promise.resolve(null);
+            return Promise.resolve({
+              id: 'prod-1',
+              status: 'active',
+              variants: [
+                { id: 'variant-0', sku: 'SKU-1' },
+                { id: 'variant-1', sku: 'SKU-2' },
+              ],
+            });
+          }),
+          find: jest.fn().mockResolvedValue([]),
+        };
+        return await cb(em as any);
+      });
+
+      const result = await service.create({
+        title: 'Multi-variant Tee',
+        status: 'active',
+        variants: [
+          {
+            sku: 'SKU-1',
+            priceCents: 1000,
+            stock: 5,
+            clientKey: 'client-key-a',
+          },
+          {
+            sku: 'SKU-2',
+            priceCents: 1200,
+            stock: 10,
+            clientKey: 'client-key-b',
+          },
+        ],
+      });
+
+      expect((result.variants?.[0] as any).clientKey).toEqual('client-key-a');
+      expect((result.variants?.[1] as any).clientKey).toEqual('client-key-b');
+    });
   });
 
   describe('createWithImages', () => {
@@ -591,6 +643,91 @@ describe('ProductsService', () => {
       await expect(
         service.update('prod-nonexistent', { title: 'New' }),
       ).rejects.toThrow(CodedNotFoundException);
+    });
+
+    it('attaches submitted clientKey onto a newly-created variant in the update response', async () => {
+      const existingVariant = {
+        id: 'variant-existing',
+        sku: 'SKU-OLD',
+        priceCents: 500,
+        stock: 1,
+        isDefault: true,
+      };
+      tenantDbService.run.mockImplementation(async (cb: any) => {
+        const em = {
+          findOne: jest.fn().mockImplementation((entityClass, options) => {
+            if (options.where?.sku) return Promise.resolve(null);
+            if (options.relations?.variants?.images) {
+              // findProductById's post-save re-fetch — reflects both variants
+              return Promise.resolve({
+                id: 'prod-1',
+                title: 'Existing',
+                status: 'active',
+                variants: [
+                  existingVariant,
+                  {
+                    id: 'variant-new',
+                    sku: 'SKU-NEW',
+                    priceCents: 700,
+                    stock: 2,
+                    isDefault: false,
+                  },
+                ],
+              });
+            }
+            // update()'s initial existence check
+            return Promise.resolve({
+              id: 'prod-1',
+              title: 'Existing',
+              status: 'active',
+              variants: [existingVariant],
+            });
+          }),
+          find: jest.fn().mockImplementation((entityClass, options) => {
+            if (options?.where?.productId !== undefined) {
+              return Promise.resolve([existingVariant]);
+            }
+            return Promise.resolve([]);
+          }),
+          create: jest.fn().mockImplementation((entityClass, entity) => entity),
+          save: jest.fn().mockImplementation((entityOrClass, entity) => {
+            const item = entity || entityOrClass;
+            if (Array.isArray(item)) {
+              return Promise.resolve(
+                item.map((v) => (v.id ? v : { ...v, id: 'variant-new' })),
+              );
+            }
+            return Promise.resolve(item);
+          }),
+          delete: jest.fn().mockResolvedValue(undefined),
+        };
+        return await cb(em as any);
+      });
+
+      const result = await service.update('prod-1', {
+        variants: [
+          {
+            id: 'variant-existing',
+            sku: 'SKU-OLD',
+            priceCents: 500,
+            stock: 1,
+            isDefault: true,
+            clientKey: 'existing-key',
+          },
+          {
+            sku: 'SKU-NEW',
+            priceCents: 700,
+            stock: 2,
+            clientKey: 'new-variant-key',
+          },
+        ],
+      });
+
+      const found = result.variants?.find(
+        (v: any) => v.clientKey === 'new-variant-key',
+      );
+      expect(found).toBeDefined();
+      expect((found as any).id).toEqual('variant-new');
     });
   });
 
