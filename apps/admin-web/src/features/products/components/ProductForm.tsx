@@ -179,6 +179,15 @@ export function ProductForm({
 
   const handleSubmit = async (data: ProductFormData) => {
     await onSubmit(data, imageManager);
+    // Edit mode intentionally doesn't await waitForIdle inside its own
+    // onSubmit (uploads for newly-added variants keep running in the
+    // background after the success toast). Create mode already awaited it
+    // once inside its onSubmit, so this second call is a cheap no-op there.
+    // Waiting here — after onSubmit but before counting failures — lets
+    // legitimately in-flight uploads settle first, so reportFailedUploads
+    // only flags items that are genuinely stuck (never scheduled at all),
+    // not ones that just haven't finished yet.
+    await imageManager.waitForIdle(data.variants.map((v) => v.clientKey));
     reportFailedUploads(data.variants.map((v) => v.clientKey));
   };
 
