@@ -152,12 +152,20 @@ export function ProductForm({
 
   const reportFailedUploads = useCallback(
     (clientKeys: string[]) => {
+      // Count anything that isn't 'done' — not just explicit 'error' items.
+      // An item can also get silently stuck in 'queued'/'uploading' forever
+      // if it never received a setGroupContext call (e.g. a clientKey
+      // correlation miss against the create/update response), in which case
+      // it never gets registered in the manager's pendingUploadsRef and
+      // waitForIdle resolves without ever having awaited it. Treating any
+      // non-done item as failed ensures the merchant is warned instead of
+      // silently losing the image.
       const failedCount = clientKeys.reduce(
         (total, key) =>
           total +
           imageManager
             .getItems(key)
-            .filter((item) => item.status === 'error').length,
+            .filter((item) => item.status !== 'done').length,
         0,
       );
       if (failedCount > 0) {
