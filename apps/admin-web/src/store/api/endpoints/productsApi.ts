@@ -19,6 +19,7 @@ export interface ProductVariant {
   priceCents: number;
   stock: number;
   isDefault: boolean;
+  clientKey?: string;
   images?: ProductVariantImage[];
 }
 
@@ -50,10 +51,26 @@ export interface UpdateProductBody {
   categoryIds?: string[];
   variants?: Array<{
     id?: string;
+    clientKey?: string;
     name?: string;
     sku?: string;
     priceCents?: number;
     stock?: number;
+    isDefault?: boolean;
+  }>;
+}
+
+export interface CreateProductBody {
+  title: string;
+  description?: JSONContent;
+  status: 'draft' | 'active' | 'archived';
+  categoryIds?: string[];
+  variants?: Array<{
+    clientKey?: string;
+    name?: string;
+    sku: string;
+    priceCents: number;
+    stock: number;
     isDefault?: boolean;
   }>;
 }
@@ -82,12 +99,11 @@ export interface ProductStats {
 
 export const productsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    createProduct: builder.mutation<Product, FormData>({
-      query: (formData) => ({
+    createProduct: builder.mutation<Product, CreateProductBody>({
+      query: (body) => ({
         url: '/merchant-admins/products',
         method: 'POST',
-        body: formData,
-        // Do NOT set Content-Type — browser sets it with boundary for multipart
+        body,
       }),
       invalidatesTags: ['Products'],
     }),
