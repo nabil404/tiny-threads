@@ -6,6 +6,7 @@ import {
   useUpdateProductMutation,
 } from '@store/api/endpoints/productsApi';
 import type { UpdateProductBody } from '@store/api/endpoints/productsApi';
+import { useUploadVariantImageMutation } from '@store/api/endpoints/productVariantImagesApi';
 import { extractErrorMessage } from '@lib/extract-error-message';
 import { ProductForm } from '../components/ProductForm';
 import type { ProductFormData } from '../schemas/product-form.schema';
@@ -23,6 +24,7 @@ export function EditProductPage() {
   } = useGetProductQuery(id!, { skip: !id });
   const [updateProduct, { isLoading: isUpdating }] =
     useUpdateProductMutation();
+  const [uploadImage] = useUploadVariantImageMutation();
   const [error, setError] = useState<string | null>(null);
 
   const initialData: ProductFormData | undefined = useMemo(() => {
@@ -62,7 +64,10 @@ export function EditProductPage() {
     return map;
   }, [product]);
 
-  const handleSubmit = async (data: ProductFormData) => {
+  const handleSubmit = async (
+    data: ProductFormData,
+    localImages: Map<number, File[]>,
+  ) => {
     if (!id) return;
     setError(null);
 
@@ -82,7 +87,22 @@ export function EditProductPage() {
         })),
       };
 
-      await updateProduct({ id, body }).unwrap();
+      const result = await updateProduct({ id, body }).unwrap();
+
+      // Newly-added variants have no id until this save resolves, so their
+      // queued images couldn't be uploaded until now. Match by sku (unique
+      // per tenant) since the response's variant order isn't guaranteed to
+      // match the request order.
+      for (const [index, files] of localImages) {
+        if (files.length === 0) continue;
+        const sku = data.variants[index]?.sku;
+        const savedVariant = result.variants?.find((v) => v.sku === sku);
+        if (!savedVariant) continue;
+        for (const file of files) {
+          await uploadImage({ productId: id, variantId: savedVariant.id, file });
+        }
+      }
+
       toast.success('Product updated successfully');
     } catch (err: unknown) {
       setError(extractErrorMessage(err, 'Failed to update product'));

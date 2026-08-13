@@ -1,12 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { VariantImageUploader } from '../VariantImageUploader';
 import * as productVariantImagesApiModule from '@store/api/endpoints/productVariantImagesApi';
 
 describe('VariantImageUploader Component', () => {
+  const uploadImageMock = vi.fn().mockResolvedValue({});
   vi.spyOn(productVariantImagesApiModule, 'useUploadVariantImageMutation').mockReturnValue([
-    vi.fn(),
+    uploadImageMock,
     {} as any,
   ]);
   vi.spyOn(productVariantImagesApiModule, 'useDeleteVariantImageMutation').mockReturnValue([
@@ -95,5 +97,53 @@ describe('VariantImageUploader Component', () => {
     const img = screen.getByAltText('Sample Image');
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute('src', 'https://example.com/img1.jpg');
+  });
+
+  it('queues files locally instead of dropping them when a variant has no id yet in edit mode', async () => {
+    uploadImageMock.mockClear();
+    const onLocalFilesChange = vi.fn();
+    const file = new File(['dummy'], 'new-variant.png', { type: 'image/png' });
+
+    const { container } = render(
+      <VariantImageUploader
+        mode="edit"
+        localFiles={[]}
+        onLocalFilesChange={onLocalFilesChange}
+        productId="p-1"
+        variantId={undefined}
+      />,
+    );
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(input, file);
+
+    expect(onLocalFilesChange).toHaveBeenCalledWith([file]);
+    expect(uploadImageMock).not.toHaveBeenCalled();
+  });
+
+  it('uploads immediately in edit mode when the variant already has an id', async () => {
+    uploadImageMock.mockClear();
+    const onLocalFilesChange = vi.fn();
+    const file = new File(['dummy'], 'existing-variant.png', { type: 'image/png' });
+
+    const { container } = render(
+      <VariantImageUploader
+        mode="edit"
+        localFiles={[]}
+        onLocalFilesChange={onLocalFilesChange}
+        productId="p-1"
+        variantId="v-1"
+      />,
+    );
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(input, file);
+
+    expect(uploadImageMock).toHaveBeenCalledWith({
+      productId: 'p-1',
+      variantId: 'v-1',
+      file,
+    });
+    expect(onLocalFilesChange).not.toHaveBeenCalled();
   });
 });

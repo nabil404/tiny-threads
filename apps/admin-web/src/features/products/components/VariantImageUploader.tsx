@@ -45,12 +45,13 @@ export function VariantImageUploader({
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
 
-    if (mode === 'create') {
-      onLocalFilesChange([...localFiles, ...files]);
-    } else if (productId && variantId) {
+    if (mode === 'edit' && productId && variantId) {
       for (const file of files) {
         await uploadImage({ productId, variantId, file });
       }
+    } else {
+      // create mode, or an edit-mode variant not yet persisted (no variantId) — queue locally
+      onLocalFilesChange([...localFiles, ...files]);
     }
 
     if (fileInputRef.current) fileInputRef.current.value = '';
