@@ -79,6 +79,7 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
   const contextRef = useRef<Map<string, GroupContext>>(new Map());
   const controllersRef = useRef<Map<string, AbortController>>(new Map());
   const pendingUploadsRef = useRef<Map<string, Promise<void>>>(new Map());
+  const scheduledRef = useRef<Set<string>>(new Set());
   const limiterRef = useRef(pLimit(options.concurrency ?? 5));
   const [, forceRender] = useState(0);
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
@@ -125,12 +126,15 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
 
   const runUpload = useCallback(
     (groupKey: string, clientId: string) => {
+      if (scheduledRef.current.has(clientId)) return;
       const context = contextRef.current.get(groupKey);
       const item = (itemsRef.current.get(groupKey) ?? []).find(
         (i) => i.clientId === clientId,
       );
       if (!context || !item || !item.file) return;
       const file = item.file;
+
+      scheduledRef.current.add(clientId);
 
       const task = limiterRef.current(async () => {
         const currentItem = (itemsRef.current.get(groupKey) ?? []).find(
@@ -167,6 +171,7 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
           });
         } finally {
           controllersRef.current.delete(clientId);
+          scheduledRef.current.delete(clientId);
         }
       });
       pendingUploadsRef.current.set(clientId, task);
@@ -263,6 +268,8 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
         .filter((item): item is ImageUploadItem<TImage> => item !== undefined);
       setItems(groupKey, reordered);
 
+      const previousOrder = items.map((item) => item.clientId);
+
       const context = contextRef.current.get(groupKey);
       if (!context) return;
       const persistedIds = reordered
@@ -277,7 +284,18 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
           imageIds: persistedIds,
         })
         .catch(() => {
-          setItems(groupKey, items);
+          const current = itemsRef.current.get(groupKey) ?? [];
+          const currentById = new Map(
+            current.map((item) => [item.clientId, item]),
+          );
+          const restoredIds = previousOrder.filter((id) => currentById.has(id));
+          const newArrivals = current
+            .map((item) => item.clientId)
+            .filter((id) => !previousOrder.includes(id));
+          const restored = [...restoredIds, ...newArrivals]
+            .map((id) => currentById.get(id))
+            .filter((item): item is ImageUploadItem<TImage> => item !== undefined);
+          setItems(groupKey, restored);
         });
     },
     [setItems, options],
@@ -290,7 +308,8 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
       const context = contextRef.current.get(groupKey);
       if (!target || !target.image || !context) return;
 
-      const previous = items;
+      const previousPrimaryId = items.find((i) => i.image?.isPrimary)?.image
+        ?.id;
       const optimistic = items.map((item) =>
         item.image
           ? { ...item, image: { ...item.image, isPrimary: item.clientId === clientId } }
@@ -305,7 +324,19 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
           imageId: target.image.id,
         })
         .catch(() => {
-          setItems(groupKey, previous);
+          const current = itemsRef.current.get(groupKey) ?? [];
+          const reverted = current.map((item) =>
+            item.image
+              ? {
+                  ...item,
+                  image: {
+                    ...item.image,
+                    isPrimary: item.image.id === previousPrimaryId,
+                  },
+                }
+              : item,
+          );
+          setItems(groupKey, reverted);
         });
     },
     [setItems, options],

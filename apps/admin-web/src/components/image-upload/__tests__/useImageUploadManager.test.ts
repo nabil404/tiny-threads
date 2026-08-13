@@ -245,4 +245,168 @@ describe('useImageUploadManager', () => {
     await idlePromise;
     expect(resolved).toBe(true);
   });
+
+  it('does not let a redundant reschedule cause waitForIdle to resolve before the real upload settles', async () => {
+    const dA = deferred<ImageRecord>();
+    const dB = deferred<ImageRecord>();
+    const dC = deferred<ImageRecord>();
+    const uploadFile = vi
+      .fn()
+      .mockReturnValueOnce(dA.promise)
+      .mockReturnValueOnce(dB.promise)
+      .mockReturnValueOnce(dC.promise)
+      .mockResolvedValue(image());
+    const options = makeOptions({ concurrency: 2, uploadFile });
+    const { result } = renderHook(() => useImageUploadManager(options));
+    const fileA = new File(['a'], 'a.png', { type: 'image/png' });
+    const fileB = new File(['b'], 'b.png', { type: 'image/png' });
+    const fileC = new File(['c'], 'c.png', { type: 'image/png' });
+
+    act(() => {
+      result.current.setGroupContext('group-key', 'owner-1', 'group-1');
+      result.current.addFiles('group-key', [fileA, fileB, fileC]);
+    });
+
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(2));
+    const clientIdC = result.current
+      .getItems('group-key')
+      .find((i) => i.file === fileC)!.clientId;
+    expect(
+      result.current.getItems('group-key').find((i) => i.clientId === clientIdC)
+        ?.status,
+    ).toBe('queued');
+
+    // Redundant reschedule while fileC is still queued behind the concurrency cap.
+    act(() => {
+      result.current.retryItem('group-key', clientIdC);
+    });
+
+    await act(async () => {
+      dA.resolve(image({ id: 'img-a' }));
+      dB.resolve(image({ id: 'img-b' }));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(3));
+    expect(
+      result.current.getItems('group-key').find((i) => i.clientId === clientIdC)
+        ?.status,
+    ).toBe('uploading');
+
+    let idleResolved = false;
+    const idlePromise = result.current.waitForIdle(['group-key']).then(() => {
+      idleResolved = true;
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(idleResolved).toBe(false);
+
+    dC.resolve(image({ id: 'img-c' }));
+    await idlePromise;
+    expect(idleResolved).toBe(true);
+  });
+
+  it('setPrimary rollback preserves items added while the request was in flight', async () => {
+    const setPrimaryDeferred = deferred<ImageRecord>();
+    const options = makeOptions({
+      setPrimaryImage: vi.fn().mockReturnValue(setPrimaryDeferred.promise),
+      uploadFile: vi.fn().mockReturnValue(new Promise<ImageRecord>(() => {})),
+    });
+    const { result } = renderHook(() => useImageUploadManager(options));
+    const imgX = image({ id: 'img-x', isPrimary: true, sortOrder: 0 });
+    const imgY = image({ id: 'img-y', isPrimary: false, sortOrder: 1 });
+
+    act(() => {
+      result.current.hydrateExisting('group-key', [imgX, imgY]);
+      result.current.setGroupContext('group-key', 'owner-1', 'group-1');
+    });
+
+    const clientIdY = result.current
+      .getItems('group-key')
+      .find((i) => i.image?.id === 'img-y')!.clientId;
+
+    act(() => {
+      result.current.setPrimary('group-key', clientIdY);
+    });
+
+    const newFile = new File(['z'], 'z.png', { type: 'image/png' });
+    act(() => {
+      result.current.addFiles('group-key', [newFile]);
+    });
+
+    expect(result.current.getItems('group-key')).toHaveLength(3);
+
+    await act(async () => {
+      setPrimaryDeferred.reject(new Error('failed to set primary'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() =>
+      expect(
+        result.current
+          .getItems('group-key')
+          .find((i) => i.image?.id === 'img-x')?.image?.isPrimary,
+      ).toBe(true),
+    );
+    expect(
+      result.current.getItems('group-key').find((i) => i.image?.id === 'img-y')
+        ?.image?.isPrimary,
+    ).toBe(false);
+    expect(
+      result.current.getItems('group-key').some((i) => i.file === newFile),
+    ).toBe(true);
+  });
+
+  it('reorderItems rollback preserves items added while the request was in flight', async () => {
+    const reorderDeferred = deferred<ImageRecord[]>();
+    const options = makeOptions({
+      reorderImages: vi.fn().mockReturnValue(reorderDeferred.promise),
+      uploadFile: vi.fn().mockReturnValue(new Promise<ImageRecord>(() => {})),
+    });
+    const { result } = renderHook(() => useImageUploadManager(options));
+    const imgX = image({ id: 'img-x', isPrimary: true, sortOrder: 0 });
+    const imgY = image({ id: 'img-y', isPrimary: false, sortOrder: 1 });
+
+    act(() => {
+      result.current.hydrateExisting('group-key', [imgX, imgY]);
+      result.current.setGroupContext('group-key', 'owner-1', 'group-1');
+    });
+
+    const clientIdX = 'image-img-x';
+    const clientIdY = 'image-img-y';
+
+    act(() => {
+      result.current.reorderItems('group-key', [clientIdY, clientIdX]);
+    });
+
+    const newFile = new File(['z'], 'z.png', { type: 'image/png' });
+    act(() => {
+      result.current.addFiles('group-key', [newFile]);
+    });
+
+    expect(result.current.getItems('group-key')).toHaveLength(3);
+
+    await act(async () => {
+      reorderDeferred.reject(new Error('failed to reorder'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() =>
+      expect(
+        result.current.getItems('group-key').some((i) => i.file === newFile),
+      ).toBe(true),
+    );
+    const finalOrder = result.current
+      .getItems('group-key')
+      .map((i) => i.image?.id ?? 'new-file');
+    expect(finalOrder).toEqual(['img-x', 'img-y', 'new-file']);
+  });
 });
