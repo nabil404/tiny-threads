@@ -38,7 +38,7 @@ export interface ProductFormProps {
 
 const DEFAULT_FORM_DATA: ProductFormData = {
   title: '',
-  description: '',
+  description: undefined,
   status: 'draft',
   categoryIds: [],
   variants: [

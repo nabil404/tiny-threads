@@ -8,7 +8,15 @@ import {
 describe('productFormSchema', () => {
   const validProduct = {
     title: 'Test T-Shirt',
-    description: 'A comfortable t-shirt',
+    description: {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'A comfortable t-shirt' }],
+        },
+      ],
+    },
     status: 'active' as const,
     categoryIds: ['123e4567-e89b-12d3-a456-426614174000'],
     variants: [

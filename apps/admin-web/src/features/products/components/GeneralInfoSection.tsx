@@ -46,7 +46,7 @@ export function GeneralInfoSection() {
               <FormLabel>Description</FormLabel>
               <FormControl>
                 <RichTextEditor
-                  value={field.value ?? ''}
+                  value={field.value}
                   onChange={field.onChange}
                 />
               </FormControl>

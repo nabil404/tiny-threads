@@ -1,4 +1,5 @@
 import { useEditor, EditorContent } from '@tiptap/react';
+import type { JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import { useEffect } from 'react';
@@ -15,8 +16,8 @@ import { LinkPopover } from './LinkPopover';
 import { LinkBubbleMenu } from './LinkBubbleMenu';
 
 export interface RichTextEditorProps {
-  value: string;
-  onChange: (html: string) => void;
+  value: JSONContent | null | undefined;
+  onChange: (json: JSONContent) => void;
   placeholder?: string;
   className?: string;
 }
@@ -39,9 +40,9 @@ export function RichTextEditor({
       }),
       Link.configure({ openOnClick: false }),
     ],
-    content: value,
+    content: value ?? undefined,
     onUpdate: ({ editor: e }) => {
-      onChange(e.getHTML());
+      onChange(e.getJSON());
     },
     editorProps: {
       attributes: {
@@ -56,10 +57,11 @@ export function RichTextEditor({
   useEffect(() => {
     if (!editor) return;
     const isSame =
-      value === editor.getHTML() ||
-      (value === '' && editor.getHTML() === '<p></p>');
+      value == null
+        ? editor.isEmpty
+        : JSON.stringify(value) === JSON.stringify(editor.getJSON());
     if (!isSame) {
-      editor.commands.setContent(value);
+      editor.commands.setContent(value ?? '');
     }
   }, [value, editor]);
 

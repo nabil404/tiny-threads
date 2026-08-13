@@ -28,7 +28,9 @@ vi.mock('@tiptap/react', () => {
         }),
       }),
       isActive: () => false,
+      isEmpty: true,
       getHTML: () => '<p></p>',
+      getJSON: () => ({ type: 'doc', content: [] }),
       getAttributes: () => ({ href: '' }),
       schema: { marks: { link: {} } },
       state: {
@@ -62,19 +64,19 @@ vi.mock('@tiptap/core', () => ({
 
 describe('RichTextEditor', () => {
   it('renders the toolbar buttons', () => {
-    render(<RichTextEditor value="" onChange={vi.fn()} />);
+    render(<RichTextEditor value={undefined} onChange={vi.fn()} />);
     const buttons = screen.getAllByRole('button');
     // Bold, Italic, BulletList, OrderedList, Link = 5
     expect(buttons).toHaveLength(5);
   });
 
   it('renders the editor content area', () => {
-    render(<RichTextEditor value="" onChange={vi.fn()} />);
+    render(<RichTextEditor value={undefined} onChange={vi.fn()} />);
     expect(screen.getByTestId('editor-content')).toBeInTheDocument();
   });
 
   it('renders ordered list button in toolbar', () => {
-    render(<RichTextEditor value="" onChange={vi.fn()} />);
+    render(<RichTextEditor value={undefined} onChange={vi.fn()} />);
     const buttons = screen.getAllByRole('button');
     expect(buttons.length).toBeGreaterThanOrEqual(5);
   });

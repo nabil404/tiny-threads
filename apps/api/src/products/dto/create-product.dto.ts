@@ -10,6 +10,7 @@ import {
   Min,
   IsBoolean,
   MaxLength,
+  IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ErrorCode } from '@tiny-threads/shared';
@@ -45,10 +46,9 @@ export class CreateProductDto {
   @IsNotEmpty({ message: field(ErrorCode.IS_NOT_EMPTY) })
   title!: string;
 
-  @IsString({ message: field(ErrorCode.IS_STRING) })
+  @IsObject({ message: field(ErrorCode.IS_OBJECT) })
   @IsOptional()
-  @MaxLength(5000, { message: field(ErrorCode.MAX_LENGTH) })
-  description?: string;
+  description?: Record<string, any>;
 
   @IsIn(['draft', 'active', 'archived'], { message: field(ErrorCode.IS_IN) })
   status!: ProductStatus;

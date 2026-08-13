@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { JSONContent } from '@tiptap/react';
 
 export const variantFormSchema = z.object({
   id: z.string().uuid().optional(),
@@ -16,7 +17,7 @@ export const variantFormSchema = z.object({
 
 export const productFormSchema = z.object({
   title: z.string().min(1, 'Product name is required'),
-  description: z.string().optional().default(''),
+  description: z.custom<JSONContent>().optional(),
   status: z.enum(['draft', 'active', 'archived']),
   categoryIds: z.array(z.string().uuid()).default([]),
   variants: z

@@ -12,7 +12,15 @@ const mockProductData: productsApiHooks.Product = {
   id: '123e4567-e89b-12d3-a456-426614174000',
   tenantId: '123e4567-e89b-12d3-a456-426614174001',
   title: 'Existing Product',
-  description: 'Existing description',
+  description: {
+    type: 'doc',
+    content: [
+      {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Existing description' }],
+      },
+    ],
+  },
   status: 'active',
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',

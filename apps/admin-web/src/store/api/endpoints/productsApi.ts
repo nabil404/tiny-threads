@@ -1,3 +1,4 @@
+import type { JSONContent } from '@tiptap/react';
 import { baseApi } from '../baseApi';
 
 export interface ProductVariantImage {
@@ -34,7 +35,7 @@ export interface Product {
   id: string;
   tenantId: string;
   title: string;
-  description: string | null;
+  description: JSONContent | null;
   status: 'draft' | 'active' | 'archived';
   variants?: ProductVariant[];
   productCategories?: ProductCategory[];
@@ -44,7 +45,7 @@ export interface Product {
 
 export interface UpdateProductBody {
   title?: string;
-  description?: string;
+  description?: JSONContent;
   status?: 'draft' | 'active' | 'archived';
   categoryIds?: string[];
   variants?: Array<{

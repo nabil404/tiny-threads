@@ -29,7 +29,7 @@ export function EditProductPage() {
     if (!product) return undefined;
     return {
       title: product.title,
-      description: product.description ?? '',
+      description: product.description ?? undefined,
       status: product.status,
       categoryIds:
         product.productCategories?.map((pc) => pc.categoryId) ?? [],
@@ -69,7 +69,7 @@ export function EditProductPage() {
     try {
       const body: UpdateProductBody = {
         title: data.title,
-        description: data.description || undefined,
+        description: data.description ?? undefined,
         status: data.status,
         categoryIds: data.categoryIds,
         variants: data.variants.map((v) => ({

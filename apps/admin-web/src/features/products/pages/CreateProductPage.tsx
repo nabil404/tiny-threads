@@ -21,7 +21,7 @@ export function CreateProductPage() {
     try {
       const payload = {
         title: data.title,
-        description: data.description || undefined,
+        description: data.description ?? undefined,
         status: data.status,
         categoryIds: data.categoryIds.length > 0 ? data.categoryIds : undefined,
         variants: data.variants.map((v) => ({
