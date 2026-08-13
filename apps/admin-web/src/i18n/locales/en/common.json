@@ -160,6 +160,17 @@
     "variantPriceHeader": "Price ({{symbol}})",
     "variantStockHeader": "Stock",
     "addVariant": "Add Variant",
-    "variantMinNotice": "At least one variant is required. The last remaining variant cannot be deleted."
+    "variantMinNotice": "At least one variant is required. The last remaining variant cannot be deleted.",
+    "manageImagesTitle": "Images — {{variant}}",
+    "dropzoneLabel": "Drag & drop images here, or click to browse",
+    "uploadingCount": "Uploading ({{count}})",
+    "imagesCount": "Images ({{count}})",
+    "retry": "Retry",
+    "removeImage": "Remove image",
+    "setPrimaryImage": "Set as primary image",
+    "dragToReorder": "Drag to reorder",
+    "imageTooLarge": "File exceeds 10MB",
+    "imageInvalidType": "Unsupported file type — use JPEG, PNG, WebP, or AVIF",
+    "someImagesFailedToUpload": "{{count}} image(s) failed to upload"
   }
 }

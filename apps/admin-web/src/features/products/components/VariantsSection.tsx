@@ -20,26 +20,15 @@ import { VariantRow } from './VariantRow';
 import type { ProductFormData } from '../schemas/product-form.schema';
 import type { ProductVariantImage } from '@store/api/endpoints/productsApi';
 import { useGetTenantSettingsQuery } from '@store/api/endpoints/settingsApi';
+import type { UseImageUploadManagerResult } from '@components/image-upload/useImageUploadManager';
 
 const DEFAULT_CURRENCY_SYMBOL = '$';
 
 export interface VariantsSectionProps {
-  mode: 'create' | 'edit';
-  variantImages: Map<number, File[]>;
-  onVariantImagesChange: (images: Map<number, File[]>) => void;
-  existingVariantImages?: Map<number, ProductVariantImage[]>;
-  productId?: string;
-  variantIds?: Map<number, string>;
+  imageManager: UseImageUploadManagerResult<ProductVariantImage>;
 }
 
-export function VariantsSection({
-  mode,
-  variantImages,
-  onVariantImagesChange,
-  existingVariantImages = new Map(),
-  productId,
-  variantIds = new Map(),
-}: VariantsSectionProps) {
+export function VariantsSection({ imageManager }: VariantsSectionProps) {
   const { control, formState } = useFormContext<ProductFormData>();
   const { t } = useTranslation();
   const { data: settings } = useGetTenantSettingsQuery();
@@ -51,28 +40,13 @@ export function VariantsSection({
 
   const handleAddVariant = () => {
     append({
+      clientKey: crypto.randomUUID(),
       name: '',
       sku: '',
       priceDollars: 0,
       stock: 0,
       isDefault: false,
     });
-  };
-
-  const handleRemoveVariant = (index: number) => {
-    remove(index);
-    const newImages = new Map<number, File[]>();
-    for (const [idx, files] of variantImages) {
-      if (idx < index) newImages.set(idx, files);
-      else if (idx > index) newImages.set(idx - 1, files);
-    }
-    onVariantImagesChange(newImages);
-  };
-
-  const handleLocalFilesChange = (index: number, files: File[]) => {
-    const newImages = new Map(variantImages);
-    newImages.set(index, files);
-    onVariantImagesChange(newImages);
   };
 
   const variantsError = formState.errors.variants;
@@ -87,9 +61,7 @@ export function VariantsSection({
     <Card>
       <CardHeader>
         <CardTitle>{t('products.variantsTitle')}</CardTitle>
-        <CardDescription>
-          {t('products.variantsDescription')}
-        </CardDescription>
+        <CardDescription>{t('products.variantsDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="border border-border rounded-lg overflow-x-auto">
@@ -111,16 +83,9 @@ export function VariantsSection({
                 <VariantRow
                   key={field.id}
                   index={index}
-                  mode={mode}
                   canDelete={fields.length > 1}
-                  onRemove={() => handleRemoveVariant(index)}
-                  localFiles={variantImages.get(index) ?? []}
-                  onLocalFilesChange={(files) =>
-                    handleLocalFilesChange(index, files)
-                  }
-                  existingImages={existingVariantImages.get(index)}
-                  productId={productId}
-                  variantId={variantIds.get(index)}
+                  onRemove={() => remove(index)}
+                  imageManager={imageManager}
                 />
               ))}
             </TableBody>

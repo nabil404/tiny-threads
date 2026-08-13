@@ -3,6 +3,7 @@ import type { JSONContent } from '@tiptap/react';
 
 export const variantFormSchema = z.object({
   id: z.string().uuid().optional(),
+  clientKey: z.string(),
   name: z.string().max(255).optional().default(''),
   sku: z.string().min(1, 'SKU is required').max(100),
   priceDollars: z.coerce

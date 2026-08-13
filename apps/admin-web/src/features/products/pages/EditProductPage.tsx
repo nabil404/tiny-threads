@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -6,8 +6,10 @@ import {
   useGetProductQuery,
   useUpdateProductMutation,
 } from '@store/api/endpoints/productsApi';
-import type { UpdateProductBody } from '@store/api/endpoints/productsApi';
-import { useUploadVariantImageMutation } from '@store/api/endpoints/productVariantImagesApi';
+import type {
+  UpdateProductBody,
+  ProductVariantImage,
+} from '@store/api/endpoints/productsApi';
 import { extractErrorMessage } from '@lib/extract-error-message';
 import { ProductForm } from '../components/ProductForm';
 import type { ProductFormData } from '../schemas/product-form.schema';
@@ -15,6 +17,7 @@ import {
   priceCentsToDollars,
   priceDollarsToCents,
 } from '../schemas/product-form.schema';
+import type { UseImageUploadManagerResult } from '@components/image-upload/useImageUploadManager';
 
 export function EditProductPage() {
   const { t } = useTranslation();
@@ -26,8 +29,8 @@ export function EditProductPage() {
   } = useGetProductQuery(id!, { skip: !id });
   const [updateProduct, { isLoading: isUpdating }] =
     useUpdateProductMutation();
-  const [uploadImage] = useUploadVariantImageMutation();
   const [error, setError] = useState<string | null>(null);
+  const clientKeyCacheRef = useRef<Map<string, string>>(new Map());
 
   const initialData: ProductFormData | undefined = useMemo(() => {
     if (!product) return undefined;
@@ -37,38 +40,50 @@ export function EditProductPage() {
       status: product.status,
       categoryIds:
         product.productCategories?.map((pc) => pc.categoryId) ?? [],
-      variants: (product.variants ?? []).map((v) => ({
-        id: v.id,
-        name: v.name ?? '',
-        sku: v.sku,
-        priceDollars: priceCentsToDollars(v.priceCents),
-        stock: v.stock,
-        isDefault: v.isDefault,
-      })),
+      variants: (product.variants ?? []).map((v) => {
+        let clientKey = clientKeyCacheRef.current.get(v.id);
+        if (!clientKey) {
+          clientKey = crypto.randomUUID();
+          clientKeyCacheRef.current.set(v.id, clientKey);
+        }
+        return {
+          id: v.id,
+          clientKey,
+          name: v.name ?? '',
+          sku: v.sku,
+          priceDollars: priceCentsToDollars(v.priceCents),
+          stock: v.stock,
+          isDefault: v.isDefault,
+        };
+      }),
     };
   }, [product]);
 
   const existingVariantImages = useMemo(() => {
-    if (!product?.variants) return new Map();
-    const map = new Map<number, NonNullable<typeof product.variants>[0]['images']>();
-    product.variants.forEach((v, idx) => {
-      if (v.images && v.images.length > 0) {
-        map.set(idx, v.images);
+    const map = new Map<string, ProductVariantImage[]>();
+    if (!product?.variants) return map;
+    initialData?.variants.forEach((formVariant, idx) => {
+      const images = product.variants?.[idx]?.images;
+      if (images && images.length > 0) {
+        map.set(formVariant.clientKey, images);
       }
     });
     return map;
-  }, [product]);
+  }, [product, initialData]);
 
-  const variantIds = useMemo(() => {
-    if (!product?.variants) return new Map();
-    const map = new Map<number, string>();
-    product.variants.forEach((v, idx) => map.set(idx, v.id));
+  const variantContexts = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!product?.variants) return map;
+    initialData?.variants.forEach((formVariant, idx) => {
+      const variantId = product.variants?.[idx]?.id;
+      if (variantId) map.set(formVariant.clientKey, variantId);
+    });
     return map;
-  }, [product]);
+  }, [product, initialData]);
 
   const handleSubmit = async (
     data: ProductFormData,
-    localImages: Map<number, File[]>,
+    imageManager: UseImageUploadManagerResult<ProductVariantImage>,
   ) => {
     if (!id) return;
     setError(null);
@@ -81,6 +96,7 @@ export function EditProductPage() {
         categoryIds: data.categoryIds,
         variants: data.variants.map((v) => ({
           id: v.id,
+          clientKey: v.clientKey,
           name: v.name || undefined,
           sku: v.sku,
           priceCents: priceDollarsToCents(v.priceDollars),
@@ -91,19 +107,13 @@ export function EditProductPage() {
 
       const result = await updateProduct({ id, body }).unwrap();
 
-      // Newly-added variants have no id until this save resolves, so their
-      // queued images couldn't be uploaded until now. Match by sku (unique
-      // per tenant) since the response's variant order isn't guaranteed to
-      // match the request order.
-      for (const [index, files] of localImages) {
-        if (files.length === 0) continue;
-        const sku = data.variants[index]?.sku;
-        const savedVariant = result.variants?.find((v) => v.sku === sku);
-        if (!savedVariant) continue;
-        for (const file of files) {
-          await uploadImage({ productId: id, variantId: savedVariant.id, file });
-        }
-      }
+      result.variants?.forEach((rv) => {
+        if (rv.clientKey) clientKeyCacheRef.current.set(rv.id, rv.clientKey);
+      });
+      data.variants.forEach((v) => {
+        const saved = result.variants?.find((rv) => rv.clientKey === v.clientKey);
+        if (saved) imageManager.setGroupContext(v.clientKey, id, saved.id);
+      });
 
       toast.success(t('products.updateSuccess'));
     } catch (err: unknown) {
@@ -122,9 +132,7 @@ export function EditProductPage() {
   if (isFetchError || !product) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-destructive">
-          {t('products.loadError')}
-        </p>
+        <p className="text-destructive">{t('products.loadError')}</p>
       </div>
     );
   }
@@ -137,8 +145,8 @@ export function EditProductPage() {
       isSubmitting={isUpdating}
       error={error}
       existingVariantImages={existingVariantImages}
+      variantContexts={variantContexts}
       productId={id}
-      variantIds={variantIds}
     />
   );
 }

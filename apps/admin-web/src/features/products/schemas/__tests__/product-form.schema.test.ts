@@ -21,6 +21,7 @@ describe('productFormSchema', () => {
     categoryIds: ['123e4567-e89b-12d3-a456-426614174000'],
     variants: [
       {
+        clientKey: 'v-key-1',
         sku: 'TSHIRT-RED-S',
         priceDollars: 19.99,
         stock: 50,
@@ -55,6 +56,7 @@ describe('productFormSchema', () => {
       ...validProduct,
       variants: [
         {
+          clientKey: 'v-key-1',
           sku: 'TSHIRT-RED-S',
           priceDollars: -5,
           stock: 10,
@@ -70,6 +72,7 @@ describe('productFormSchema', () => {
       ...validProduct,
       variants: [
         {
+          clientKey: 'v-key-1',
           sku: 'TSHIRT-RED-S',
           priceDollars: 10,
           stock: 3.5,
