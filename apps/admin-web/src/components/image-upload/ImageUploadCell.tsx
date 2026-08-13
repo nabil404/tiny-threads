@@ -28,7 +28,7 @@ export function ImageUploadCell<TImage extends ImageRecord = ImageRecord>({
       onMouseLeave={() => setHovered(false)}
     >
       {previewSrc ? (
-        <img src={previewSrc} alt="Product image" className="w-full h-full object-cover" />
+        <img src={previewSrc} alt="Image" className="w-full h-full object-cover" />
       ) : (
         <span className="w-full h-full flex items-center justify-center text-muted-foreground">
           <Plus className="h-5 w-5" />
