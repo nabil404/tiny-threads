@@ -76,7 +76,7 @@ export function CategoryMultiSelect({
           <div
             role="combobox"
             aria-expanded={open}
-            className="flex h-auto min-h-11 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-within:ring-2 focus-within:ring-ring/20 focus-within:border-primary"
+            className="flex h-auto min-h-11 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs cursor-pointer focus-within:ring-2 focus-within:ring-ring/20 focus-within:border-primary"
           >
             <div className="flex flex-wrap gap-1 flex-1">
               {selectedNames.length > 0 ? (

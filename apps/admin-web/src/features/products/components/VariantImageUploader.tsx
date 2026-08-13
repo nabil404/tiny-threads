@@ -81,7 +81,7 @@ export function VariantImageUploader({
           {mode === 'edit' && (
             <button
               type="button"
-              className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
               onClick={() => handleRemoveExisting(img.id)}
             >
               <X className="h-2.5 w-2.5" />
@@ -102,7 +102,7 @@ export function VariantImageUploader({
           />
           <button
             type="button"
-            className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
             onClick={() => handleRemoveLocal(idx)}
           >
             <X className="h-2.5 w-2.5" />

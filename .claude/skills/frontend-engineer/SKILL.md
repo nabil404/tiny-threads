@@ -87,6 +87,10 @@ const form = useForm<XFormData>({
 
 5. **Two separate error channels — don't conflate them**: Zod field errors render inline via `FormMessage`. Server/API errors (e.g. a coded `AUTH_INVALID_CREDENTIALS` response) go in a top-level `useState` + banner, extracted with `extractErrorMessage(err, fallbackText)` from `@lib/extract-error-message`. Only reach for `form.setError(fieldName, {...})` when an API error legitimately maps to one specific field.
 
+## Interaction affordances
+
+Tailwind v4 dropped the `button, [role="button"] { cursor: pointer }` preflight reset that v3 shipped — `<button>` now defaults to the browser's `cursor: default`. Every clickable element (buttons, `role="button"`/`role="combobox"` custom triggers, `Select`/`Command` items) MUST set `cursor-pointer` explicitly, paired with `disabled:cursor-not-allowed` when the element has a disabled state. Fix this once on the shared primitive (`components/ui/button.tsx`, `select.tsx`, `command.tsx`, `dialog.tsx`, `checkbox.tsx`, ...) rather than patching it per call site — a one-off `className="cursor-pointer"` override on a `Button`/`CommandItem` usage is a sign the base primitive is missing it.
+
 ## Internationalization
 
 All user-facing copy goes through `react-i18next`'s `t()` — no hardcoded English strings in JSX. Keys are namespaced (`t('auth.emailLabel')`, `t('auth.genericError')`); resources live in `src/i18n/locales/<lang>/common.json`. Adding a new string means adding the key to every locale file, not just `en`.
@@ -110,6 +114,7 @@ All user-facing copy goes through `react-i18next`'s `t()` — no hardcoded Engli
 - [ ] New Redux slices/`createApi` usage stay inside `src/store/`; no ad-hoc `fetch`/`axios` anywhere.
 - [ ] Every form: Zod schema colocated in `features/<feature>/schemas/` with hardcoded validation messages, type via `z.infer`, `zodResolver`, shared `components/ui/form.tsx` primitives, `noValidate`.
 - [ ] Client-side (Zod) and server-side (API) form errors are not conflated — field errors via `FormMessage`, API errors via a top-level banner using `extractErrorMessage`.
+- [ ] Every clickable element (buttons, `role="button"`/`role="combobox"` custom triggers) has `cursor-pointer` (plus `disabled:cursor-not-allowed` if it has a disabled state) — fixed at the primitive, not patched per instance.
 - [ ] All user-facing strings go through `t()`; new keys added to every locale file, not just `en`.
 - [ ] New/changed code has colocated tests under a `__tests__/` directory, run with Vitest, asserting on rendered output.
 - [ ] Imports use the configured path aliases (`@components`, `@features`, `@i18n`, `@lib`, `@store`, `@theme`), not deep relative paths.
