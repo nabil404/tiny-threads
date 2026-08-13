@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from '@store/hooks';
 import { selectAuth, logout } from '@store/slices/authSlice';
 import { useLogoutMutation } from '@store/api/endpoints/authApi';
 import { baseApi } from '@store/api/baseApi';
-import { ThemeSelector, LocaleSelector } from '@features/common';
+import { ThemeSelector } from '@features/common';
 import { Badge } from '@components/ui/badge';
 import { Settings, LogOut, Shield } from 'lucide-react';
 
@@ -24,7 +24,7 @@ export function UserNavDropdown() {
 
   const displayName = user?.firstName
     ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}`
-    : user?.email || 'User';
+    : user?.email || t('app.defaultUserName');
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -99,12 +99,6 @@ export function UserNavDropdown() {
                 {t('nav.theme')}
               </span>
               <ThemeSelector />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {t('nav.language')}
-              </span>
-              <LocaleSelector />
             </div>
           </div>
 

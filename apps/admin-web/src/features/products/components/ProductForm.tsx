@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
@@ -56,6 +57,7 @@ export function ProductForm({
   productId,
   variantIds,
 }: ProductFormProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [variantImages, setVariantImages] = useState<Map<number, File[]>>(
     new Map(),
@@ -77,11 +79,11 @@ export function ProductForm({
   };
 
   const pageTitle =
-    mode === 'create' ? 'Add New Product' : 'Edit Product';
+    mode === 'create' ? t('products.addNewProduct') : t('products.editProduct');
   const pageDescription =
     mode === 'create'
-      ? 'Create a new product listing in your catalog.'
-      : 'Update your product details, variants, and categories.';
+      ? t('products.createDescription')
+      : t('products.editDescription');
 
   return (
     <div className="space-y-6">
@@ -89,7 +91,7 @@ export function ProductForm({
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link to="/products">Products</Link>
+              <Link to="/products">{t('products.breadcrumbProducts')}</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
@@ -110,14 +112,14 @@ export function ProductForm({
             variant="outline"
             onClick={() => navigate('/products')}
           >
-            Discard
+            {t('products.discard')}
           </Button>
           <Button
             type="submit"
             form="product-form"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Saving...' : 'Save Product'}
+            {isSubmitting ? t('products.saving') : t('products.saveProduct')}
           </Button>
         </div>
       </div>

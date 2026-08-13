@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { Editor } from '@tiptap/react';
 import { getMarkRange } from '@tiptap/core';
+import { useTranslation } from 'react-i18next';
 import {
   Popover,
   PopoverTrigger,
@@ -15,8 +16,6 @@ export interface LinkPopoverProps {
   children: React.ReactNode;
 }
 
-const URL_ERROR_MESSAGE = "That URL doesn't look valid.";
-
 /**
  * Schemes the Link extension allows that carry no `//` authority. Anything else
  * without `//` is treated as a bare host, so `example.com:8080` gets an
@@ -25,6 +24,7 @@ const URL_ERROR_MESSAGE = "That URL doesn't look valid.";
 const AUTHORITYLESS_SCHEME_RE = /^(?:mailto|tel|callto|sms|cid|xmpp):/i;
 
 export function LinkPopover({ editor, children }: LinkPopoverProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
   const [displayText, setDisplayText] = useState('');
@@ -130,13 +130,13 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
     }
 
     if (!applied) {
-      setUrlError(URL_ERROR_MESSAGE);
+      setUrlError(t('richTextEditor.linkUrlError'));
       return;
     }
 
     setUrlError(null);
     setOpen(false);
-  }, [editor, url, displayText, getTargetRange]);
+  }, [editor, url, displayText, getTargetRange, t]);
 
   const handleRemove = useCallback(() => {
     editor.chain().focus().unsetLink().run();
@@ -166,7 +166,7 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
         <div className="space-y-2.5">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">
-              URL
+              {t('richTextEditor.linkUrlLabel')}
             </label>
             <Input
               value={url}
@@ -175,7 +175,7 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
                 setUrlError(null);
               }}
               onKeyDown={handleKeyDown}
-              placeholder="https://example.com"
+              placeholder={t('richTextEditor.linkUrlPlaceholder')}
               className="h-8 text-sm"
               aria-invalid={urlError ? true : undefined}
               autoFocus
@@ -188,13 +188,13 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">
-              Display text
+              {t('richTextEditor.linkDisplayTextLabel')}
             </label>
             <Input
               value={displayText}
               onChange={(e) => setDisplayText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Link text (optional)"
+              placeholder={t('richTextEditor.linkDisplayTextPlaceholder')}
               className="h-8 text-sm"
             />
           </div>
@@ -208,7 +208,7 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
                 onClick={handleRemove}
               >
                 <Trash2 className="mr-1 h-3 w-3" />
-                Remove link
+                {t('richTextEditor.removeLink')}
               </Button>
             ) : (
               <div />
@@ -221,7 +221,7 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
                 className="h-7 text-xs"
                 onClick={() => setOpen(false)}
               >
-                Cancel
+                {t('richTextEditor.cancel')}
               </Button>
               <Button
                 type="button"
@@ -230,7 +230,7 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
                 onClick={handleApply}
                 disabled={!url.trim()}
               >
-                Apply
+                {t('richTextEditor.apply')}
               </Button>
             </div>
           </div>

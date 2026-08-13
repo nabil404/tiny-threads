@@ -1,4 +1,5 @@
 import { useFormContext } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import {
   FormField,
   FormItem,
@@ -18,11 +19,12 @@ import type { ProductFormData } from '../schemas/product-form.schema';
 
 export function OrganizationSidebar() {
   const { control } = useFormContext<ProductFormData>();
+  const { t } = useTranslation();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Organization</CardTitle>
+        <CardTitle>{t('products.organizationTitle')}</CardTitle>
       </CardHeader>
       <CardContent>
         <FormField
@@ -30,7 +32,7 @@ export function OrganizationSidebar() {
           name="status"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Status</FormLabel>
+              <FormLabel>{t('products.statusLabel')}</FormLabel>
               <Select
                 onValueChange={field.onChange}
                 defaultValue={field.value}
@@ -38,13 +40,13 @@ export function OrganizationSidebar() {
               >
                 <FormControl>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select status" />
+                    <SelectValue placeholder={t('products.statusPlaceholder')} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
+                  <SelectItem value="draft">{t('products.statusDraft')}</SelectItem>
+                  <SelectItem value="active">{t('products.statusActive')}</SelectItem>
+                  <SelectItem value="archived">{t('products.statusArchived')}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

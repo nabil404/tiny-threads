@@ -1,4 +1,5 @@
 import { useFormContext } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import {
   FormField,
   FormItem,
@@ -14,11 +15,12 @@ import type { ProductFormData } from '../schemas/product-form.schema';
 
 export function GeneralInfoSection() {
   const { control } = useFormContext<ProductFormData>();
+  const { t } = useTranslation();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>General Information</CardTitle>
+        <CardTitle>{t('products.generalInfo')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <FormField
@@ -26,10 +28,10 @@ export function GeneralInfoSection() {
           name="title"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Product Name *</FormLabel>
+              <FormLabel>{t('products.productNameLabel')}</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="e.g. Minimalist Ceramic Vase"
+                  placeholder={t('products.productNamePlaceholder')}
                   {...field}
                 />
               </FormControl>
@@ -43,7 +45,7 @@ export function GeneralInfoSection() {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>{t('products.descriptionLabel')}</FormLabel>
               <FormControl>
                 <RichTextEditor
                   value={field.value}
@@ -60,7 +62,7 @@ export function GeneralInfoSection() {
           name="categoryIds"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category</FormLabel>
+              <FormLabel>{t('products.categoryLabel')}</FormLabel>
               <FormControl>
                 <CategoryMultiSelect
                   selectedIds={field.value ?? []}

@@ -81,6 +81,7 @@ pnpm lint                   # Run ESLint
 8. **API Integration**: Handle API errors using the standard coded error response format `{ error: { code, message, params, fields } }` provided by `@tiny-threads/api`.
 9. **Testing**: Tests run via Vitest (`pnpm test`), colocated under a `__tests__/` directory next to the code they cover, using Testing Library + `userEvent`. Assert on rendered output (validation messages, roles, text) rather than implementation details.
 10. **Component Design**: Keep components small, modular, and single-purpose. Separate presentation components from state/data fetching logic.
+11. **Internationalization**: All user-facing text MUST go through `react-i18next`'s `t()` function — no hardcoded English strings in JSX, props, toasts, or error messages. Keys are dot-namespaced by domain (e.g., `t('products.pageTitle')`). Resources are in `src/i18n/locales/en/common.json`. Exception: Zod schema validation messages remain hardcoded plain strings (schemas run outside React context).
 
 ---
 

@@ -140,7 +140,7 @@ export function MobileNavDrawer() {
               {storeInitials}
             </div>
             <span className="font-bold text-sm text-foreground truncate">
-              {tenant?.name || 'Tiny Threads'}
+              {tenant?.name || t('app.defaultStoreName')}
             </span>
           </div>
           <button

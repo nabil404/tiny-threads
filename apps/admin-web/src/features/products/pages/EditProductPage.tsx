@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -16,6 +17,7 @@ import {
 } from '../schemas/product-form.schema';
 
 export function EditProductPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const {
     data: product,
@@ -103,16 +105,16 @@ export function EditProductPage() {
         }
       }
 
-      toast.success('Product updated successfully');
+      toast.success(t('products.updateSuccess'));
     } catch (err: unknown) {
-      setError(extractErrorMessage(err, 'Failed to update product'));
+      setError(extractErrorMessage(err, t('products.updateError')));
     }
   };
 
   if (isFetching) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-muted-foreground">Loading product...</p>
+        <p className="text-muted-foreground">{t('products.loadingProduct')}</p>
       </div>
     );
   }
@@ -121,7 +123,7 @@ export function EditProductPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <p className="text-destructive">
-          Product not found or failed to load.
+          {t('products.loadError')}
         </p>
       </div>
     );

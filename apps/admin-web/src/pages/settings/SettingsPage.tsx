@@ -6,14 +6,16 @@ import {
   CardContent,
 } from '@components/ui/card';
 import { Settings } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export function SettingsPage() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Store Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('settings.pageTitle')}</h1>
         <p className="text-sm text-muted-foreground">
-          Configure store metadata, checkout rules, and tenant preferences.
+          {t('settings.pageDescription')}
         </p>
       </div>
 
@@ -21,16 +23,15 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5 text-primary" />
-            <span>Store Configuration</span>
+            <span>{t('settings.configTitle')}</span>
           </CardTitle>
           <CardDescription>
-            Tenant configuration options and store preferences.
+            {t('settings.configDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="p-8 text-center border border-dashed border-border rounded-lg text-muted-foreground text-sm">
-            Store settings and payment provider configurations ready for
-            connection.
+            {t('settings.comingSoon')}
           </div>
         </CardContent>
       </Card>

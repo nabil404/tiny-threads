@@ -1,4 +1,5 @@
 import { useFormContext } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
 import {
   FormField,
@@ -36,6 +37,7 @@ export function VariantRow({
   variantId,
 }: VariantRowProps) {
   const { control } = useFormContext<ProductFormData>();
+  const { t } = useTranslation();
 
   return (
     <TableRow>
@@ -57,7 +59,7 @@ export function VariantRow({
           render={({ field }) => (
             <FormItem className="space-y-0">
               <FormControl>
-                <Input placeholder="Variant name" {...field} />
+                <Input placeholder={t('products.variantNamePlaceholder')} {...field} />
               </FormControl>
             </FormItem>
           )}
@@ -71,7 +73,7 @@ export function VariantRow({
           render={({ field }) => (
             <FormItem className="space-y-0">
               <FormControl>
-                <Input placeholder="e.g. SKU-123" {...field} />
+                <Input placeholder={t('products.skuPlaceholder')} {...field} />
               </FormControl>
             </FormItem>
           )}

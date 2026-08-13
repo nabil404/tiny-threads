@@ -93,7 +93,11 @@ Tailwind v4 dropped the `button, [role="button"] { cursor: pointer }` preflight 
 
 ## Internationalization
 
-All user-facing copy goes through `react-i18next`'s `t()` — no hardcoded English strings in JSX. Keys are namespaced (`t('auth.emailLabel')`, `t('auth.genericError')`); resources live in `src/i18n/locales/<lang>/common.json`. Adding a new string means adding the key to every locale file, not just `en`.
+All user-facing copy goes through `react-i18next`'s `t()` — no hardcoded English strings in JSX or component props (`placeholder`, `aria-label`, toast messages, error fallbacks). Keys are dot-namespaced by domain (`t('products.pageTitle')`, `t('auth.emailLabel')`); resources live in `src/i18n/locales/en/common.json`. Currently only English is configured — adding a new string means adding the key to `en/common.json`. When additional locales are introduced in the future, the key must be added to every locale file.
+
+**What goes through `t()`:** JSX text content, element `placeholder` / `aria-label` / `title` attributes, toast messages (`toast.success(t('...'))`), `extractErrorMessage` fallback strings, `window.confirm()` prompts, and any other string a user reads on screen.
+
+**What stays hardcoded:** Zod schema validation messages (defined outside React context), numeric format placeholders (`"0.00"`, `"0"`), and CSS/technical identifiers.
 
 ## Testing
 
@@ -115,6 +119,6 @@ All user-facing copy goes through `react-i18next`'s `t()` — no hardcoded Engli
 - [ ] Every form: Zod schema colocated in `features/<feature>/schemas/` with hardcoded validation messages, type via `z.infer`, `zodResolver`, shared `components/ui/form.tsx` primitives, `noValidate`.
 - [ ] Client-side (Zod) and server-side (API) form errors are not conflated — field errors via `FormMessage`, API errors via a top-level banner using `extractErrorMessage`.
 - [ ] Every clickable element (buttons, `role="button"`/`role="combobox"` custom triggers) has `cursor-pointer` (plus `disabled:cursor-not-allowed` if it has a disabled state) — fixed at the primitive, not patched per instance.
-- [ ] All user-facing strings go through `t()`; new keys added to every locale file, not just `en`.
+- [ ] All user-facing strings go through `t()` — including `placeholder`, `aria-label`, toasts, error fallbacks, and `confirm()` prompts; new keys added to `en/common.json`.
 - [ ] New/changed code has colocated tests under a `__tests__/` directory, run with Vitest, asserting on rendered output.
 - [ ] Imports use the configured path aliases (`@components`, `@features`, `@i18n`, `@lib`, `@store`, `@theme`), not deep relative paths.

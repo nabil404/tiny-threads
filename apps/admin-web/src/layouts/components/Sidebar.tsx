@@ -87,7 +87,7 @@ export function Sidebar() {
           <div className="min-w-0 flex-1 flex items-center justify-between">
             <div className="min-w-0">
               <h2 className="text-sm font-bold text-foreground truncate">
-                {tenant?.name || 'Tiny Threads'}
+                {tenant?.name || t('app.defaultStoreName')}
               </h2>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />

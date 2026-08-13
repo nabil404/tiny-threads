@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCreateProductMutation } from '@store/api/endpoints/productsApi';
@@ -8,6 +9,7 @@ import type { ProductFormData } from '../schemas/product-form.schema';
 import { priceDollarsToCents } from '../schemas/product-form.schema';
 
 export function CreateProductPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [createProduct, { isLoading }] = useCreateProductMutation();
   const [error, setError] = useState<string | null>(null);
@@ -46,10 +48,10 @@ export function CreateProductPage() {
       }
 
       const result = await createProduct(formData).unwrap();
-      toast.success('Product created successfully');
+      toast.success(t('products.createSuccess'));
       navigate(`/products/${result.id}/edit`);
     } catch (err: unknown) {
-      setError(extractErrorMessage(err, 'Failed to create product'));
+      setError(extractErrorMessage(err, t('products.createError')));
     }
   };
 

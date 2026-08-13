@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { Badge } from '@components/ui/badge';
 import {
@@ -44,6 +45,7 @@ export function CategoryMultiSelect({
   selectedIds,
   onChange,
 }: CategoryMultiSelectProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { data: categoryTree = [], isLoading } = useGetCategoriesQuery();
 
@@ -108,7 +110,7 @@ export function CategoryMultiSelect({
                 ))
               ) : (
                 <span className="text-muted-foreground text-sm">
-                  Select categories...
+                  {t('products.selectCategories')}
                 </span>
               )}
             </div>
@@ -117,10 +119,10 @@ export function CategoryMultiSelect({
         </PopoverTrigger>
         <PopoverContent className="w-full p-0" align="start">
           <Command>
-            <CommandInput placeholder="Search categories..." />
+            <CommandInput placeholder={t('products.searchCategories')} />
             <CommandList>
               <CommandEmpty>
-                {isLoading ? 'Loading...' : 'No categories found.'}
+                {isLoading ? t('products.categoriesLoading') : t('products.categoriesEmpty')}
               </CommandEmpty>
               <CommandGroup>
                 {flatCategories.map((cat) => (

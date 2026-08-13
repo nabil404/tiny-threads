@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -46,6 +47,7 @@ function flattenCategories(
 }
 
 export function ProductListPage() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
@@ -95,12 +97,12 @@ export function ProductListPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this product? This cannot be undone.')) return;
+    if (!window.confirm(t('products.deleteConfirm'))) return;
     try {
       await deleteProduct(id).unwrap();
-      toast.success('Product deleted');
+      toast.success(t('products.deleteSuccess'));
     } catch (err) {
-      toast.error(extractErrorMessage(err, 'Failed to delete product'));
+      toast.error(extractErrorMessage(err, t('products.deleteError')));
     }
   };
 
@@ -114,15 +116,15 @@ export function ProductListPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Product Inventory</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('products.pageTitle')}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your store's catalog and monitor stock levels.
+            {t('products.pageDescription')}
           </p>
         </div>
         <Button asChild>
           <Link to="/products/new">
             <Plus className="h-4 w-4 mr-1" />
-            Add Product
+            {t('products.addProduct')}
           </Link>
         </Button>
       </div>
@@ -132,7 +134,7 @@ export function ProductListPage() {
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
           <Input
-            placeholder="Search by name or SKU..."
+            placeholder={t('products.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="sm:max-w-sm"
@@ -140,10 +142,10 @@ export function ProductListPage() {
           <div className="flex gap-2">
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Categories" />
+                <SelectValue placeholder={t('products.allCategories')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="all">{t('products.allCategories')}</SelectItem>
                 {flatCategories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
@@ -153,13 +155,13 @@ export function ProductListPage() {
             </Select>
             <Select value={status} onValueChange={(value) => setStatus(value as StatusFilter)}>
               <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="All Statuses" />
+                <SelectValue placeholder={t('products.allStatuses')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
+                <SelectItem value="all">{t('products.allStatuses')}</SelectItem>
+                <SelectItem value="active">{t('products.statusActive')}</SelectItem>
+                <SelectItem value="draft">{t('products.statusDraft')}</SelectItem>
+                <SelectItem value="archived">{t('products.statusArchived')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -167,11 +169,11 @@ export function ProductListPage() {
 
         {isLoading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            Loading products...
+            {t('products.loading')}
           </div>
         ) : products.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            No products found.
+            {t('products.noResults')}
           </div>
         ) : (
           <ProductInventoryTable
@@ -185,7 +187,7 @@ export function ProductListPage() {
 
         <div className="flex items-center justify-between border-t border-border p-4">
           <span className="text-sm text-muted-foreground">
-            Showing {rangeStart} to {rangeEnd} of {total} entries
+            {t('products.showingEntries', { start: rangeStart, end: rangeEnd, total })}
           </span>
           <div className="flex items-center gap-2">
             <Button
@@ -194,7 +196,7 @@ export function ProductListPage() {
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
             >
-              Prev
+              {t('products.prev')}
             </Button>
             <span className="px-2 text-sm text-muted-foreground">
               {page} / {totalPages}
@@ -205,7 +207,7 @@ export function ProductListPage() {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
             >
-              Next
+              {t('products.next')}
             </Button>
           </div>
         </div>

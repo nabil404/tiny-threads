@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, ImageIcon, Pencil, Trash2 } from 'lucide-react';
 import {
   Table,
@@ -38,13 +39,13 @@ function totalStock(variants: ProductVariant[]): number {
   return variants.reduce((sum, v) => sum + v.stock, 0);
 }
 
-const STATUS_LABEL: Record<Product['status'], string> = {
-  active: 'Active',
-  draft: 'Draft',
-  archived: 'Archived',
-};
-
 function StatusBadge({ status }: { status: Product['status'] }) {
+  const { t } = useTranslation();
+  const STATUS_LABEL: Record<Product['status'], string> = {
+    active: t('products.statusActive'),
+    draft: t('products.statusDraft'),
+    archived: t('products.statusArchived'),
+  };
   const variant = status === 'active' ? 'default' : 'secondary';
   return <Badge variant={variant}>{STATUS_LABEL[status]}</Badge>;
 }
@@ -64,17 +65,18 @@ export function ProductInventoryTable({
   onToggleExpand,
   onDelete,
 }: ProductInventoryTableProps) {
+  const { t } = useTranslation();
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Product</TableHead>
-          <TableHead>SKU</TableHead>
-          <TableHead>Price</TableHead>
-          <TableHead>Variants</TableHead>
-          <TableHead>Stock</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          <TableHead>{t('products.tableProduct')}</TableHead>
+          <TableHead>{t('products.tableSku')}</TableHead>
+          <TableHead>{t('products.tablePrice')}</TableHead>
+          <TableHead>{t('products.tableVariants')}</TableHead>
+          <TableHead>{t('products.tableStock')}</TableHead>
+          <TableHead>{t('products.tableStatus')}</TableHead>
+          <TableHead className="text-right">{t('products.tableActions')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -94,7 +96,7 @@ export function ProductInventoryTable({
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 shrink-0 cursor-pointer"
-                        aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                        aria-label={isExpanded ? t('products.collapse') : t('products.expand')}
                         onClick={() => onToggleExpand(product.id)}
                       >
                         {isExpanded ? (
@@ -134,7 +136,7 @@ export function ProductInventoryTable({
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer" asChild>
-                      <Link to={`/products/${product.id}/edit`} aria-label="Edit">
+                      <Link to={`/products/${product.id}/edit`} aria-label={t('products.edit')}>
                         <Pencil className="h-4 w-4" />
                       </Link>
                     </Button>
@@ -142,7 +144,7 @@ export function ProductInventoryTable({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 cursor-pointer"
-                      aria-label="Delete"
+                      aria-label={t('products.delete')}
                       onClick={() => onDelete(product.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -154,7 +156,7 @@ export function ProductInventoryTable({
                 variants.map((variant) => (
                   <TableRow key={variant.id} className="bg-muted/40">
                     <TableCell className="pl-16 text-muted-foreground">
-                      {variant.name ?? 'Default'}
+                      {variant.name ?? t('products.defaultVariant')}
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {variant.sku}

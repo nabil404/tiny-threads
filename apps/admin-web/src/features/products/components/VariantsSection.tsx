@@ -1,4 +1,5 @@
 import { useFieldArray, useFormContext } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
 import { Button } from '@components/ui/button';
 import {
@@ -37,6 +38,7 @@ export function VariantsSection({
   variantIds = new Map(),
 }: VariantsSectionProps) {
   const { control, formState } = useFormContext<ProductFormData>();
+  const { t } = useTranslation();
   const { fields, append, remove } = useFieldArray({
     control,
     name: 'variants',
@@ -79,9 +81,9 @@ export function VariantsSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Variants</CardTitle>
+        <CardTitle>{t('products.variantsTitle')}</CardTitle>
         <CardDescription>
-          Manage inventory and pricing for product variations.
+          {t('products.variantsDescription')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -89,11 +91,11 @@ export function VariantsSection({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[130px]">Image</TableHead>
-                <TableHead>Variant Name</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead className="w-[120px]">Price ($)</TableHead>
-                <TableHead className="w-[100px]">Stock</TableHead>
+                <TableHead className="w-[130px]">{t('products.variantImageHeader')}</TableHead>
+                <TableHead>{t('products.variantNameHeader')}</TableHead>
+                <TableHead>{t('products.variantSkuHeader')}</TableHead>
+                <TableHead className="w-[120px]">{t('products.variantPriceHeader')}</TableHead>
+                <TableHead className="w-[100px]">{t('products.variantStockHeader')}</TableHead>
                 <TableHead className="w-[50px]" />
               </TableRow>
             </TableHeader>
@@ -125,7 +127,7 @@ export function VariantsSection({
           onClick={handleAddVariant}
         >
           <Plus className="h-4 w-4 mr-1" />
-          Add Variant
+          {t('products.addVariant')}
         </Button>
 
         {rootError && (
@@ -135,8 +137,7 @@ export function VariantsSection({
         )}
 
         <p className="mt-2 text-xs text-muted-foreground">
-          At least one variant is required. The last remaining variant cannot
-          be deleted.
+          {t('products.variantMinNotice')}
         </p>
       </CardContent>
     </Card>

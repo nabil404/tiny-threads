@@ -3,6 +3,7 @@ import type { JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Bold,
   Italic,
@@ -25,9 +26,12 @@ export interface RichTextEditorProps {
 export function RichTextEditor({
   value,
   onChange,
-  placeholder = 'Enter product description...',
+  placeholder,
   className,
 }: RichTextEditorProps) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('richTextEditor.placeholder');
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -48,7 +52,7 @@ export function RichTextEditor({
       attributes: {
         class:
           'min-h-[120px] px-3.5 py-2.5 text-sm focus:outline-none prose prose-sm dark:prose-invert max-w-none',
-        placeholder,
+        placeholder: resolvedPlaceholder,
       },
     },
   });

@@ -1,4 +1,5 @@
 import { Card } from '@components/ui/card';
+import { useTranslation } from 'react-i18next';
 import type { ProductStats } from '@store/api/endpoints/productsApi';
 
 export interface ProductStatsCardsProps {
@@ -6,14 +7,16 @@ export interface ProductStatsCardsProps {
   isLoading: boolean;
 }
 
-const CARD_DEFS: Array<{ label: string; key: keyof ProductStats }> = [
-  { label: 'Total Products', key: 'totalProducts' },
-  { label: 'Active Listings', key: 'activeListings' },
-  { label: 'Low Stock', key: 'lowStock' },
-  { label: 'Out of Stock', key: 'outOfStock' },
-];
-
 export function ProductStatsCards({ stats, isLoading }: ProductStatsCardsProps) {
+  const { t } = useTranslation();
+  
+  const CARD_DEFS: Array<{ label: string; key: keyof ProductStats }> = [
+    { label: t('products.totalProducts'), key: 'totalProducts' },
+    { label: t('products.activeListings'), key: 'activeListings' },
+    { label: t('products.lowStock'), key: 'lowStock' },
+    { label: t('products.outOfStock'), key: 'outOfStock' },
+  ];
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {CARD_DEFS.map(({ label, key }) => (

@@ -7,7 +7,6 @@ import { baseApi, baseQueryWithReauth } from '../baseApi';
 import { store } from '../../index';
 import authReducer, { type AuthState } from '../../slices/authSlice';
 import { authApi, useGetMeQuery } from '../endpoints/authApi';
-import { localeApi } from '../endpoints/localeApi';
 
 describe('baseApi and store configuration', () => {
   beforeEach(() => {
@@ -186,12 +185,16 @@ describe('baseQueryWithReauth session-death handling', () => {
     // The session dies while the fulfilled getMe entry is still cached.
     fetchMock.mockImplementation(async () => unauthorized());
 
-    // A DIFFERENT endpoint hits the 401. Its `invalidatesTags: ['Locale']`
-    // does not touch the 'Auth' tag, so nothing but the cache reset can
-    // clear the stale getMe entry the guards read.
-    await testStore.dispatch(
-      localeApi.endpoints.updateLocale.initiate({ locale: 'bn' }),
-    );
+    // A DIFFERENT endpoint hits the 401.
+    const extendedApi = baseApi.injectEndpoints({
+      endpoints: (builder) => ({
+        getDummy: builder.query<void, void>({
+          query: () => '/dummy',
+        }),
+      }),
+      overrideExisting: true,
+    });
+    await testStore.dispatch(extendedApi.endpoints.getDummy.initiate());
 
     expect(testStore.getState().auth.isAuthenticated).toBe(false);
 

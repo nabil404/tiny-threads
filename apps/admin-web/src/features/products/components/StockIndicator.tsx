@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 export interface StockIndicatorProps {
   stock: number;
@@ -6,14 +7,15 @@ export interface StockIndicatorProps {
 }
 
 export function StockIndicator({ stock, lowStockThreshold }: StockIndicatorProps) {
+  const { t } = useTranslation();
   const status =
     stock === 0 ? 'out' : stock <= lowStockThreshold ? 'low' : 'in';
   const label =
     status === 'out'
-      ? 'Out of stock'
+      ? t('products.stockOut')
       : status === 'low'
-        ? 'Low stock'
-        : 'In stock';
+        ? t('products.stockLow')
+        : t('products.stockIn');
 
   const fillCap = Math.max(1, lowStockThreshold * 3);
   const fillPercent = Math.min(100, (stock / fillCap) * 100);

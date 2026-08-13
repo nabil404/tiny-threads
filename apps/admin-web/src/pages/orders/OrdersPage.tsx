@@ -6,14 +6,16 @@ import {
   CardContent,
 } from '@components/ui/card';
 import { ShoppingCart } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export function OrdersPage() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('orders.pageTitle')}</h1>
         <p className="text-sm text-muted-foreground">
-          Track customer orders, fulfillments, and payments.
+          {t('orders.pageDescription')}
         </p>
       </div>
 
@@ -21,15 +23,15 @@ export function OrdersPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5 text-primary" />
-            <span>Order Fulfillment</span>
+            <span>{t('orders.fulfillmentTitle')}</span>
           </CardTitle>
           <CardDescription>
-            Order processing module integration ready.
+            {t('orders.fulfillmentDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="p-8 text-center border border-dashed border-border rounded-lg text-muted-foreground text-sm">
-            Order management views will be connected in upcoming features.
+            {t('orders.comingSoon')}
           </div>
         </CardContent>
       </Card>
