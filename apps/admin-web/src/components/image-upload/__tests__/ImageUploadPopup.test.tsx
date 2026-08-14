@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
+import { toast } from 'sonner';
 import { ImageUploadPopup, type ImageUploadLabels } from '../ImageUploadPopup';
 import type { ImageUploadItem } from '../useImageUploadManager';
 
@@ -33,6 +34,7 @@ const labels: ImageUploadLabels = {
   dragToReorder: 'Drag to reorder',
   fileTooLarge: 'File exceeds 10MB',
   fileInvalidType: 'Unsupported file type — use JPEG, PNG, WebP, or AVIF',
+  deleteSuccess: 'Image deleted successfully',
 };
 
 function renderPopup(
@@ -81,6 +83,7 @@ describe('ImageUploadPopup', () => {
   });
 
   it('opens confirmation dialog when removing an uploaded image tile and removes upon confirmation', async () => {
+    const toastSpy = vi.spyOn(toast, 'success');
     const user = userEvent.setup();
     const props = renderPopup();
     const removeButtons = screen.getAllByLabelText('Remove image');
@@ -92,6 +95,7 @@ describe('ImageUploadPopup', () => {
 
     await user.click(screen.getByRole('button', { name: 'Delete' }));
     expect(props.onRemoveItem).toHaveBeenCalledWith('image-1');
+    expect(toastSpy).toHaveBeenCalledWith('Image deleted successfully');
   });
 
   it('cancels removal of an uploaded image tile when Cancel is clicked in dialog', async () => {

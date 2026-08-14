@@ -204,7 +204,7 @@ export function LinkPopover({ editor, children }: LinkPopoverProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs text-destructive hover:text-destructive"
+                className="h-7 text-xs cursor-pointer text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                 onClick={handleRemove}
               >
                 <Trash2 className="mr-1 h-3 w-3" />

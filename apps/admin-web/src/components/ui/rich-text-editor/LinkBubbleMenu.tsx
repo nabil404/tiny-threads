@@ -41,7 +41,7 @@ export function LinkBubbleMenu({ editor }: LinkBubbleMenuProps) {
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 cursor-pointer text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
             onClick={() => setIsEditOpen(true)}
           >
             <Pencil className="h-3 w-3" />
@@ -52,7 +52,7 @@ export function LinkBubbleMenu({ editor }: LinkBubbleMenuProps) {
           type="button"
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-destructive hover:text-destructive"
+          className="h-7 w-7 cursor-pointer text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
           onClick={() => editor.chain().focus().unsetLink().run()}
         >
           <Unlink className="h-3 w-3" />

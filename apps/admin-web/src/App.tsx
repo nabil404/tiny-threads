@@ -16,7 +16,7 @@ export default function App() {
   return (
     <>
       <RouterProvider router={router} />
-      <Toaster position="top-right" richColors />
+      <Toaster theme={theme as 'light' | 'dark'} position="top-right" richColors />
     </>
   );
 }

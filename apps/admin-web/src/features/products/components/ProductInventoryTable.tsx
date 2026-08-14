@@ -135,7 +135,12 @@ export function ProductInventoryTable({
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer" asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                      asChild
+                    >
                       <Link to={`/products/${product.id}/edit`} aria-label={t('products.edit')}>
                         <Pencil className="h-4 w-4" />
                       </Link>
@@ -143,7 +148,7 @@ export function ProductInventoryTable({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 cursor-pointer"
+                      className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                       aria-label={t('products.delete')}
                       onClick={() => onDelete(product.id)}
                     >

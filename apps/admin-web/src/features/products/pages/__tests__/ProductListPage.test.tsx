@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { toast } from 'sonner';
 import { store } from '@store/index';
 import { ProductListPage } from '../ProductListPage';
 import * as productsApiHooks from '@store/api/endpoints/productsApi';
@@ -126,6 +127,7 @@ describe('ProductListPage', () => {
   });
 
   it('confirms and calls deleteProduct when the delete action is used', async () => {
+    const toastSpy = vi.spyOn(toast, 'success');
     const user = userEvent.setup();
     const unwrapMock = vi.fn().mockResolvedValue(undefined);
     const deleteMock = vi.fn().mockReturnValue({ unwrap: unwrapMock });
@@ -143,6 +145,7 @@ describe('ProductListPage', () => {
     await user.click(confirmButton);
 
     expect(deleteMock).toHaveBeenCalledWith('prod-1');
+    expect(toastSpy).toHaveBeenCalledWith('Product deleted successfully');
   });
 
   it('does not call deleteProduct when the confirmation is dismissed', async () => {

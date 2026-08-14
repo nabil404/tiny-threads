@@ -50,6 +50,7 @@ export function VariantRow({
     deleteConfirm: t('products.deleteImageConfirm'),
     cancel: t('common.cancel'),
     delete: t('common.delete'),
+    deleteSuccess: t('products.deleteImageSuccess'),
   };
 
   return (
@@ -154,7 +155,7 @@ export function VariantRow({
           variant="ghost"
           size="icon"
           aria-label={t('products.delete')}
-          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:hover:text-muted-foreground disabled:hover:bg-transparent transition-colors"
           disabled={!canDelete}
           onClick={onRemove}
         >

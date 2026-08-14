@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { X, Star } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -47,6 +48,7 @@ export interface ImageUploadLabels {
   deleteConfirm?: string;
   cancel?: string;
   delete?: string;
+  deleteSuccess?: string;
 }
 
 export interface ImageUploadPopupProps<
@@ -176,7 +178,7 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
                   <button
                     type="button"
                     aria-label={labels.removeImage}
-                    className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 p-0.5 rounded transition-colors cursor-pointer"
                     onClick={() => onRemoveItem(item.clientId)}
                   >
                     <X className="h-3.5 w-3.5" />
@@ -233,6 +235,7 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
             if (imageToDelete) {
               onRemoveItem(imageToDelete);
               setImageToDelete(null);
+              toast.success(labels.deleteSuccess ?? 'Image deleted successfully');
             }
           }}
         />
@@ -287,7 +290,7 @@ function SortableImageTile<TImage extends ImageRecord = ImageRecord>({
       <button
         type="button"
         aria-label={labels.removeImage}
-        className="absolute top-1 right-1 bg-black/55 text-white rounded-full w-4 h-4 flex items-center justify-center cursor-pointer hover:bg-black/75 transition-colors"
+        className="absolute top-1 right-1 bg-black/55 text-white rounded-full w-4 h-4 flex items-center justify-center cursor-pointer hover:bg-destructive hover:text-destructive-foreground transition-colors"
         onClick={onRemove}
       >
         <X className="h-2.5 w-2.5" />
