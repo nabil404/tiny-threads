@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useDropzone, type FileRejection } from 'react-dropzone';
 import {
   DndContext,
@@ -21,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@components/ui/dialog';
+import { ConfirmDialog } from '@components/ui/confirm-dialog';
 import type { ImageUploadItem, ImageRecord } from './useImageUploadManager';
 
 const ACCEPTED_TYPES = {
@@ -41,6 +43,10 @@ export interface ImageUploadLabels {
   dragToReorder: string;
   fileTooLarge: string;
   fileInvalidType: string;
+  deleteTitle?: string;
+  deleteConfirm?: string;
+  cancel?: string;
+  delete?: string;
 }
 
 export interface ImageUploadPopupProps<
@@ -73,6 +79,7 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
   onSetPrimary,
 }: ImageUploadPopupProps<TImage>) {
   const sensors = useSensors(useSensor(PointerSensor));
+  const [imageToDelete, setImageToDelete] = useState<string | null>(null);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: ACCEPTED_TYPES,
@@ -114,8 +121,8 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
           {...getRootProps()}
           className={`border-2 border-dashed rounded-lg p-5 text-center text-sm cursor-pointer transition-colors ${
             isDragActive
-              ? 'border-primary bg-primary/5'
-              : 'border-border text-muted-foreground'
+              ? 'border-primary bg-primary/5 text-primary'
+              : 'border-border text-muted-foreground hover:border-primary/50'
           }`}
         >
           <input {...getInputProps()} />
@@ -143,7 +150,7 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs truncate">{item.file?.name}</p>
+                    <p className="text-xs truncate text-foreground font-medium">{item.file?.name}</p>
                     {item.status === 'error' ? (
                       <p className="text-xs text-destructive">
                         {item.errorMessage}
@@ -160,7 +167,7 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
                   {item.status === 'error' && (
                     <button
                       type="button"
-                      className="text-xs text-primary underline"
+                      className="text-xs text-primary underline cursor-pointer"
                       onClick={() => onRetryItem(item.clientId)}
                     >
                       {labels.retry}
@@ -169,9 +176,10 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
                   <button
                     type="button"
                     aria-label={labels.removeImage}
+                    className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                     onClick={() => onRemoveItem(item.clientId)}
                   >
-                    <X className="h-3.5 w-3.5 text-muted-foreground" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ))}
@@ -199,7 +207,7 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
                       key={item.clientId}
                       item={item}
                       labels={labels}
-                      onRemove={() => onRemoveItem(item.clientId)}
+                      onRemove={() => setImageToDelete(item.clientId)}
                       onSetPrimary={() => onSetPrimary(item.clientId)}
                     />
                   ))}
@@ -208,6 +216,26 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
             </DndContext>
           </div>
         )}
+
+        <ConfirmDialog
+          open={imageToDelete !== null}
+          onOpenChange={(open) => {
+            if (!open) setImageToDelete(null);
+          }}
+          title={labels.deleteTitle ?? 'Delete Image'}
+          description={
+            labels.deleteConfirm ??
+            'Are you sure you want to delete this image? This action cannot be undone.'
+          }
+          confirmText={labels.delete ?? 'Delete'}
+          cancelText={labels.cancel ?? 'Cancel'}
+          onConfirm={() => {
+            if (imageToDelete) {
+              onRemoveItem(imageToDelete);
+              setImageToDelete(null);
+            }
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
@@ -259,7 +287,7 @@ function SortableImageTile<TImage extends ImageRecord = ImageRecord>({
       <button
         type="button"
         aria-label={labels.removeImage}
-        className="absolute top-1 right-1 bg-black/55 text-white rounded-full w-4 h-4 flex items-center justify-center"
+        className="absolute top-1 right-1 bg-black/55 text-white rounded-full w-4 h-4 flex items-center justify-center cursor-pointer hover:bg-black/75 transition-colors"
         onClick={onRemove}
       >
         <X className="h-2.5 w-2.5" />
@@ -268,10 +296,10 @@ function SortableImageTile<TImage extends ImageRecord = ImageRecord>({
         type="button"
         aria-label={labels.setPrimaryImage}
         onClick={onSetPrimary}
-        className={`absolute bottom-1 left-1 rounded px-1 text-xs flex items-center gap-0.5 ${
+        className={`absolute bottom-1 left-1 rounded px-1 text-xs flex items-center gap-0.5 cursor-pointer ${
           item.image?.isPrimary
             ? 'bg-yellow-400 text-black'
-            : 'bg-black/55 text-white'
+            : 'bg-black/55 text-white hover:bg-black/75'
         }`}
       >
         <Star className="h-2.5 w-2.5" />

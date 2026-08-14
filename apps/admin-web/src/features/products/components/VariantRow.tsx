@@ -46,6 +46,10 @@ export function VariantRow({
     dragToReorder: t('products.dragToReorder'),
     fileTooLarge: t('products.imageTooLarge'),
     fileInvalidType: t('products.imageInvalidType'),
+    deleteTitle: t('products.deleteImageTitle'),
+    deleteConfirm: t('products.deleteImageConfirm'),
+    cancel: t('common.cancel'),
+    delete: t('common.delete'),
   };
 
   return (
@@ -149,6 +153,7 @@ export function VariantRow({
           type="button"
           variant="ghost"
           size="icon"
+          aria-label={t('products.delete')}
           className="h-8 w-8 text-muted-foreground hover:text-destructive"
           disabled={!canDelete}
           onClick={onRemove}

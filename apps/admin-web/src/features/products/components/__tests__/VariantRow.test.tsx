@@ -75,4 +75,49 @@ describe('VariantRow', () => {
     render(<Wrapper imageManager={makeManager()} />);
     expect(screen.getByPlaceholderText('e.g. SKU-123')).toHaveValue('SKU-1');
   });
+
+  it('calls onRemove when delete button is enabled and clicked', () => {
+    const onRemove = vi.fn();
+    const form = {
+      defaultValues: {
+        title: 'x',
+        status: 'draft' as const,
+        categoryIds: [],
+        variants: [
+          {
+            clientKey: 'v-key-1',
+            name: 'Red',
+            sku: 'SKU-1',
+            priceDollars: 10,
+            stock: 5,
+            isDefault: true,
+          },
+        ],
+      },
+    };
+
+    function EnabledWrapper() {
+      const methods = useForm<ProductFormData>(form);
+      return (
+        <FormProvider {...methods}>
+          <table>
+            <tbody>
+              <VariantRow
+                index={0}
+                canDelete={true}
+                onRemove={onRemove}
+                imageManager={makeManager()}
+              />
+            </tbody>
+          </table>
+        </FormProvider>
+      );
+    }
+
+    render(<EnabledWrapper />);
+    const deleteBtn = screen.getByRole('button', { name: /delete/i });
+    expect(deleteBtn).not.toBeDisabled();
+    deleteBtn.click();
+    expect(onRemove).toHaveBeenCalledTimes(1);
+  });
 });

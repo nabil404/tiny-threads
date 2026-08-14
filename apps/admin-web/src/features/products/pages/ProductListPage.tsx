@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@components/ui/button';
+import { ConfirmDialog } from '@components/ui/confirm-dialog';
 import { Input } from '@components/ui/input';
 import {
   Select,
@@ -98,13 +99,24 @@ export function ProductListPage() {
     });
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm(t('products.deleteConfirm'))) return;
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = (id: string) => {
+    setProductToDelete(id);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!productToDelete) return;
+    setIsDeleting(true);
     try {
-      await deleteProduct(id).unwrap();
+      await deleteProduct(productToDelete).unwrap();
       toast.success(t('products.deleteSuccess'));
+      setProductToDelete(null);
     } catch (err) {
       toast.error(extractErrorMessage(err, t('products.deleteError')));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -215,6 +227,19 @@ export function ProductListPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={productToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setProductToDelete(null);
+        }}
+        title={t('products.deleteProductTitle')}
+        description={t('products.deleteConfirm')}
+        confirmText={t('products.delete')}
+        cancelText={t('common.cancel')}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

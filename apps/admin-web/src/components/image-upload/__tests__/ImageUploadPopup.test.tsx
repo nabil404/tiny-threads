@@ -75,8 +75,36 @@ describe('ImageUploadPopup', () => {
     const user = userEvent.setup();
     const props = renderPopup();
     const removeButtons = screen.getAllByLabelText('Remove image');
+    // The first remove button is on the queue row
     await user.click(removeButtons[0]);
-    expect(props.onRemoveItem).toHaveBeenCalled();
+    expect(props.onRemoveItem).toHaveBeenCalledWith('local-1');
+  });
+
+  it('opens confirmation dialog when removing an uploaded image tile and removes upon confirmation', async () => {
+    const user = userEvent.setup();
+    const props = renderPopup();
+    const removeButtons = screen.getAllByLabelText('Remove image');
+    // The second remove button is on the uploaded grid tile
+    await user.click(removeButtons[1]);
+
+    expect(screen.getByRole('heading', { name: 'Delete Image' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(props.onRemoveItem).toHaveBeenCalledWith('image-1');
+  });
+
+  it('cancels removal of an uploaded image tile when Cancel is clicked in dialog', async () => {
+    const user = userEvent.setup();
+    const props = renderPopup();
+    const removeButtons = screen.getAllByLabelText('Remove image');
+    await user.click(removeButtons[1]);
+
+    expect(screen.getByRole('heading', { name: 'Delete Image' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(props.onRemoveItem).not.toHaveBeenCalled();
+    expect(screen.queryByRole('heading', { name: 'Delete Image' })).not.toBeInTheDocument();
   });
 
   it('calls onSetPrimary when the primary star on a grid tile is clicked', async () => {

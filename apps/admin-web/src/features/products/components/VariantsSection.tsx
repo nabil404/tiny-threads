@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
 import { Button } from '@components/ui/button';
+import { ConfirmDialog } from '@components/ui/confirm-dialog';
 import {
   Card,
   CardContent,
@@ -39,6 +41,9 @@ export function VariantsSection({ imageManager }: VariantsSectionProps) {
     control,
     name: 'variants',
   });
+  const [variantIndexToDelete, setVariantIndexToDelete] = useState<number | null>(
+    null,
+  );
 
   const handleAddVariant = () => {
     append({
@@ -49,6 +54,13 @@ export function VariantsSection({ imageManager }: VariantsSectionProps) {
       stock: 0,
       isDefault: false,
     });
+  };
+
+  const handleConfirmDelete = () => {
+    if (variantIndexToDelete !== null) {
+      remove(variantIndexToDelete);
+      setVariantIndexToDelete(null);
+    }
   };
 
   const variantsError = formState.errors.variants;
@@ -90,7 +102,7 @@ export function VariantsSection({ imageManager }: VariantsSectionProps) {
                   key={field.id}
                   index={index}
                   canDelete={fields.length > 1}
-                  onRemove={() => remove(index)}
+                  onRemove={() => setVariantIndexToDelete(index)}
                   imageManager={imageManager}
                 />
               ))}
@@ -117,6 +129,18 @@ export function VariantsSection({ imageManager }: VariantsSectionProps) {
         <p className="mt-2 text-xs text-muted-foreground">
           {t('products.variantMinNotice')}
         </p>
+
+        <ConfirmDialog
+          open={variantIndexToDelete !== null}
+          onOpenChange={(open) => {
+            if (!open) setVariantIndexToDelete(null);
+          }}
+          title={t('products.deleteVariantTitle')}
+          description={t('products.deleteVariantConfirm')}
+          confirmText={t('products.delete')}
+          cancelText={t('common.cancel')}
+          onConfirm={handleConfirmDelete}
+        />
       </CardContent>
     </Card>
   );

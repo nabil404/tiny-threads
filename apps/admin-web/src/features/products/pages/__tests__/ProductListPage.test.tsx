@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
@@ -130,11 +130,17 @@ describe('ProductListPage', () => {
     const unwrapMock = vi.fn().mockResolvedValue(undefined);
     const deleteMock = vi.fn().mockReturnValue({ unwrap: unwrapMock });
     mockHooks({ deleteProduct: deleteMock });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     renderPage();
 
     await user.click(screen.getByRole('button', { name: /delete/i }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /delete product/i })).toBeInTheDocument();
+
+    const dialog = screen.getByRole('dialog');
+    const confirmButton = within(dialog).getByRole('button', { name: /^delete$/i });
+    await user.click(confirmButton);
 
     expect(deleteMock).toHaveBeenCalledWith('prod-1');
   });
@@ -143,13 +149,19 @@ describe('ProductListPage', () => {
     const user = userEvent.setup();
     const deleteMock = vi.fn();
     mockHooks({ deleteProduct: deleteMock });
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
 
     renderPage();
 
     await user.click(screen.getByRole('button', { name: /delete/i }));
 
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    const dialog = screen.getByRole('dialog');
+    const cancelButton = within(dialog).getByRole('button', { name: /cancel/i });
+    await user.click(cancelButton);
+
     expect(deleteMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   afterEach(() => {
