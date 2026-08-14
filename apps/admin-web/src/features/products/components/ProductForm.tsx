@@ -23,6 +23,7 @@ import {
   type ProductFormData,
 } from '../schemas/product-form.schema';
 import type { ProductVariantImage } from '@store/api/endpoints/productsApi';
+import { makeClientKey } from '@lib/make-client-key';
 import {
   useUploadVariantImageMutation,
   useDeleteVariantImageMutation,
@@ -56,7 +57,7 @@ function createDefaultFormData(): ProductFormData {
     categoryIds: [],
     variants: [
       {
-        clientKey: crypto.randomUUID(),
+        clientKey: makeClientKey(),
         name: '',
         sku: '',
         priceDollars: 0,
@@ -94,7 +95,13 @@ export function ProductForm({
   // that maps onto the product-variant domain's actual "productId"/"variantId".
   const imageManagerOptions = useMemo(
     () => ({
-      uploadFile: ({ ownerId, groupId, file, onProgress, signal }: {
+      uploadFile: ({
+        ownerId,
+        groupId,
+        file,
+        onProgress,
+        signal,
+      }: {
         ownerId: string;
         groupId: string;
         file: File;
@@ -108,29 +115,59 @@ export function ProductForm({
           onProgress,
           signal,
         }).unwrap(),
-      deleteImage: ({ ownerId, groupId, imageId }: {
+      deleteImage: ({
+        ownerId,
+        groupId,
+        imageId,
+      }: {
         ownerId: string;
         groupId: string;
         imageId: string;
-      }) => deleteImage({ productId: ownerId, variantId: groupId, imageId }).unwrap(),
-      reorderImages: ({ ownerId, groupId, imageIds }: {
+      }) =>
+        deleteImage({
+          productId: ownerId,
+          variantId: groupId,
+          imageId,
+        }).unwrap(),
+      reorderImages: ({
+        ownerId,
+        groupId,
+        imageIds,
+      }: {
         ownerId: string;
         groupId: string;
         imageIds: string[];
-      }) => reorderImages({ productId: ownerId, variantId: groupId, imageIds }).unwrap(),
-      setPrimaryImage: ({ ownerId, groupId, imageId }: {
+      }) =>
+        reorderImages({
+          productId: ownerId,
+          variantId: groupId,
+          imageIds,
+        }).unwrap(),
+      setPrimaryImage: ({
+        ownerId,
+        groupId,
+        imageId,
+      }: {
         ownerId: string;
         groupId: string;
         imageId: string;
-      }) => setPrimaryImage({ productId: ownerId, variantId: groupId, imageId }).unwrap(),
+      }) =>
+        setPrimaryImage({
+          productId: ownerId,
+          variantId: groupId,
+          imageId,
+        }).unwrap(),
     }),
     [uploadImage, deleteImage, reorderImages, setPrimaryImage],
   );
 
-  const imageManager = useImageUploadManager<ProductVariantImage>(imageManagerOptions);
+  const imageManager =
+    useImageUploadManager<ProductVariantImage>(imageManagerOptions);
 
   const form = useForm<ProductFormData>({
-    resolver: zodResolver(productFormSchema) as unknown as Resolver<ProductFormData>,
+    resolver: zodResolver(
+      productFormSchema,
+    ) as unknown as Resolver<ProductFormData>,
     defaultValues: initialData ?? createDefaultFormData(),
   });
 
@@ -163,9 +200,8 @@ export function ProductForm({
       const failedCount = clientKeys.reduce(
         (total, key) =>
           total +
-          imageManager
-            .getItems(key)
-            .filter((item) => item.status !== 'done').length,
+          imageManager.getItems(key).filter((item) => item.status !== 'done')
+            .length,
         0,
       );
       if (failedCount > 0) {
@@ -220,7 +256,11 @@ export function ProductForm({
           <p className="text-sm text-muted-foreground">{pageDescription}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" onClick={() => navigate('/products')}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate('/products')}
+          >
             {t('products.discard')}
           </Button>
           <Button type="submit" form="product-form" disabled={isSubmitting}>
@@ -237,7 +277,11 @@ export function ProductForm({
       )}
 
       <Form {...form}>
-        <form id="product-form" onSubmit={form.handleSubmit(handleSubmit)} noValidate>
+        <form
+          id="product-form"
+          onSubmit={form.handleSubmit(handleSubmit)}
+          noValidate
+        >
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-[1200px]">
             <div className="lg:col-span-2 space-y-6">
               <GeneralInfoSection />

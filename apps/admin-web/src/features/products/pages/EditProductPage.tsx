@@ -11,6 +11,7 @@ import type {
   ProductVariantImage,
 } from '@store/api/endpoints/productsApi';
 import { extractErrorMessage } from '@lib/extract-error-message';
+import { makeClientKey } from '@lib/make-client-key';
 import { ProductForm } from '../components/ProductForm';
 import type { ProductFormData } from '../schemas/product-form.schema';
 import {
@@ -27,8 +28,7 @@ export function EditProductPage() {
     isLoading: isFetching,
     isError: isFetchError,
   } = useGetProductQuery(id!, { skip: !id });
-  const [updateProduct, { isLoading: isUpdating }] =
-    useUpdateProductMutation();
+  const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
   const [error, setError] = useState<string | null>(null);
   const clientKeyCacheRef = useRef<Map<string, string>>(new Map());
 
@@ -38,12 +38,11 @@ export function EditProductPage() {
       title: product.title,
       description: product.description ?? undefined,
       status: product.status,
-      categoryIds:
-        product.productCategories?.map((pc) => pc.categoryId) ?? [],
+      categoryIds: product.productCategories?.map((pc) => pc.categoryId) ?? [],
       variants: (product.variants ?? []).map((v) => {
         let clientKey = clientKeyCacheRef.current.get(v.id);
         if (!clientKey) {
-          clientKey = crypto.randomUUID();
+          clientKey = makeClientKey();
           clientKeyCacheRef.current.set(v.id, clientKey);
         }
         return {
@@ -111,7 +110,9 @@ export function EditProductPage() {
         if (rv.clientKey) clientKeyCacheRef.current.set(rv.id, rv.clientKey);
       });
       data.variants.forEach((v) => {
-        const saved = result.variants?.find((rv) => rv.clientKey === v.clientKey);
+        const saved = result.variants?.find(
+          (rv) => rv.clientKey === v.clientKey,
+        );
         if (saved) imageManager.setGroupContext(v.clientKey, id, saved.id);
       });
 
