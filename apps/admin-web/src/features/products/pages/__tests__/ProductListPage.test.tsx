@@ -122,6 +122,7 @@ describe('ProductListPage', () => {
 
     expect(getProductsSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({ q: 'headphones' }),
+      expect.anything(),
     );
     vi.useRealTimers();
   });
@@ -165,6 +166,58 @@ describe('ProductListPage', () => {
 
     expect(deleteMock).not.toHaveBeenCalled();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('initializes filters and search from URL search parameters', () => {
+    const getProductsSpy = vi.spyOn(productsApiHooks, 'useGetProductsQuery');
+    mockHooks();
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter
+          initialEntries={[
+            '/products?q=wireless&status=active&category=Electronics&page=2',
+          ]}
+        >
+          <ProductListPage />
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    expect(getProductsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        q: 'wireless',
+        status: 'active',
+        categoryId: 'cat-1',
+        page: 2,
+      }),
+      expect.anything(),
+    );
+
+    expect(screen.getByPlaceholderText(/search by name or sku/i)).toHaveValue(
+      'wireless',
+    );
+  });
+
+  it('navigates pages using Next and Prev pagination buttons', async () => {
+    const user = userEvent.setup();
+    const getProductsSpy = vi.spyOn(productsApiHooks, 'useGetProductsQuery');
+    mockHooks({
+      getProducts: {
+        data: { items: [product], total: 60, page: 1, limit: 20 },
+      },
+    });
+
+    renderPage();
+
+    const nextBtn = screen.getByRole('button', { name: /^next$/i });
+    expect(nextBtn).toBeEnabled();
+    await user.click(nextBtn);
+
+    expect(getProductsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 2 }),
+      expect.anything(),
+    );
   });
 
   afterEach(() => {

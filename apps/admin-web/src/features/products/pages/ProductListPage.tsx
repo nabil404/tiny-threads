@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@components/ui/select';
+import { useProductFilters, type StatusFilter } from '../hooks/useProductFilters';
 import { ProductStatsCards } from '../components/ProductStatsCards';
 import { ProductInventoryTable } from '../components/ProductInventoryTable';
 import {
@@ -30,9 +31,6 @@ import { extractErrorMessage } from '@lib/extract-error-message';
 const PAGE_SIZE = 20;
 const DEFAULT_LOW_STOCK_THRESHOLD = 10;
 const DEFAULT_CURRENCY_SYMBOL = '$';
-const SEARCH_DEBOUNCE_MS = 500;
-
-type StatusFilter = 'all' | 'draft' | 'active' | 'archived';
 
 function flattenCategories(
   nodes: CategoryTreeNode[],
@@ -50,45 +48,41 @@ function flattenCategories(
 
 export function ProductListPage() {
   const { t } = useTranslation();
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [status, setStatus] = useState<StatusFilter>('all');
-  const [categoryId, setCategoryId] = useState<string>('all');
-  const [page, setPage] = useState(1);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    const handle = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(handle);
-  }, [search]);
-
-  const filterKey = `${debouncedSearch}|${status}|${categoryId}`;
-  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
-  if (prevFilterKey !== filterKey) {
-    setPrevFilterKey(filterKey);
-    setPage(1);
-  }
-
-  const queryParams = useMemo(
-    () => ({
-      page,
-      limit: PAGE_SIZE,
-      ...(status !== 'all' ? { status } : {}),
-      ...(categoryId !== 'all' ? { categoryId } : {}),
-      ...(debouncedSearch ? { q: debouncedSearch } : {}),
-    }),
-    [page, status, categoryId, debouncedSearch],
-  );
-
-  const { data, isLoading } = useGetProductsQuery(queryParams);
+  const { data: categoryTree = [], isLoading: isCategoriesLoading } =
+    useGetCategoriesQuery();
   const { data: stats, isLoading: statsLoading } = useGetProductStatsQuery();
-  const { data: categoryTree = [] } = useGetCategoriesQuery();
   const { data: settings } = useGetTenantSettingsQuery();
   const [deleteProduct] = useDeleteProductMutation();
 
+  const flatCategories = useMemo(
+    () => flattenCategories(categoryTree),
+    [categoryTree],
+  );
+
+  const {
+    search,
+    status,
+    category,
+    page,
+    queryParams,
+    isCategoryPending,
+    setSearch,
+    setStatus,
+    setCategory,
+    setPage,
+  } = useProductFilters({
+    pageSize: PAGE_SIZE,
+    categories: flatCategories,
+    isCategoriesLoading,
+  });
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const { data, isLoading } = useGetProductsQuery(queryParams, {
+    skip: isCategoryPending,
+  });
+
   const lowStockThreshold = settings?.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD;
   const currencySymbol = settings?.defaultCurrencySymbol ?? DEFAULT_CURRENCY_SYMBOL;
-  const flatCategories = useMemo(() => flattenCategories(categoryTree), [categoryTree]);
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -154,15 +148,15 @@ export function ProductListPage() {
             className="sm:max-w-sm"
           />
           <div className="flex gap-2">
-            <Select value={categoryId} onValueChange={setCategoryId}>
+            <Select value={category} onValueChange={setCategory}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder={t('products.allCategories')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('products.allCategories')}</SelectItem>
-                {flatCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
+                {flatCategories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.name}>
+                    {cat.name}
                   </SelectItem>
                 ))}
               </SelectContent>

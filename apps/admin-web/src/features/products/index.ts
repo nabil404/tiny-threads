@@ -26,6 +26,11 @@ export {
   ProductInventoryTable,
   type ProductInventoryTableProps,
 } from './components/ProductInventoryTable';
+export {
+  useProductFilters,
+  type StatusFilter,
+  type ProductQueryParams,
+} from './hooks/useProductFilters';
 export { CreateProductPage } from './pages/CreateProductPage';
 export { EditProductPage } from './pages/EditProductPage';
 export { ProductListPage } from './pages/ProductListPage';
