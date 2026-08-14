@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -30,7 +30,6 @@ export function EditProductPage() {
   } = useGetProductQuery(id!, { skip: !id });
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
   const [error, setError] = useState<string | null>(null);
-  const clientKeyCacheRef = useRef<Map<string, string>>(new Map());
 
   const initialData: ProductFormData | undefined = useMemo(() => {
     if (!product) return undefined;
@@ -39,22 +38,15 @@ export function EditProductPage() {
       description: product.description ?? undefined,
       status: product.status,
       categoryIds: product.productCategories?.map((pc) => pc.categoryId) ?? [],
-      variants: (product.variants ?? []).map((v) => {
-        let clientKey = clientKeyCacheRef.current.get(v.id);
-        if (!clientKey) {
-          clientKey = makeClientKey();
-          clientKeyCacheRef.current.set(v.id, clientKey);
-        }
-        return {
-          id: v.id,
-          clientKey,
-          name: v.name ?? '',
-          sku: v.sku,
-          priceDollars: priceCentsToDollars(v.priceCents),
-          stock: v.stock,
-          isDefault: v.isDefault,
-        };
-      }),
+      variants: (product.variants ?? []).map((v) => ({
+        id: v.id,
+        clientKey: v.id ?? makeClientKey(),
+        name: v.name ?? '',
+        sku: v.sku,
+        priceDollars: priceCentsToDollars(v.priceCents),
+        stock: v.stock,
+        isDefault: v.isDefault,
+      })),
     };
   }, [product]);
 
@@ -106,9 +98,6 @@ export function EditProductPage() {
 
       const result = await updateProduct({ id, body }).unwrap();
 
-      result.variants?.forEach((rv) => {
-        if (rv.clientKey) clientKeyCacheRef.current.set(rv.id, rv.clientKey);
-      });
       data.variants.forEach((v) => {
         const saved = result.variants?.find(
           (rv) => rv.clientKey === v.clientKey,

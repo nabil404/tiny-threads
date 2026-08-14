@@ -89,8 +89,9 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
   const rerender = useCallback(() => forceRender((n) => n + 1), []);
 
   useEffect(() => {
+    const currentItems = itemsRef.current;
     return () => {
-      itemsRef.current.forEach((items) => {
+      currentItems.forEach((items) => {
         items.forEach((item) => {
           if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
         });

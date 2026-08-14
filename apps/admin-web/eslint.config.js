@@ -32,4 +32,12 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
+  {
+    // shadcn/ui components co-export variant helpers (e.g. badgeVariants, buttonVariants)
+    // and context hooks (e.g. useFormField) alongside component primitives.
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 );

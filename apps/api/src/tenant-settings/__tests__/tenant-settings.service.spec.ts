@@ -46,7 +46,10 @@ describe('TenantSettingsService', () => {
       });
 
       const result = await service.getSettings();
-      expect(result).toEqual({ ...existingSettings, defaultCurrencySymbol: '$' });
+      expect(result).toEqual({
+        ...existingSettings,
+        defaultCurrencySymbol: '$',
+      });
       expect(tenantDbService.run).toHaveBeenCalledTimes(1);
     });
 
@@ -81,7 +84,10 @@ describe('TenantSettingsService', () => {
 
       const result = await service.getSettings(em);
 
-      expect(result).toEqual({ ...existingSettings, defaultCurrencySymbol: '$' });
+      expect(result).toEqual({
+        ...existingSettings,
+        defaultCurrencySymbol: '$',
+      });
       expect(tenantDbService.run).not.toHaveBeenCalled();
     });
   });
