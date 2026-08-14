@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from '@store/index';
 import { EditProductPage } from '../EditProductPage';
@@ -39,6 +39,24 @@ const mockProductData: productsApiHooks.Product = {
   ],
 };
 
+function renderWithRouter(initialEntry = '/products/123e4567-e89b-12d3-a456-426614174000/edit') {
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/products/:id/edit',
+        element: <EditProductPage />,
+      },
+    ],
+    { initialEntries: [initialEntry] },
+  );
+
+  return render(
+    <Provider store={store}>
+      <RouterProvider router={router} />
+    </Provider>,
+  );
+}
+
 describe('EditProductPage', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -55,15 +73,7 @@ describe('EditProductPage', () => {
       { isLoading: false } as any,
     ]);
 
-    render(
-      <Provider store={store}>
-        <MemoryRouter initialEntries={['/products/123e4567-e89b-12d3-a456-426614174000/edit']}>
-          <Routes>
-            <Route path="/products/:id/edit" element={<EditProductPage />} />
-          </Routes>
-        </MemoryRouter>
-      </Provider>,
-    );
+    renderWithRouter();
 
     expect(screen.getByText('Loading product...')).toBeInTheDocument();
   });
@@ -79,15 +89,7 @@ describe('EditProductPage', () => {
       { isLoading: false } as any,
     ]);
 
-    render(
-      <Provider store={store}>
-        <MemoryRouter initialEntries={['/products/123e4567-e89b-12d3-a456-426614174000/edit']}>
-          <Routes>
-            <Route path="/products/:id/edit" element={<EditProductPage />} />
-          </Routes>
-        </MemoryRouter>
-      </Provider>,
-    );
+    renderWithRouter();
 
     expect(screen.getByText('Product not found or failed to load.')).toBeInTheDocument();
   });
@@ -112,15 +114,7 @@ describe('EditProductPage', () => {
 
     const user = userEvent.setup();
 
-    render(
-      <Provider store={store}>
-        <MemoryRouter initialEntries={['/products/123e4567-e89b-12d3-a456-426614174000/edit']}>
-          <Routes>
-            <Route path="/products/:id/edit" element={<EditProductPage />} />
-          </Routes>
-        </MemoryRouter>
-      </Provider>,
-    );
+    renderWithRouter();
 
     expect(screen.getByRole('heading', { name: 'Edit Product' })).toBeInTheDocument();
     expect(screen.getByDisplayValue('Existing Product')).toBeInTheDocument();

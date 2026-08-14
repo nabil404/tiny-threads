@@ -17,7 +17,12 @@
   "common": {
     "cancel": "Cancel",
     "confirm": "Confirm",
-    "delete": "Delete"
+    "delete": "Delete",
+    "unsavedChanges": "Unsaved changes",
+    "unsavedChangesTitle": "Unsaved Changes",
+    "unsavedChangesDescription": "You have unsaved changes on this page. If you leave now, your changes will be lost.",
+    "leavePage": "Leave Page",
+    "stayOnPage": "Stay on Page"
   },
   "theme": {
     "selectThemeLabel": "Select Theme",

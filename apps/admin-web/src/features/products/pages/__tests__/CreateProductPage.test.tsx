@@ -1,12 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from '@store/index';
 import { CreateProductPage } from '../CreateProductPage';
 import * as productsApiHooks from '@store/api/endpoints/productsApi';
 import * as categoriesApiHooks from '@store/api/endpoints/categoriesApi';
+
+function renderWithRouter() {
+  const router = createMemoryRouter([
+    {
+      path: '/',
+      element: <CreateProductPage />,
+    },
+    {
+      path: '/products/:id/edit',
+      element: <div>Edit Page</div>,
+    },
+  ]);
+  return render(
+    <Provider store={store}>
+      <RouterProvider router={router} />
+    </Provider>,
+  );
+}
 
 describe('CreateProductPage', () => {
   beforeEach(() => {
@@ -24,13 +42,7 @@ describe('CreateProductPage', () => {
       isLoading: false,
     } as any);
 
-    render(
-      <Provider store={store}>
-        <MemoryRouter>
-          <CreateProductPage />
-        </MemoryRouter>
-      </Provider>,
-    );
+    renderWithRouter();
 
     expect(screen.getByRole('heading', { name: 'Add New Product' })).toBeInTheDocument();
   });
@@ -49,13 +61,7 @@ describe('CreateProductPage', () => {
 
     const user = userEvent.setup();
 
-    render(
-      <Provider store={store}>
-        <MemoryRouter>
-          <CreateProductPage />
-        </MemoryRouter>
-      </Provider>,
-    );
+    renderWithRouter();
 
     const titleInput = screen.getByLabelText(/product name/i);
     await user.type(titleInput, 'New Test Product');
@@ -96,13 +102,7 @@ describe('CreateProductPage', () => {
 
     const user = userEvent.setup();
 
-    render(
-      <Provider store={store}>
-        <MemoryRouter>
-          <CreateProductPage />
-        </MemoryRouter>
-      </Provider>,
-    );
+    renderWithRouter();
 
     const titleInput = screen.getByLabelText(/product name/i);
     await user.type(titleInput, 'New Test Product');

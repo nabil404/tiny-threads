@@ -7,6 +7,9 @@ import { AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Form } from '@components/ui/form';
 import { Button } from '@components/ui/button';
+import { UnsavedChangesBadge } from '@components/ui/unsaved-changes-badge';
+import { UnsavedChangesDialog } from '@components/ui/unsaved-changes-dialog';
+import { useUnsavedChangesWarning } from '@hooks/useUnsavedChangesWarning';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -213,8 +216,15 @@ export function ProductForm({
     [imageManager, t],
   );
 
+  const isDirty = form.formState.isDirty;
+  const { isBlocked, proceed, reset } = useUnsavedChangesWarning({
+    isDirty,
+    isSubmitting,
+  });
+
   const handleSubmit = async (data: ProductFormData) => {
     await onSubmit(data, imageManager);
+    form.reset(data);
     // Edit mode intentionally doesn't await waitForIdle inside its own
     // onSubmit (uploads for newly-added variants keep running in the
     // background after the success toast). Create mode already awaited it
@@ -255,7 +265,8 @@ export function ProductForm({
           <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
           <p className="text-sm text-muted-foreground">{pageDescription}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <UnsavedChangesBadge isDirty={isDirty} />
           <Button
             type="button"
             variant="outline"
@@ -293,6 +304,12 @@ export function ProductForm({
           </div>
         </form>
       </Form>
+
+      <UnsavedChangesDialog
+        open={isBlocked}
+        onConfirm={proceed}
+        onCancel={reset}
+      />
     </div>
   );
 }
