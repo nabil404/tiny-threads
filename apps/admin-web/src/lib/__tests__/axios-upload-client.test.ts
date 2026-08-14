@@ -1,8 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import axios from 'axios';
 import { refreshSession, toQueryError } from '../axios-upload-client';
 
-vi.mock('axios');
+const { postMock } = vi.hoisted(() => ({ postMock: vi.fn() }));
+
+vi.mock('axios', () => ({
+  default: { create: () => ({ post: postMock }) },
+  AxiosError: class AxiosError extends Error {},
+}));
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (err: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
 
 describe('axios-upload-client', () => {
   beforeEach(() => {
@@ -11,20 +25,42 @@ describe('axios-upload-client', () => {
 
   describe('refreshSession', () => {
     it('returns true when the refresh request succeeds', async () => {
-      (axios.post as any).mockResolvedValue({ data: {} });
+      postMock.mockResolvedValue({ data: {} });
       const result = await refreshSession();
       expect(result).toBe(true);
-      expect(axios.post).toHaveBeenCalledWith(
-        expect.stringContaining('/merchant-admins/auth/refresh'),
+      expect(postMock).toHaveBeenCalledWith(
+        '/merchant-admins/auth/refresh',
         undefined,
         expect.objectContaining({ withCredentials: true }),
       );
     });
 
     it('returns false when the refresh request fails', async () => {
-      (axios.post as any).mockRejectedValue(new Error('refresh failed'));
+      postMock.mockRejectedValue(new Error('refresh failed'));
       const result = await refreshSession();
       expect(result).toBe(false);
+    });
+
+    it('coalesces concurrent calls into a single refresh request', async () => {
+      const d = deferred<{ data: unknown }>();
+      postMock.mockReturnValue(d.promise);
+
+      const first = refreshSession();
+      const second = refreshSession();
+
+      expect(postMock).toHaveBeenCalledTimes(1);
+
+      d.resolve({ data: {} });
+      expect(await first).toBe(true);
+      expect(await second).toBe(true);
+      expect(postMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('allows a new refresh request once the in-flight one has settled', async () => {
+      postMock.mockResolvedValue({ data: {} });
+      await refreshSession();
+      await refreshSession();
+      expect(postMock).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -47,7 +83,20 @@ describe('axios-upload-client', () => {
     it('falls back to FETCH_ERROR when there is no response (e.g. network failure)', () => {
       const axiosError = { isAxiosError: true, message: 'Network Error' };
       const result = toQueryError(axiosError);
-      expect(result).toEqual({ status: 'FETCH_ERROR', data: undefined });
+      expect(result).toEqual({
+        status: 'FETCH_ERROR',
+        data: undefined,
+        error: 'Network Error',
+      });
+    });
+
+    it('supplies a default message when the network error has none', () => {
+      const result = toQueryError({ isAxiosError: true });
+      expect(result).toEqual({
+        status: 'FETCH_ERROR',
+        data: undefined,
+        error: 'Network request failed',
+      });
     });
   });
 });

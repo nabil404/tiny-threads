@@ -18,10 +18,18 @@ vi.mock('@lib/axios-upload-client', async () => {
 });
 
 function makeStore() {
-  return configureStore({
-    reducer: { [baseApi.reducerPath]: baseApi.reducer },
+  const dispatchedTypes: string[] = [];
+  const store = configureStore({
+    reducer: {
+      [baseApi.reducerPath]: baseApi.reducer,
+      auth: (state: Record<string, never> = {}, action: { type: string }) => {
+        dispatchedTypes.push(action.type);
+        return state;
+      },
+    },
     middleware: (gdm) => gdm().concat(baseApi.middleware),
   });
+  return { store, dispatchedTypes };
 }
 
 describe('productVariantImagesApi', () => {
@@ -39,7 +47,7 @@ describe('productVariantImagesApi', () => {
       },
     );
 
-    const store = makeStore();
+    const { store } = makeStore();
     const onProgress = vi.fn();
     const file = new File(['x'], 'a.png', { type: 'image/png' });
 
@@ -67,7 +75,7 @@ describe('productVariantImagesApi', () => {
       .mockResolvedValueOnce({ data: image });
     (axiosUploadClientModule.refreshSession as any).mockResolvedValue(true);
 
-    const store = makeStore();
+    const { store } = makeStore();
     const file = new File(['x'], 'a.png', { type: 'image/png' });
 
     const result = await store.dispatch(
@@ -79,12 +87,43 @@ describe('productVariantImagesApi', () => {
     );
 
     expect(axiosUploadClientModule.refreshSession).toHaveBeenCalled();
-    expect(axiosUploadClientModule.axiosUploadClient.post).toHaveBeenCalledTimes(2);
+    expect(
+      axiosUploadClientModule.axiosUploadClient.post,
+    ).toHaveBeenCalledTimes(2);
     expect(result.data).toEqual(image);
   });
 
+  it('uploadVariantImage dispatches auth/logout when the refresh fails', async () => {
+    const unauthorized = {
+      isAxiosError: true,
+      response: { status: 401, data: {} },
+    };
+    (axiosUploadClientModule.axiosUploadClient.post as any).mockRejectedValue(
+      unauthorized,
+    );
+    (axiosUploadClientModule.refreshSession as any).mockResolvedValue(false);
+
+    const { store, dispatchedTypes } = makeStore();
+    const file = new File(['x'], 'a.png', { type: 'image/png' });
+
+    const result = await store.dispatch(
+      (baseApi.endpoints as any).uploadVariantImage.initiate({
+        productId: 'p-1',
+        variantId: 'v-1',
+        file,
+      }),
+    );
+
+    expect(axiosUploadClientModule.refreshSession).toHaveBeenCalledTimes(1);
+    expect(
+      axiosUploadClientModule.axiosUploadClient.post,
+    ).toHaveBeenCalledTimes(1);
+    expect(dispatchedTypes).toContain('auth/logout');
+    expect(result.error).toMatchObject({ status: 401 });
+  });
+
   it('reorderVariantImages PUTs the ordered image ids', async () => {
-    const store = makeStore();
+    const { store } = makeStore();
     void useReorderVariantImagesMutation; // referenced for type-level import check
     const dispatched = store.dispatch(
       (baseApi.endpoints as any).reorderVariantImages.initiate({
@@ -97,7 +136,7 @@ describe('productVariantImagesApi', () => {
   });
 
   it('setPrimaryVariantImage PATCHes isPrimary true', async () => {
-    const store = makeStore();
+    const { store } = makeStore();
     void useSetPrimaryVariantImageMutation;
     const dispatched = store.dispatch(
       (baseApi.endpoints as any).setPrimaryVariantImage.initiate({

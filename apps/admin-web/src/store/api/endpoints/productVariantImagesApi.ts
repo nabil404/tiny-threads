@@ -42,7 +42,10 @@ export const productVariantImagesApi = baseApi.injectEndpoints({
         signal?: AbortSignal;
       }
     >({
-      queryFn: async ({ productId, variantId, file, onProgress, signal }) => {
+      queryFn: async (
+        { productId, variantId, file, onProgress, signal },
+        api,
+      ) => {
         try {
           const response = await performUpload(
             productId,
@@ -70,6 +73,13 @@ export const productVariantImagesApi = baseApi.injectEndpoints({
                 return { error: toQueryError(retryErr) as FetchBaseQueryError };
               }
             }
+            // The session is genuinely gone: clear Redux auth state the same
+            // way `baseQueryWithReauth` does, so an expiry discovered on the
+            // axios upload path logs out too. Dispatched as a plain action to
+            // avoid importing authSlice (which would create an import cycle);
+            // the type must stay in sync with authSlice's `name: 'auth'` slice
+            // and its `logout` reducer key.
+            api.dispatch({ type: 'auth/logout' });
           }
           return { error: toQueryError(err) as FetchBaseQueryError };
         }

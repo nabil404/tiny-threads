@@ -6,6 +6,7 @@ import {
   FetchBaseQueryError,
 } from '@reduxjs/toolkit/query/react';
 import type { RootState } from '../index';
+import { withSingleFlightRefresh } from '@lib/refresh-session-lock';
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
@@ -25,16 +26,23 @@ export const baseQueryWithReauth: BaseQueryFn<
     url.includes('/merchant-admins/auth/refresh');
 
   if (result.error && result.error.status === 401 && !isAuthEndpoint) {
-    const refreshResult = await rawBaseQuery(
-      {
-        url: '/merchant-admins/auth/refresh',
-        method: 'POST',
-      },
-      api,
-      extraOptions,
-    );
+    // Shared with the axios upload client's `refreshSession`: at most one
+    // refresh request may be in flight process-wide, because the backend
+    // treats two concurrent presentations of the same refresh token as reuse
+    // and revokes the entire token family.
+    const refreshSucceeded = await withSingleFlightRefresh(async () => {
+      const refreshResult = await rawBaseQuery(
+        {
+          url: '/merchant-admins/auth/refresh',
+          method: 'POST',
+        },
+        api,
+        extraOptions,
+      );
+      return !!refreshResult.data;
+    });
 
-    if (refreshResult.data) {
+    if (refreshSucceeded) {
       // Cookies are automatically updated by the response; retry the original query
       result = await rawBaseQuery(args, api, extraOptions);
     } else {
