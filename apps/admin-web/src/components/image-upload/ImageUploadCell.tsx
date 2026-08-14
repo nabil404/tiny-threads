@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { ImageUploadItem, ImageRecord } from './useImageUploadManager';
 
-export interface ImageUploadCellProps<TImage extends ImageRecord = ImageRecord> {
+export interface ImageUploadCellProps<
+  TImage extends ImageRecord = ImageRecord,
+> {
   items: ImageUploadItem<TImage>[];
   onClick: () => void;
 }
@@ -28,7 +30,11 @@ export function ImageUploadCell<TImage extends ImageRecord = ImageRecord>({
       onMouseLeave={() => setHovered(false)}
     >
       {previewSrc ? (
-        <img src={previewSrc} alt="Image" className="w-full h-full object-cover" />
+        <img
+          src={previewSrc}
+          alt="Image"
+          className="w-full h-full object-cover"
+        />
       ) : (
         <span className="w-full h-full flex items-center justify-center text-muted-foreground">
           <Plus className="h-5 w-5" />

@@ -111,7 +111,10 @@ export const productsApi = baseApi.injectEndpoints({
       query: (id) => `/merchant-admins/products/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'Products', id }],
     }),
-    updateProduct: builder.mutation<Product, { id: string; body: UpdateProductBody }>({
+    updateProduct: builder.mutation<
+      Product,
+      { id: string; body: UpdateProductBody }
+    >({
       query: ({ id, body }) => ({
         url: `/merchant-admins/products/${id}`,
         method: 'PATCH',
@@ -130,7 +133,10 @@ export const productsApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.items.map(({ id }) => ({ type: 'Products' as const, id })),
+              ...result.items.map(({ id }) => ({
+                type: 'Products' as const,
+                id,
+              })),
               { type: 'Products' as const, id: 'LIST' },
             ]
           : [{ type: 'Products' as const, id: 'LIST' }],

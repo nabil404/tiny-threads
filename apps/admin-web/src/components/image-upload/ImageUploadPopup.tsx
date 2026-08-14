@@ -43,7 +43,9 @@ export interface ImageUploadLabels {
   fileInvalidType: string;
 }
 
-export interface ImageUploadPopupProps<TImage extends ImageRecord = ImageRecord> {
+export interface ImageUploadPopupProps<
+  TImage extends ImageRecord = ImageRecord,
+> {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
@@ -127,16 +129,25 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
             </p>
             <div className="max-h-[150px] overflow-y-auto border border-border rounded-lg divide-y divide-border">
               {uploadingItems.map((item) => (
-                <div key={item.clientId} className="flex items-center gap-2 px-2 py-1.5">
+                <div
+                  key={item.clientId}
+                  className="flex items-center gap-2 px-2 py-1.5"
+                >
                   <div className="w-8 h-8 shrink-0 rounded bg-muted overflow-hidden">
                     {item.previewUrl && (
-                      <img src={item.previewUrl} alt="" className="w-full h-full object-cover" />
+                      <img
+                        src={item.previewUrl}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs truncate">{item.file?.name}</p>
                     {item.status === 'error' ? (
-                      <p className="text-xs text-destructive">{item.errorMessage}</p>
+                      <p className="text-xs text-destructive">
+                        {item.errorMessage}
+                      </p>
                     ) : (
                       <div className="h-1 rounded bg-muted overflow-hidden mt-0.5">
                         <div
@@ -215,9 +226,10 @@ function SortableImageTile<TImage extends ImageRecord = ImageRecord>({
   onRemove,
   onSetPrimary,
 }: SortableImageTileProps<TImage>) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
-    id: item.clientId,
-  });
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({
+      id: item.clientId,
+    });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -230,7 +242,11 @@ function SortableImageTile<TImage extends ImageRecord = ImageRecord>({
       style={style}
       className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted"
     >
-      <img src={item.image?.url} alt={item.image?.altText ?? ''} className="w-full h-full object-cover" />
+      <img
+        src={item.image?.url}
+        alt={item.image?.altText ?? ''}
+        className="w-full h-full object-cover"
+      />
       <button
         type="button"
         {...attributes}
@@ -253,7 +269,9 @@ function SortableImageTile<TImage extends ImageRecord = ImageRecord>({
         aria-label={labels.setPrimaryImage}
         onClick={onSetPrimary}
         className={`absolute bottom-1 left-1 rounded px-1 text-xs flex items-center gap-0.5 ${
-          item.image?.isPrimary ? 'bg-yellow-400 text-black' : 'bg-black/55 text-white'
+          item.image?.isPrimary
+            ? 'bg-yellow-400 text-black'
+            : 'bg-black/55 text-white'
         }`}
       >
         <Star className="h-2.5 w-2.5" />

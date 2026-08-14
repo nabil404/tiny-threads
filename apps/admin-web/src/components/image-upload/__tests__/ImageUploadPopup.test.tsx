@@ -35,7 +35,9 @@ const labels: ImageUploadLabels = {
   fileInvalidType: 'Unsupported file type — use JPEG, PNG, WebP, or AVIF',
 };
 
-function renderPopup(overrides: Partial<React.ComponentProps<typeof ImageUploadPopup>> = {}) {
+function renderPopup(
+  overrides: Partial<React.ComponentProps<typeof ImageUploadPopup>> = {},
+) {
   const props = {
     open: true,
     onOpenChange: vi.fn(),
@@ -87,7 +89,9 @@ describe('ImageUploadPopup', () => {
   it('calls onAddFiles when a valid file is dropped via the hidden input', async () => {
     const props = renderPopup();
     const file = new File(['x'], 'good.png', { type: 'image/png' });
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     await userEvent.upload(input, file);
     expect(props.onAddFiles).toHaveBeenCalledWith([file]);
   });
@@ -97,7 +101,9 @@ describe('ImageUploadPopup', () => {
     const big = new File([new Uint8Array(11 * 1024 * 1024)], 'big.png', {
       type: 'image/png',
     });
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     await userEvent.upload(input, big);
     expect(props.onAddRejectedFile).toHaveBeenCalledWith(
       big,

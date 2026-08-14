@@ -41,7 +41,12 @@ describe('ImageUploadCell', () => {
       {
         clientId: 'image-2',
         status: 'done',
-        image: image({ id: '2', url: 'https://cdn/b.webp', isPrimary: false, sortOrder: 1 }),
+        image: image({
+          id: '2',
+          url: 'https://cdn/b.webp',
+          isPrimary: false,
+          sortOrder: 1,
+        }),
       },
     ];
     render(<ImageUploadCell items={items} onClick={vi.fn()} />);

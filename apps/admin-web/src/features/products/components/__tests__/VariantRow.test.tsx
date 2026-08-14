@@ -33,7 +33,12 @@ function Wrapper({
     <FormProvider {...form}>
       <table>
         <tbody>
-          <VariantRow index={0} canDelete={false} onRemove={vi.fn()} imageManager={imageManager} />
+          <VariantRow
+            index={0}
+            canDelete={false}
+            onRemove={vi.fn()}
+            imageManager={imageManager}
+          />
         </tbody>
       </table>
     </FormProvider>
@@ -59,7 +64,7 @@ function makeManager(
 }
 
 describe('VariantRow', () => {
-  it('renders the image cell using items from the manager for this row\'s clientKey', () => {
+  it("renders the image cell using items from the manager for this row's clientKey", () => {
     const getItems = vi.fn().mockReturnValue([]);
     render(<Wrapper imageManager={makeManager({ getItems })} />);
     expect(getItems).toHaveBeenCalledWith('v-key-1');

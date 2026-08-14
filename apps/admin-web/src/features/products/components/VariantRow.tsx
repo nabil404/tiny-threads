@@ -2,11 +2,7 @@ import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
-import {
-  FormField,
-  FormItem,
-  FormControl,
-} from '@components/ui/form';
+import { FormField, FormItem, FormControl } from '@components/ui/form';
 import { Input } from '@components/ui/input';
 import { Button } from '@components/ui/button';
 import { TableCell, TableRow } from '@components/ui/table';
@@ -68,12 +64,18 @@ export function VariantRow({
           onAddRejectedFile={(file, reason) =>
             imageManager.addRejectedFile(clientKey, file, reason)
           }
-          onRemoveItem={(clientId) => imageManager.removeItem(clientKey, clientId)}
-          onRetryItem={(clientId) => imageManager.retryItem(clientKey, clientId)}
+          onRemoveItem={(clientId) =>
+            imageManager.removeItem(clientKey, clientId)
+          }
+          onRetryItem={(clientId) =>
+            imageManager.retryItem(clientKey, clientId)
+          }
           onReorder={(orderedClientIds) =>
             imageManager.reorderItems(clientKey, orderedClientIds)
           }
-          onSetPrimary={(clientId) => imageManager.setPrimary(clientKey, clientId)}
+          onSetPrimary={(clientId) =>
+            imageManager.setPrimary(clientKey, clientId)
+          }
         />
       </TableCell>
 
@@ -84,7 +86,10 @@ export function VariantRow({
           render={({ field }) => (
             <FormItem className="space-y-0">
               <FormControl>
-                <Input placeholder={t('products.variantNamePlaceholder')} {...field} />
+                <Input
+                  placeholder={t('products.variantNamePlaceholder')}
+                  {...field}
+                />
               </FormControl>
             </FormItem>
           )}
@@ -112,7 +117,13 @@ export function VariantRow({
           render={({ field }) => (
             <FormItem className="space-y-0">
               <FormControl>
-                <Input type="number" step="0.01" min="0" placeholder="0.00" {...field} />
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  {...field}
+                />
               </FormControl>
             </FormItem>
           )}
