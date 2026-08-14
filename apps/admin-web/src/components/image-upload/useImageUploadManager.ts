@@ -27,7 +27,9 @@ interface GroupContext {
   groupId: string;
 }
 
-export interface UseImageUploadManagerOptions<TImage extends ImageRecord = ImageRecord> {
+export interface UseImageUploadManagerOptions<
+  TImage extends ImageRecord = ImageRecord,
+> {
   concurrency?: number;
   uploadFile: (args: {
     ownerId: string;
@@ -53,7 +55,9 @@ export interface UseImageUploadManagerOptions<TImage extends ImageRecord = Image
   }) => Promise<TImage>;
 }
 
-export interface UseImageUploadManagerResult<TImage extends ImageRecord = ImageRecord> {
+export interface UseImageUploadManagerResult<
+  TImage extends ImageRecord = ImageRecord,
+> {
   getItems: (groupKey: string) => ImageUploadItem<TImage>[];
   addFiles: (groupKey: string, files: File[]) => void;
   addRejectedFile: (groupKey: string, file: File, reason: string) => void;
@@ -211,7 +215,12 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
       const existing = itemsRef.current.get(groupKey) ?? [];
       setItems(groupKey, [
         ...existing,
-        { clientId: nextClientId(), status: 'error', file, errorMessage: reason },
+        {
+          clientId: nextClientId(),
+          status: 'error',
+          file,
+          errorMessage: reason,
+        },
       ]);
     },
     [setItems],
@@ -227,25 +236,54 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
         controllersRef.current.get(clientId)?.abort();
         controllersRef.current.delete(clientId);
         if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-        setItems(groupKey, items.filter((i) => i.clientId !== clientId));
+        setItems(
+          groupKey,
+          items.filter((i) => i.clientId !== clientId),
+        );
         return;
       }
 
       if (item.status === 'error') {
         if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-        setItems(groupKey, items.filter((i) => i.clientId !== clientId));
+        setItems(
+          groupKey,
+          items.filter((i) => i.clientId !== clientId),
+        );
         return;
       }
 
       const context = contextRef.current.get(groupKey);
       if (!context || !item.image) return;
       const imageId = item.image.id;
-      setItems(groupKey, items.filter((i) => i.clientId !== clientId));
+      const remaining = items.filter((i) => i.clientId !== clientId);
+      // The backend promotes the first remaining image when the primary one is
+      // deleted; mirror that locally (optimistically, like the removal itself)
+      // so the grid never shows zero primaries while waiting for a refetch.
+      const promotedClientId =
+        item.image.isPrimary === true
+          ? remaining.find((i) => i.status === 'done' && i.image)?.clientId
+          : undefined;
+      const withPromotion = (
+        list: ImageUploadItem<TImage>[],
+        isPrimary: boolean,
+      ) =>
+        promotedClientId === undefined
+          ? list
+          : list.map((i) =>
+              i.clientId === promotedClientId && i.image
+                ? { ...i, image: { ...i.image, isPrimary } }
+                : i,
+            );
+      setItems(groupKey, withPromotion(remaining, true));
       options
-        .deleteImage({ ownerId: context.ownerId, groupId: context.groupId, imageId })
+        .deleteImage({
+          ownerId: context.ownerId,
+          groupId: context.groupId,
+          imageId,
+        })
         .catch(() => {
           const current = itemsRef.current.get(groupKey) ?? [];
-          setItems(groupKey, [...current, item]);
+          setItems(groupKey, [...withPromotion(current, false), item]);
         });
     },
     [setItems, options],
@@ -253,7 +291,10 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
 
   const retryItem = useCallback(
     (groupKey: string, clientId: string) => {
-      updateItem(groupKey, clientId, { status: 'queued', errorMessage: undefined });
+      updateItem(groupKey, clientId, {
+        status: 'queued',
+        errorMessage: undefined,
+      });
       scheduleUploads(groupKey);
     },
     [updateItem, scheduleUploads],
@@ -266,13 +307,22 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
       const reordered = orderedClientIds
         .map((id) => byId.get(id))
         .filter((item): item is ImageUploadItem<TImage> => item !== undefined);
-      setItems(groupKey, reordered);
+      // Callers reorder only the subset they render (the drag grid shows just
+      // finished uploads), so anything not referenced — queued/uploading/error
+      // items — must be preserved in its existing relative order rather than
+      // dropped from state.
+      const referencedIds = new Set(orderedClientIds);
+      const untouched = items.filter(
+        (item) => !referencedIds.has(item.clientId),
+      );
+      const nextItems = [...reordered, ...untouched];
+      setItems(groupKey, nextItems);
 
       const previousOrder = items.map((item) => item.clientId);
 
       const context = contextRef.current.get(groupKey);
       if (!context) return;
-      const persistedIds = reordered
+      const persistedIds = nextItems
         .filter((item) => item.status === 'done' && item.image)
         .map((item) => item.image!.id);
       if (persistedIds.length === 0) return;
@@ -294,7 +344,9 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
             .filter((id) => !previousOrder.includes(id));
           const restored = [...restoredIds, ...newArrivals]
             .map((id) => currentById.get(id))
-            .filter((item): item is ImageUploadItem<TImage> => item !== undefined);
+            .filter(
+              (item): item is ImageUploadItem<TImage> => item !== undefined,
+            );
           setItems(groupKey, restored);
         });
     },
@@ -312,7 +364,10 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
         ?.id;
       const optimistic = items.map((item) =>
         item.image
-          ? { ...item, image: { ...item.image, isPrimary: item.clientId === clientId } }
+          ? {
+              ...item,
+              image: { ...item.image, isPrimary: item.clientId === clientId },
+            }
           : item,
       );
       setItems(groupKey, optimistic);
@@ -349,7 +404,11 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
       const persistedItems: ImageUploadItem<TImage>[] = images
         .slice()
         .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((image) => ({ clientId: `image-${image.id}`, status: 'done', image }));
+        .map((image) => ({
+          clientId: `image-${image.id}`,
+          status: 'done',
+          image,
+        }));
       setItems(groupKey, [...persistedItems, ...localOnly]);
     },
     [setItems],
@@ -366,7 +425,9 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
   const waitForIdle = useCallback(async (groupKeys: string[]) => {
     const relevantClientIds = groupKeys.flatMap((gk) =>
       (itemsRef.current.get(gk) ?? [])
-        .filter((item) => item.status === 'queued' || item.status === 'uploading')
+        .filter(
+          (item) => item.status === 'queued' || item.status === 'uploading',
+        )
         .map((item) => item.clientId),
     );
     const pending = relevantClientIds

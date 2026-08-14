@@ -103,7 +103,8 @@ describe('useImageUploadManager', () => {
 
     await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(1));
     expect(
-      result.current.getItems('group-key').find((i) => i.file === fileB)?.status,
+      result.current.getItems('group-key').find((i) => i.file === fileB)
+        ?.status,
     ).toBe('queued');
 
     await act(async () => {
@@ -223,7 +224,9 @@ describe('useImageUploadManager', () => {
 
   it('waitForIdle resolves once all queued/uploading items for the given keys settle', async () => {
     const d = deferred<ImageRecord>();
-    const options = makeOptions({ uploadFile: vi.fn().mockReturnValue(d.promise) });
+    const options = makeOptions({
+      uploadFile: vi.fn().mockReturnValue(d.promise),
+    });
     const { result } = renderHook(() => useImageUploadManager(options));
     const file = new File(['x'], 'a.png', { type: 'image/png' });
 
@@ -233,11 +236,9 @@ describe('useImageUploadManager', () => {
     });
 
     let resolved = false;
-    const idlePromise = result.current
-      .waitForIdle(['group-key'])
-      .then(() => {
-        resolved = true;
-      });
+    const idlePromise = result.current.waitForIdle(['group-key']).then(() => {
+      resolved = true;
+    });
 
     expect(resolved).toBe(false);
 
@@ -362,6 +363,110 @@ describe('useImageUploadManager', () => {
     expect(
       result.current.getItems('group-key').some((i) => i.file === newFile),
     ).toBe(true);
+  });
+
+  it('reorderItems keeps in-flight items when given only the done items ids', async () => {
+    const options = makeOptions({
+      uploadFile: vi.fn().mockReturnValue(new Promise<ImageRecord>(() => {})),
+    });
+    const { result } = renderHook(() => useImageUploadManager(options));
+    const imgX = image({ id: 'img-x', isPrimary: true, sortOrder: 0 });
+    const imgY = image({ id: 'img-y', isPrimary: false, sortOrder: 1 });
+
+    act(() => {
+      result.current.hydrateExisting('group-key', [imgX, imgY]);
+      result.current.setGroupContext('group-key', 'owner-1', 'group-1');
+    });
+
+    const uploadingFile = new File(['z'], 'z.png', { type: 'image/png' });
+    act(() => {
+      result.current.addFiles('group-key', [uploadingFile]);
+    });
+    await waitFor(() =>
+      expect(
+        result.current
+          .getItems('group-key')
+          .find((i) => i.file === uploadingFile)?.status,
+      ).toBe('uploading'),
+    );
+    const uploadingClientId = result.current
+      .getItems('group-key')
+      .find((i) => i.file === uploadingFile)!.clientId;
+
+    // The drag grid renders and reorders only the finished uploads, so it
+    // sends a partial id list that omits the still-uploading item.
+    act(() => {
+      result.current.reorderItems('group-key', ['image-img-y', 'image-img-x']);
+    });
+
+    const items = result.current.getItems('group-key');
+    expect(items.map((i) => i.image?.id ?? i.clientId)).toEqual([
+      'img-y',
+      'img-x',
+      uploadingClientId,
+    ]);
+    expect(items.find((i) => i.clientId === uploadingClientId)?.status).toBe(
+      'uploading',
+    );
+    expect(options.reorderImages).toHaveBeenCalledWith({
+      ownerId: 'owner-1',
+      groupId: 'group-1',
+      imageIds: ['img-y', 'img-x'],
+    });
+  });
+
+  it('removing the primary done item promotes the next remaining done item locally', async () => {
+    const options = makeOptions();
+    const { result } = renderHook(() => useImageUploadManager(options));
+    const imgX = image({ id: 'img-x', isPrimary: true, sortOrder: 0 });
+    const imgY = image({ id: 'img-y', isPrimary: false, sortOrder: 1 });
+
+    act(() => {
+      result.current.hydrateExisting('group-key', [imgX, imgY]);
+      result.current.setGroupContext('group-key', 'owner-1', 'group-1');
+    });
+
+    act(() => {
+      result.current.removeItem('group-key', 'image-img-x');
+    });
+
+    expect(result.current.getItems('group-key')).toHaveLength(1);
+    expect(result.current.getItems('group-key')[0].image?.isPrimary).toBe(true);
+    await waitFor(() => expect(options.deleteImage).toHaveBeenCalled());
+  });
+
+  it('reverts the optimistic primary promotion when the delete fails', async () => {
+    const deleteDeferred = deferred<void>();
+    const options = makeOptions({
+      deleteImage: vi.fn().mockReturnValue(deleteDeferred.promise),
+    });
+    const { result } = renderHook(() => useImageUploadManager(options));
+    const imgX = image({ id: 'img-x', isPrimary: true, sortOrder: 0 });
+    const imgY = image({ id: 'img-y', isPrimary: false, sortOrder: 1 });
+
+    act(() => {
+      result.current.hydrateExisting('group-key', [imgX, imgY]);
+      result.current.setGroupContext('group-key', 'owner-1', 'group-1');
+    });
+
+    act(() => {
+      result.current.removeItem('group-key', 'image-img-x');
+    });
+
+    await act(async () => {
+      deleteDeferred.reject(new Error('delete failed'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() =>
+      expect(result.current.getItems('group-key')).toHaveLength(2),
+    );
+    const byId = new Map(
+      result.current.getItems('group-key').map((i) => [i.image?.id, i]),
+    );
+    expect(byId.get('img-x')?.image?.isPrimary).toBe(true);
+    expect(byId.get('img-y')?.image?.isPrimary).toBe(false);
   });
 
   it('reorderItems rollback preserves items added while the request was in flight', async () => {
