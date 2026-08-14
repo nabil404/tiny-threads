@@ -15,7 +15,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { X, Star } from 'lucide-react';
+import { X, Star, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -38,6 +38,8 @@ export interface ImageUploadLabels {
   dropzone: string;
   uploadingSection: (count: number) => string;
   imagesSection: (count: number) => string;
+  selectedImagesSection?: (count: number) => string;
+  uploadOnCreationNotice?: string;
   retry: string;
   removeImage: string;
   setPrimaryImage: string;
@@ -59,6 +61,7 @@ export interface ImageUploadPopupProps<
   title: string;
   labels: ImageUploadLabels;
   items: ImageUploadItem<TImage>[];
+  mode?: 'create' | 'edit';
   onAddFiles: (files: File[]) => void;
   onAddRejectedFile: (file: File, reason: string) => void;
   onRemoveItem: (clientId: string) => void;
@@ -73,6 +76,7 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
   title,
   labels,
   items,
+  mode = 'edit',
   onAddFiles,
   onAddRejectedFile,
   onRemoveItem,
@@ -99,16 +103,24 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
     },
   });
 
+  const isCreateMode = mode === 'create';
+  const displayItems = isCreateMode
+    ? items.filter((item) => item.status !== 'error')
+    : items.filter((item) => item.status === 'done');
   const uploadingItems = items.filter((item) => item.status !== 'done');
-  const doneItems = items.filter((item) => item.status === 'done');
+  const errorItems = items.filter((item) => item.status === 'error');
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = doneItems.findIndex((item) => item.clientId === active.id);
-    const newIndex = doneItems.findIndex((item) => item.clientId === over.id);
+    const oldIndex = displayItems.findIndex(
+      (item) => item.clientId === active.id,
+    );
+    const newIndex = displayItems.findIndex(
+      (item) => item.clientId === over.id,
+    );
     if (oldIndex === -1 || newIndex === -1) return;
-    const reordered = arrayMove(doneItems, oldIndex, newIndex);
+    const reordered = arrayMove(displayItems, oldIndex, newIndex);
     onReorder(reordered.map((item) => item.clientId));
   };
 
@@ -131,7 +143,42 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
           <p>{labels.dropzone}</p>
         </div>
 
-        {uploadingItems.length > 0 && (
+        {isCreateMode && (
+          <div className="flex items-center gap-2 p-2.5 text-xs text-muted-foreground bg-muted/50 rounded-lg border border-border">
+            <Info className="h-4 w-4 shrink-0 text-primary" />
+            <span>
+              {labels.uploadOnCreationNotice ??
+                'Photos will be uploaded on product creation.'}
+            </span>
+          </div>
+        )}
+
+        {isCreateMode && errorItems.length > 0 && (
+          <div className="space-y-1">
+            {errorItems.map((item) => (
+              <div
+                key={item.clientId}
+                className="flex items-center justify-between gap-2 p-2 rounded-md bg-destructive/10 border border-destructive/20 text-xs text-destructive"
+              >
+                <span className="truncate">
+                  {item.file?.name
+                    ? `${item.file.name}: ${item.errorMessage}`
+                    : item.errorMessage}
+                </span>
+                <button
+                  type="button"
+                  aria-label={labels.removeImage}
+                  className="cursor-pointer hover:opacity-80 p-0.5"
+                  onClick={() => onRemoveItem(item.clientId)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!isCreateMode && uploadingItems.length > 0 && (
           <div>
             <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">
               {labels.uploadingSection(uploadingItems.length)}
@@ -152,7 +199,9 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs truncate text-foreground font-medium">{item.file?.name}</p>
+                    <p className="text-xs truncate text-foreground font-medium">
+                      {item.file?.name}
+                    </p>
                     {item.status === 'error' ? (
                       <p className="text-xs text-destructive">
                         {item.errorMessage}
@@ -189,10 +238,12 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
           </div>
         )}
 
-        {doneItems.length > 0 && (
+        {displayItems.length > 0 && (
           <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">
-              {labels.imagesSection(doneItems.length)}
+            <p className="text-xs font-semibold uppercase text-muted-foreground mb-1.5">
+              {isCreateMode && labels.selectedImagesSection
+                ? labels.selectedImagesSection(displayItems.length)
+                : labels.imagesSection(displayItems.length)}
             </p>
             <DndContext
               sensors={sensors}
@@ -200,16 +251,22 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={doneItems.map((item) => item.clientId)}
+                items={displayItems.map((item) => item.clientId)}
                 strategy={rectSortingStrategy}
               >
-                <div className="grid grid-cols-4 gap-2">
-                  {doneItems.map((item) => (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                  {displayItems.map((item) => (
                     <SortableImageTile
                       key={item.clientId}
                       item={item}
                       labels={labels}
-                      onRemove={() => setImageToDelete(item.clientId)}
+                      onRemove={() => {
+                        if (isCreateMode) {
+                          onRemoveItem(item.clientId);
+                        } else {
+                          setImageToDelete(item.clientId);
+                        }
+                      }}
                       onSetPrimary={() => onSetPrimary(item.clientId)}
                     />
                   ))}
@@ -235,7 +292,9 @@ export function ImageUploadPopup<TImage extends ImageRecord = ImageRecord>({
             if (imageToDelete) {
               onRemoveItem(imageToDelete);
               setImageToDelete(null);
-              toast.success(labels.deleteSuccess ?? 'Image deleted successfully');
+              toast.success(
+                labels.deleteSuccess ?? 'Image deleted successfully',
+              );
             }
           }}
         />
@@ -267,17 +326,23 @@ function SortableImageTile<TImage extends ImageRecord = ImageRecord>({
     transition,
   };
 
+  const isPrimary = Boolean(item.image?.isPrimary || item.isPrimary);
+  const imageSrc = item.image?.url ?? item.previewUrl;
+  const imageAlt = item.image?.altText ?? item.file?.name ?? '';
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted"
     >
-      <img
-        src={item.image?.url}
-        alt={item.image?.altText ?? ''}
-        className="w-full h-full object-cover"
-      />
+      {imageSrc && (
+        <img
+          src={imageSrc}
+          alt={imageAlt}
+          className="w-full h-full object-cover"
+        />
+      )}
       <button
         type="button"
         {...attributes}
@@ -300,7 +365,7 @@ function SortableImageTile<TImage extends ImageRecord = ImageRecord>({
         aria-label={labels.setPrimaryImage}
         onClick={onSetPrimary}
         className={`absolute bottom-1 left-1 rounded px-1 text-xs flex items-center gap-0.5 cursor-pointer ${
-          item.image?.isPrimary
+          isPrimary
             ? 'bg-yellow-400 text-black'
             : 'bg-black/55 text-white hover:bg-black/75'
         }`}

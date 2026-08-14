@@ -120,4 +120,49 @@ describe('VariantRow', () => {
     deleteBtn.click();
     expect(onRemove).toHaveBeenCalledTimes(1);
   });
+
+  it('opens ImageUploadPopup in create mode and displays upload on creation notice', async () => {
+    function CreateWrapper() {
+      const methods = useForm<ProductFormData>({
+        defaultValues: {
+          title: 'New Product',
+          status: 'draft',
+          categoryIds: [],
+          variants: [
+            {
+              clientKey: 'v-key-1',
+              name: 'Red',
+              sku: 'SKU-1',
+              priceDollars: 10,
+              stock: 5,
+              isDefault: true,
+            },
+          ],
+        },
+      });
+      return (
+        <FormProvider {...methods}>
+          <table>
+            <tbody>
+              <VariantRow
+                index={0}
+                canDelete={false}
+                onRemove={vi.fn()}
+                imageManager={makeManager()}
+                mode="create"
+              />
+            </tbody>
+          </table>
+        </FormProvider>
+      );
+    }
+
+    render(<CreateWrapper />);
+    const imageCellBtn = screen.getByRole('button', { name: /manage images/i });
+    imageCellBtn.click();
+
+    expect(
+      await screen.findByText('Photos will be uploaded on product creation.'),
+    ).toBeInTheDocument();
+  });
 });

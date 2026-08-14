@@ -188,6 +188,8 @@
     "dragToReorder": "Drag to reorder",
     "imageTooLarge": "File exceeds 10MB",
     "imageInvalidType": "Unsupported file type — use JPEG, PNG, WebP, or AVIF",
-    "someImagesFailedToUpload": "{{count}} image(s) failed to upload"
+    "someImagesFailedToUpload": "{{count}} image(s) failed to upload",
+    "photosUploadedOnCreationNotice": "Photos will be uploaded on product creation.",
+    "selectedImagesCount": "Selected Images ({{count}})"
   }
 }

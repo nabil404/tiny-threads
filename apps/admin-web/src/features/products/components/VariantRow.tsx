@@ -20,6 +20,7 @@ export interface VariantRowProps {
   canDelete: boolean;
   onRemove: () => void;
   imageManager: UseImageUploadManagerResult<ProductVariantImage>;
+  mode?: 'create' | 'edit';
 }
 
 export function VariantRow({
@@ -27,6 +28,7 @@ export function VariantRow({
   canDelete,
   onRemove,
   imageManager,
+  mode,
 }: VariantRowProps) {
   const { control, watch } = useFormContext<ProductFormData>();
   const { t } = useTranslation();
@@ -40,6 +42,9 @@ export function VariantRow({
     dropzone: t('products.dropzoneLabel'),
     uploadingSection: (count) => t('products.uploadingCount', { count }),
     imagesSection: (count) => t('products.imagesCount', { count }),
+    selectedImagesSection: (count) =>
+      t('products.selectedImagesCount', { count }),
+    uploadOnCreationNotice: t('products.photosUploadedOnCreationNotice'),
     retry: t('products.retry'),
     removeImage: t('products.removeImage'),
     setPrimaryImage: t('products.setPrimaryImage'),
@@ -60,6 +65,7 @@ export function VariantRow({
         <ImageUploadPopup
           open={popupOpen}
           onOpenChange={setPopupOpen}
+          mode={mode}
           title={t('products.manageImagesTitle', {
             variant: name || sku || `#${index + 1}`,
           })}

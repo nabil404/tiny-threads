@@ -514,4 +514,52 @@ describe('useImageUploadManager', () => {
       .map((i) => i.image?.id ?? 'new-file');
     expect(finalOrder).toEqual(['img-x', 'img-y', 'new-file']);
   });
+
+  it('marks first staged item as primary and updates primary locally when setPrimary is called without context', () => {
+    const options = makeOptions();
+    const { result } = renderHook(() => useImageUploadManager(options));
+    const file1 = new File(['1'], '1.png', { type: 'image/png' });
+    const file2 = new File(['2'], '2.png', { type: 'image/png' });
+
+    act(() => {
+      result.current.addFiles('group-key', [file1, file2]);
+    });
+
+    const items = result.current.getItems('group-key');
+    expect(items).toHaveLength(2);
+    expect(items[0].isPrimary).toBe(true);
+    expect(items[1].isPrimary).toBe(false);
+
+    // Switch primary to second staged item
+    act(() => {
+      result.current.setPrimary('group-key', items[1].clientId);
+    });
+
+    const updated = result.current.getItems('group-key');
+    expect(updated[0].isPrimary).toBe(false);
+    expect(updated[1].isPrimary).toBe(true);
+    expect(options.setPrimaryImage).not.toHaveBeenCalled();
+  });
+
+  it('promotes next remaining staged item as primary when primary staged item is removed', () => {
+    const options = makeOptions();
+    const { result } = renderHook(() => useImageUploadManager(options));
+    const file1 = new File(['1'], '1.png', { type: 'image/png' });
+    const file2 = new File(['2'], '2.png', { type: 'image/png' });
+
+    act(() => {
+      result.current.addFiles('group-key', [file1, file2]);
+    });
+
+    const items = result.current.getItems('group-key');
+    expect(items[0].isPrimary).toBe(true);
+
+    act(() => {
+      result.current.removeItem('group-key', items[0].clientId);
+    });
+
+    const remaining = result.current.getItems('group-key');
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].isPrimary).toBe(true);
+  });
 });

@@ -142,4 +142,97 @@ describe('ImageUploadPopup', () => {
       'File exceeds 10MB',
     );
   });
+
+  describe('when in create mode (mode="create")', () => {
+    const stagedItem1: ImageUploadItem = {
+      clientId: 'local-1',
+      status: 'queued',
+      file: new File(['img1'], 'photo1.jpg', { type: 'image/jpeg' }),
+      previewUrl: 'blob:preview-1',
+      isPrimary: true,
+    };
+    const stagedItem2: ImageUploadItem = {
+      clientId: 'local-2',
+      status: 'queued',
+      file: new File(['img2'], 'photo2.jpg', { type: 'image/jpeg' }),
+      previewUrl: 'blob:preview-2',
+      isPrimary: false,
+    };
+    const stagedErrorItem: ImageUploadItem = {
+      clientId: 'local-err',
+      status: 'error',
+      file: new File(['huge'], 'huge.png', { type: 'image/png' }),
+      errorMessage: 'File exceeds 10MB',
+    };
+
+    it('renders the informational notice and does not show uploading text or queue progress', () => {
+      renderPopup({
+        mode: 'create',
+        items: [stagedItem1, stagedItem2],
+        labels: {
+          ...labels,
+          uploadOnCreationNotice: 'Photos will be uploaded on product creation.',
+          selectedImagesSection: (count) => `Selected Images (${count})`,
+        },
+      });
+
+      expect(
+        screen.getByText('Photos will be uploaded on product creation.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Uploading/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Selected Images (2)')).toBeInTheDocument();
+    });
+
+    it('renders staged images as preview tiles in the grid', () => {
+      renderPopup({
+        mode: 'create',
+        items: [stagedItem1, stagedItem2],
+      });
+
+      const images = screen.getAllByRole('img');
+      expect(images).toHaveLength(2);
+      expect(images[0]).toHaveAttribute('src', 'blob:preview-1');
+      expect(images[1]).toHaveAttribute('src', 'blob:preview-2');
+    });
+
+    it('directly removes a staged item without confirmation dialog', async () => {
+      const user = userEvent.setup();
+      const props = renderPopup({
+        mode: 'create',
+        items: [stagedItem1],
+      });
+
+      const removeBtn = screen.getByLabelText('Remove image');
+      await user.click(removeBtn);
+
+      expect(props.onRemoveItem).toHaveBeenCalledWith('local-1');
+      expect(screen.queryByRole('heading', { name: 'Delete Image' })).not.toBeInTheDocument();
+    });
+
+    it('renders rejected error items in the error banner and allows removing them', async () => {
+      const user = userEvent.setup();
+      const props = renderPopup({
+        mode: 'create',
+        items: [stagedItem1, stagedErrorItem],
+      });
+
+      expect(screen.getByText('huge.png: File exceeds 10MB')).toBeInTheDocument();
+      const removeButtons = screen.getAllByLabelText('Remove image');
+      // Click remove on the error item
+      await user.click(removeButtons[0]);
+      expect(props.onRemoveItem).toHaveBeenCalledWith('local-err');
+    });
+
+    it('allows setting primary on a staged item', async () => {
+      const user = userEvent.setup();
+      const props = renderPopup({
+        mode: 'create',
+        items: [stagedItem1, stagedItem2],
+      });
+
+      const primaryBtns = screen.getAllByLabelText('Set as primary image');
+      await user.click(primaryBtns[1]);
+      expect(props.onSetPrimary).toHaveBeenCalledWith('local-2');
+    });
+  });
 });

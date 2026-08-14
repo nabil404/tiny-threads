@@ -24,6 +24,7 @@ export function ImageUploadCell<TImage extends ImageRecord = ImageRecord>({
   return (
     <button
       type="button"
+      aria-label="Manage images"
       className="relative w-14 h-14 shrink-0 rounded-lg border border-border bg-muted overflow-hidden cursor-pointer"
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}

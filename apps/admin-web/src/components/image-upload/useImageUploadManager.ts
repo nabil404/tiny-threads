@@ -20,6 +20,7 @@ export interface ImageUploadItem<TImage extends ImageRecord = ImageRecord> {
   progress?: number;
   errorMessage?: string;
   image?: TImage;
+  isPrimary?: boolean;
 }
 
 interface GroupContext {
@@ -197,11 +198,15 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
   const addFiles = useCallback(
     (groupKey: string, files: File[]) => {
       const existing = itemsRef.current.get(groupKey) ?? [];
-      const newItems: ImageUploadItem<TImage>[] = files.map((file) => ({
+      const hasPrimary = existing.some(
+        (item) => item.image?.isPrimary || item.isPrimary,
+      );
+      const newItems: ImageUploadItem<TImage>[] = files.map((file, idx) => ({
         clientId: nextClientId(),
         status: 'queued',
         file,
         previewUrl: URL.createObjectURL(file),
+        isPrimary: !hasPrimary && idx === 0,
       }));
       setItems(groupKey, [...existing, ...newItems]);
       if (contextRef.current.has(groupKey)) {
@@ -237,10 +242,13 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
         controllersRef.current.get(clientId)?.abort();
         controllersRef.current.delete(clientId);
         if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-        setItems(
-          groupKey,
-          items.filter((i) => i.clientId !== clientId),
-        );
+        const remaining = items.filter((i) => i.clientId !== clientId);
+        const wasPrimary = Boolean(item.isPrimary || item.image?.isPrimary);
+        const withPromotion =
+          wasPrimary && remaining.length > 0
+            ? remaining.map((r, idx) => (idx === 0 ? { ...r, isPrimary: true } : r))
+            : remaining;
+        setItems(groupKey, withPromotion);
         return;
       }
 
@@ -358,8 +366,20 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
     (groupKey: string, clientId: string) => {
       const items = itemsRef.current.get(groupKey) ?? [];
       const target = items.find((i) => i.clientId === clientId);
+      if (!target) return;
       const context = contextRef.current.get(groupKey);
-      if (!target || !target.image || !context) return;
+
+      if (!target.image || !context) {
+        const optimistic = items.map((item) => ({
+          ...item,
+          isPrimary: item.clientId === clientId,
+          image: item.image
+            ? { ...item.image, isPrimary: item.clientId === clientId }
+            : undefined,
+        }));
+        setItems(groupKey, optimistic);
+        return;
+      }
 
       const previousPrimaryId = items.find((i) => i.image?.isPrimary)?.image
         ?.id;
@@ -367,9 +387,10 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
         item.image
           ? {
               ...item,
+              isPrimary: item.clientId === clientId,
               image: { ...item.image, isPrimary: item.clientId === clientId },
             }
-          : item,
+          : { ...item, isPrimary: item.clientId === clientId },
       );
       setItems(groupKey, optimistic);
 
@@ -385,6 +406,7 @@ export function useImageUploadManager<TImage extends ImageRecord = ImageRecord>(
             item.image
               ? {
                   ...item,
+                  isPrimary: item.image.id === previousPrimaryId,
                   image: {
                     ...item.image,
                     isPrimary: item.image.id === previousPrimaryId,

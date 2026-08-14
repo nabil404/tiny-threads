@@ -29,9 +29,10 @@ const DEFAULT_CURRENCY_SYMBOL = '$';
 
 export interface VariantsSectionProps {
   imageManager: UseImageUploadManagerResult<ProductVariantImage>;
+  mode?: 'create' | 'edit';
 }
 
-export function VariantsSection({ imageManager }: VariantsSectionProps) {
+export function VariantsSection({ imageManager, mode }: VariantsSectionProps) {
   const { control, formState } = useFormContext<ProductFormData>();
   const { t } = useTranslation();
   const { data: settings } = useGetTenantSettingsQuery();
@@ -104,6 +105,7 @@ export function VariantsSection({ imageManager }: VariantsSectionProps) {
                   canDelete={fields.length > 1}
                   onRemove={() => setVariantIndexToDelete(index)}
                   imageManager={imageManager}
+                  mode={mode}
                 />
               ))}
             </TableBody>
